@@ -1,0 +1,35 @@
+import os 
+import sys
+import pandas as pd
+
+tissue_id_path = config['tissue_id_path']
+covariates_dir = config['covariates_dir']
+expression_dir = config['expression_dir']
+clusters_dir = config['clusters_dir']
+chr_list_path = config['chr_list_path']
+genotype_stem = config['genotype_stem']
+filtered_expression_output_dir = config['filtered_expression_output_dir']
+
+# load in all the wildcards
+df = pd.read_csv(tissue_id_path, header=0)
+tissue_ids = list(df['Tissue'])
+print('Running on tissues:{}'.format(tissue_ids))
+
+df = pd.read_csv(chr_list_path, header=0)
+chr_list = list(df['chr_id'])
+pc_ids = ['1','2']
+
+include: 'rules/pcqtl.smk'
+include: 'rules/eqtl.smk'
+include: 'rules/annotate.smk'
+
+rule all:
+    input:
+        #vep = expand('output/annotations/{TISSUE}.v8.leadvars.vep.vcf', TISSUE = tissue_ids),
+        overlap = expand('output/overlap/{TISSUE}.v8.overlap.txt', TISSUE = tissue_ids),
+        #pcqtl_susie = expand('output/pcqtl/{TISSUE}/{TISSUE}.v8.pc_{PC_ID}.susie.txt', TISSUE = tissue_ids, PC_ID = pc_ids),
+        pc_nominal = expand('output/pcqtl/{TISSUE}/{TISSUE}.v8.pc_{PC_ID}.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE = tissue_ids, PC_ID = pc_ids),
+        #eqtl_susie = expand('output/control_eqtl/{TISSUE}/{TISSUE}.v8.cluster_genes.susie.txt', TISSUE = tissue_ids),
+        eqtl_niominal = expand('output/control_eqtl/{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE=tissue_ids)
+
+
