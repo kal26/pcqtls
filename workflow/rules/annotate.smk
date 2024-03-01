@@ -30,12 +30,15 @@ rule annotate_top_vars:
         overlap_vcf = 'output/annotations/{TISSUE}.v8.leadvars.vcf'
     conda:
         'coloc'
+    resources:
+        mem = 10
     output:
-        vep = 'output/annotations/{TISSUE}.v8.leadvars.vep.vcf'
+        vep = 'output/annotations/{TISSUE}.v8.leadvars.vep.vcf',
+        vep_summary = 'output/annotations/{TISSUE}.v8.leadvars.vep.vcf_summary.html'
     shell:"""
     vep -i {input.overlap_vcf} \
         -o {output.vep} \
-        --cache --vcf --force_overwrite \
+        --cache --vcf -v --force_overwrite \
         --dir_cache data/references/vep/ \
         --no_check_variants_order \
         --nearest transcript \

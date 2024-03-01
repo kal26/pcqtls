@@ -25,7 +25,7 @@ include: 'rules/annotate.smk'
 
 rule all:
     input:
-        #vep = expand('output/annotations/{TISSUE}.v8.leadvars.vep.vcf', TISSUE = tissue_ids),
+        vep = expand('output/annotations/{TISSUE}.v8.leadvars.vep.vcf', TISSUE = tissue_ids),
         overlap = expand('output/overlap/{TISSUE}.v8.overlap.txt', TISSUE = tissue_ids),
         #pcqtl_susie = expand('output/pcqtl/{TISSUE}/{TISSUE}.v8.pc_{PC_ID}.susie.txt', TISSUE = tissue_ids, PC_ID = pc_ids),
         pc_nominal = expand('output/pcqtl/{TISSUE}/{TISSUE}.v8.pc_{PC_ID}.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE = tissue_ids, PC_ID = pc_ids),
