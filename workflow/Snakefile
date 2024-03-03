@@ -30,6 +30,12 @@ rule all:
         #pcqtl_susie = expand('output/pcqtl/{TISSUE}/{TISSUE}.v8.pc_{PC_ID}.susie.txt', TISSUE = tissue_ids, PC_ID = pc_ids),
         pc_nominal = expand('output/pcqtl/{TISSUE}/{TISSUE}.v8.pc_{PC_ID}.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE = tissue_ids, PC_ID = pc_ids),
         #eqtl_susie = expand('output/control_eqtl/{TISSUE}/{TISSUE}.v8.cluster_genes.susie.txt', TISSUE = tissue_ids),
-        eqtl_niominal = expand('output/control_eqtl/{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE=tissue_ids)
+        eqtl_niominal = expand('output/control_eqtl/{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE=tissue_ids),
+
+        # controls that are all genes, not just cluster genes
+        chr22_susie = expand('output/chr22_eqtl/{TISSUE}/{TISSUE}.v8.chr22_genes.susie.txt', TISSUE = tissue_ids),
+        contorl_vep = expand('output/chr22_eqtl_annotations/{TISSUE}.v8.chr22_genes.leadvars.vep.vcf', TISSUE = tissue_ids)
+
+
 
 

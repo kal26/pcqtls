@@ -106,3 +106,38 @@ rule run_eqtl_susie:
             output/control_eqtl/{wildcards.TISSUE}/{wildcards.TISSUE}.v8.cluster_genes.susie.txt \
             {input.covariates}
         """
+
+
+# eqtl on all genes instead of cluster genes
+rule get_chr22_expression:
+    input:
+        expression = expression_dir + '{TISSUE}.v8.normalized_expression.bed'
+    conda:
+        'tensorqtl_r'
+    output:
+        'data/processed/chr22_expression/{TISSUE}.v8.normalized_expression.chr22_genes.bed',    
+    script:
+        '../scripts/filter_chr22_expression.py'
+
+
+# cis-QTL mapping: susie credible set summary stats
+rule run_eqtl_susie_all:
+    input:
+        genotypes = genotype_stem + '.fam',
+        expression = 'data/processed/chr22_expression/{TISSUE}.v8.normalized_expression.chr22_genes.bed',
+        covariates = covariates_dir + '{TISSUE}.v8.covariates.txt',
+    params:
+        genotype_stem = genotype_stem
+    resources:
+        mem = 30
+    threads: 10
+    conda:
+        'tensorqtl_r'
+    output:
+       'output/chr22_eqtl/{TISSUE}/{TISSUE}.v8.chr22_genes.susie.txt'
+    shell:"""
+        python workflow/scripts/run_susie.py {params.genotype_stem} \
+            {input.expression} \
+            output/chr22_eqtl/{wildcards.TISSUE}/{wildcards.TISSUE}.v8.chr22_genes.susie.txt \
+            {input.covariates}
+        """
