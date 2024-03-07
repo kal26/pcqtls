@@ -21,7 +21,8 @@ rule run_eqtl_cis_nominal:
     params:
         genotype_stem = genotype_stem
     resources:
-        mem = 30
+        mem_mb = 30, 
+        time = "2:00:00"
     threads: 10
     conda:
         'tensorqtl_r'
@@ -44,7 +45,9 @@ rule run_eqtl_cis:
     params:
         genotype_stem = genotype_stem
     resources:
-        mem = 30
+        mem_mb = 30,
+        time = "2:00:00"
+
     threads: 10
     conda:
         'tensorqtl_r'
@@ -70,7 +73,8 @@ rule run_eqtl_cis_independent:
     params:
         genotype_stem = genotype_stem
     resources:
-        mem = 30
+        mem_mb = 30,
+        time = "2:00:00"
     threads: 10
     conda:
         'tensorqtl_r'
@@ -94,7 +98,8 @@ rule run_eqtl_susie:
     params:
         genotype_stem = genotype_stem
     resources:
-        mem = 30
+        mem_mb = 30,
+        time = "2:00:00"
     threads: 10
     conda:
         'tensorqtl_r'
@@ -129,7 +134,8 @@ rule run_eqtl_susie_all:
     params:
         genotype_stem = genotype_stem
     resources:
-        mem = 30
+        mem_mb = 30,
+        time = "2:00:00"
     threads: 10
     conda:
         'tensorqtl_r'

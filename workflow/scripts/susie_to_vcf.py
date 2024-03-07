@@ -21,7 +21,7 @@ leadvar_df['ref'] = leadvar_df['lead_variant_id'].str.split('_').str[2]
 leadvar_df['alt'] = leadvar_df['lead_variant_id'].str.split('_').str[3]
 leadvar_df['blank'] = '.'
 
-col_list = ['chr', 'pos', 'variant_id', 'ref', 'alt', 'blank', 'blank', 'blank']
+col_list = ['chr', 'pos', 'lead_variant_id', 'ref', 'alt', 'blank', 'blank', 'blank']
 out_df = leadvar_df[col_list]
 out_df = out_df.sort_values(by=['chr', 'pos'])
 

@@ -4,7 +4,7 @@ rule annotate_overlap:
         pc_1_susie = 'output/pcqtl/{TISSUE}/{TISSUE}.v8.pc_1.susie.txt',
         pc_2_susie = 'output/pcqtl/{TISSUE}/{TISSUE}.v8.pc_2.susie.txt'
     resources:
-        mem = 30
+        mem_mb = 30
     threads: 10
     conda:
         'tensorqtl_r'
@@ -17,7 +17,7 @@ rule overlap_to_vcf:
     input:
         overlap_df = 'output/overlap/{TISSUE}.v8.overlap.txt'
     resources:
-        mem = 10
+        mem_mb = 10
     conda:
         'coloc'
     output:
@@ -31,7 +31,7 @@ rule annotate_top_vars:
     conda:
         'coloc'
     resources:
-        mem = 10
+        mem_mb = 10
     output:
         vep = 'output/annotations/{TISSUE}.v8.leadvars.vep.vcf',
         vep_summary = 'output/annotations/{TISSUE}.v8.leadvars.vep.vcf_summary.html'
@@ -48,9 +48,9 @@ rule annotate_top_vars:
 
 rule susie_to_vcf:
     input:
-        overlap_df = 'output/overlap/{TISSUE}.v8.overlap.txt'
+        susie_df = 'output/chr22_eqtl/{TISSUE}/{TISSUE}.v8.chr22_genes.susie.txt'
     resources:
-        mem = 10
+        mem_mb = 10
     conda:
         'coloc'
     output:
@@ -64,7 +64,7 @@ rule annotate_top_vars_control:
     conda:
         'coloc'
     resources:
-        mem = 10
+        mem_mb = 20
     output:
         vep = 'output/chr22_eqtl_annotations/{TISSUE}.v8.chr22_genes.leadvars.vep.vcf',
         vep_summary = 'output/chr22_eqtl_annotations/{TISSUE}.v8.chr22_genes.leadvars.vep.vcf_summary.html'
