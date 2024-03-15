@@ -8,16 +8,15 @@ cluster:
     --job-name={rule}.{wildcards}
     --output=./logs/{rule}/%j.{wildcards}.out
     --error=./logs/{rule}/%j.{wildcards}.err
-    --mem-per-cpu={resources.mem_mb}
+    --mem-per-cpu={resources.mem}
     --nodes={resources.nodes}
     --cpus-per-task={resources.threads}
     --parsable
 default-resources:
-  - partition=interactive
-  - account=default
+  - partition=batch
+  - account=smontgom
   - time="00:10:00"
-  - mem_mb=4000
-  - disk_mb=4000
+  - mem="1G"
   - nodes=1
   - threads=1
 latency-wait: 120
@@ -31,6 +30,6 @@ use-conda: True
 # Singularity args (binds to oak)
 #use-singularity: True
 #singularity-args: "-B /oak:/oak"
-cluster-status: "./snakemake_profiles/slurm_scg/status-sacct.sh" # this is causing problems 
+cluster-status: "config/slurm_scg/status-sacct.sh" # this is causing problems 
 max-status-checks-per-second: 10
 cluster-cancel: scancel

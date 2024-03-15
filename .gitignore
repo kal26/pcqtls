@@ -1,7 +1,6 @@
 output/*
 data/*
-workflow/slurm_logs/*
 .snakemake
 .snakemake/**
 *.out
-data_old/*
+logs/*
