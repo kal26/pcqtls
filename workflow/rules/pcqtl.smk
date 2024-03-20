@@ -1,7 +1,7 @@
 
 rule calculate_pcs:
     input:
-        clusters = clusters_dir + '{TISSUE}_clusters_all_chr.csv.txt',
+        clusters = clusters_dir + '{TISSUE}_clusters_all_chr.csv',
         expression = expression_dir + '{TISSUE}.v8.normalized_expression.bed',
         covariates = covariates_dir + '{TISSUE}.v8.covariates.txt'
     conda:
