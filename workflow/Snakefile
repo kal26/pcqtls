@@ -10,6 +10,7 @@ chr_list_path = config['chr_list_path']
 genotype_stem = config['genotype_stem']
 filtered_expression_output_dir = config['filtered_expression_output_dir']
 eqtl_output_dir = config['eqtl_output_dir']
+pcqtl_output_dir = config['pcqtl_output_dir']
 pc_output_dir = config['pc_output_dir']
 overlap_output_dir = config['overlap_output_dir']
 annotations_output_dir = config['annotations_output_dir']
@@ -31,16 +32,16 @@ include: 'rules/annotate.smk'
 
 rule all:
     input:
-        vep = expand('output/annotations/{TISSUE}.v8.leadvars.vep.vcf', TISSUE = tissue_ids),
-        overlap = expand('output/overlap/{TISSUE}.v8.overlap.txt', TISSUE = tissue_ids),
-        #pcqtl_susie = expand('output/pcqtl/{TISSUE}/{TISSUE}.v8.pc_{PC_ID}.susie.txt', TISSUE = tissue_ids, PC_ID = pc_ids),
-        pc_nominal = expand('output/pcqtl/{TISSUE}/{TISSUE}.v8.pc_{PC_ID}.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE = tissue_ids, PC_ID = pc_ids),
-        #eqtl_susie = expand('output/control_eqtl/{TISSUE}/{TISSUE}.v8.cluster_genes.susie.txt', TISSUE = tissue_ids),
-        eqtl_niominal = expand('output/control_eqtl/{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE=tissue_ids),
+        vep = expand(annotations_output_dir + '{TISSUE}.v8.leadvars.vep.vcf', TISSUE = tissue_ids),
+        overlap = expand(overlap_output_dir + '{TISSUE}.v8.overlap.txt', TISSUE = tissue_ids),
+        pcqtl_susie = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pc_{PC_ID}.susie.txt', TISSUE = tissue_ids, PC_ID = pc_ids),
+        pc_nominal = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pc_{PC_ID}.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE = tissue_ids, PC_ID = pc_ids),
+        eqtl_susie = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie.txt', TISSUE = tissue_ids),
+        eqtl_niominal = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE=tissue_ids),
 
         # controls that are all genes, not just cluster genes
-        chr22_susie = expand('output/chr22_eqtl/{TISSUE}/{TISSUE}.v8.chr22_genes.susie.txt', TISSUE = tissue_ids),
-        control_vep = expand('output/chr22_eqtl_annotations/{TISSUE}.v8.chr22_genes.leadvars.vep.vcf', TISSUE = tissue_ids)
+        #chr22_susie = expand('output/chr22_eqtl/{TISSUE}/{TISSUE}.v8.chr22_genes.susie.txt', TISSUE = tissue_ids),
+        #control_vep = expand('output/chr22_eqtl_annotations/{TISSUE}.v8.chr22_genes.leadvars.vep.vcf', TISSUE = tissue_ids)
 
 
 
