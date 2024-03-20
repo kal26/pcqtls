@@ -30,6 +30,6 @@ use-conda: True
 # Singularity args (binds to oak)
 #use-singularity: True
 #singularity-args: "-B /oak:/oak"
-cluster-status: "config/slurm_scg/status-sacct.sh" # this is causing problems 
+cluster-status: "config/slurm_scg/status-sacct.sh" 
 max-status-checks-per-second: 10
 cluster-cancel: scancel

@@ -29,7 +29,7 @@ rule run_pcqtl_cis_nominal:
         genotype_stem = genotype_stem,
         pcqtl_output_dir = pcqtl_output_dir
     resources:
-        mem = "10G",
+        mem = "30G",
         time = "2:00:00"
     threads: 10
     conda:
@@ -54,7 +54,7 @@ rule run_pcqtl_cis:
         genotype_stem = genotype_stem,
         pcqtl_output_dir = pcqtl_output_dir
     resources:
-        mem = "10G",
+        mem = "30G",
         time = "2:00:00"
     threads: 10
     conda:
@@ -82,7 +82,7 @@ rule run_pcqtl_cis_independent:
         genotype_stem = genotype_stem, 
         pcqtl_output_dir = pcqtl_output_dir
     resources:
-        mem = "10G",
+        mem = "30G",
         time = "2:00:00"
     threads: 10
     conda:
@@ -108,7 +108,7 @@ rule run_pcqtl_susie:
         genotype_stem = genotype_stem,
         pcqtl_output_dir = pcqtl_output_dir
     resources:
-        mem = "10G",
+        mem = "30G",
         time = "2:00:00"
     threads: 10
     conda:
