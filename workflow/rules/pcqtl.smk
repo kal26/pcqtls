@@ -7,7 +7,7 @@ rule calculate_pcs:
     conda:
         'tensorqtl_r'
     output:
-        'output/pcs/{TISSUE}.pc_{PC_ID}.bed'
+        pc_output_dir + '{TISSUE}.pc_{PC_ID}.bed'
     shell:"""
         python workflow/scripts/get_pcs.py \
             -cl {input.clusters} \
@@ -23,10 +23,11 @@ rule calculate_pcs:
 rule run_pcqtl_cis_nominal:
     input:
         genotypes = genotype_stem + '.fam',
-        pcs = 'output/pcs/{TISSUE}.pc_{PC_ID}.bed',
+        pcs = pc_output_dir + '{TISSUE}.pc_{PC_ID}.bed',
         covariates = covariates_dir + '{TISSUE}.v8.covariates.txt'
     params:
-        genotype_stem = genotype_stem
+        genotype_stem = genotype_stem,
+        pcqtl_output_dir = pcqtl_output_dir
     resources:
         mem = "10G",
         time = "2:00:00"
@@ -34,11 +35,11 @@ rule run_pcqtl_cis_nominal:
     conda:
         'tensorqtl_r'
     output:
-        expand('output/pcqtl/{TISSUE}/{TISSUE}.v8.pc_{PC_ID}.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, allow_missing=True)
+        expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pc_{PC_ID}.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, allow_missing=True)
     shell:"""
         python -m tensorqtl {params.genotype_stem} \
             {input.pcs} \
-            output/pcqtl/{wildcards.TISSUE}/{wildcards.TISSUE}.v8.pc_{wildcards.PC_ID} \
+            {params.pcqtl_output_dir}{wildcards.TISSUE}/{wildcards.TISSUE}.v8.pc_{wildcards.PC_ID} \
             --covariates {input.covariates} \
             --mode cis_nominal
         """
@@ -47,10 +48,11 @@ rule run_pcqtl_cis_nominal:
 rule run_pcqtl_cis:
     input:
         genotypes = genotype_stem + '.fam',
-        pcs = 'output/pcs/{TISSUE}.pc_{PC_ID}.bed',
+        pcs = pc_output_dir + '{TISSUE}.pc_{PC_ID}.bed',
         covariates = covariates_dir + '{TISSUE}.v8.covariates.txt'
     params:
-        genotype_stem = genotype_stem
+        genotype_stem = genotype_stem,
+        pcqtl_output_dir = pcqtl_output_dir
     resources:
         mem = "10G",
         time = "2:00:00"
@@ -58,11 +60,11 @@ rule run_pcqtl_cis:
     conda:
         'tensorqtl_r'
     output:
-        'output/pcqtl/{TISSUE}/{TISSUE}.v8.pc_{PC_ID}.cis_qtl.txt.gz'
+        pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pc_{PC_ID}.cis_qtl.txt.gz'
     shell:"""
         python -m tensorqtl {params.genotype_stem} \
             {input.pcs} \
-            output/pcqtl/{wildcards.TISSUE}/{wildcards.TISSUE}.v8.pc_{wildcards.PC_ID} \
+            {params.pcqtl_output_dir}{wildcards.TISSUE}/{wildcards.TISSUE}.v8.pc_{wildcards.PC_ID} \
             --covariates {input.covariates} \
             --mode cis
         """
@@ -73,11 +75,12 @@ rule run_pcqtl_cis:
 rule run_pcqtl_cis_independent:
     input:
         genotypes = genotype_stem + '.fam',
-        pcs = 'output/pcs/{TISSUE}.pc_{PC_ID}.bed',
+        pcs = pc_output_dir + '{TISSUE}.pc_{PC_ID}.bed',
         covariates = covariates_dir + '{TISSUE}.v8.covariates.txt',
-        cis_result = 'output/pcqtl/{TISSUE}/{TISSUE}.v8.pc_{PC_ID}.cis_qtl.txt.gz'
+        cis_result = pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pc_{PC_ID}.cis_qtl.txt.gz'
     params:
-        genotype_stem = genotype_stem
+        genotype_stem = genotype_stem, 
+        pcqtl_output_dir = pcqtl_output_dir
     resources:
         mem = "10G",
         time = "2:00:00"
@@ -85,11 +88,11 @@ rule run_pcqtl_cis_independent:
     conda:
         'tensorqtl_r'
     output:
-       'output/pcqtl/{TISSUE}/{TISSUE}.v8.pc_{PC_ID}.cis_independent_qtl.txt.gz'
+        pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pc_{PC_ID}.cis_independent_qtl.txt.gz'
     shell:"""
         python -m tensorqtl {params.genotype_stem} \
             {input.pcs} \
-            output/pcqtl/{wildcards.TISSUE}/{wildcards.TISSUE}.v8.pc_{PC_ID} \
+            {params.pcqtl_output_dir}{wildcards.TISSUE}/{wildcards.TISSUE}.v8.pc_{PC_ID} \
             --covariates {input.covariates} \
             --cis_output {input.cis_results} \
             --mode cis_independent
@@ -99,10 +102,11 @@ rule run_pcqtl_cis_independent:
 rule run_pcqtl_susie:
     input:
         genotypes = genotype_stem + '.fam',
-        pcs = 'output/pcs/{TISSUE}.pc_{PC_ID}.bed',
+        pcs = pc_output_dir + '{TISSUE}.pc_{PC_ID}.bed',
         covariates = covariates_dir + '{TISSUE}.v8.covariates.txt',
     params:
-        genotype_stem = genotype_stem
+        genotype_stem = genotype_stem,
+        pcqtl_output_dir = pcqtl_output_dir
     resources:
         mem = "10G",
         time = "2:00:00"
@@ -110,10 +114,10 @@ rule run_pcqtl_susie:
     conda:
         'tensorqtl_r'
     output:
-       'output/pcqtl/{TISSUE}/{TISSUE}.v8.pc_{PC_ID}.susie.txt'
+        pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pc_{PC_ID}.susie.txt'
     shell:"""
         python workflow/scripts/run_susie.py {params.genotype_stem} \
             {input.pcs} \
-            output/pcqtl/{wildcards.TISSUE}/{wildcards.TISSUE}.v8.pc_{wildcards.PC_ID}.susie.txt \
+            {params.pcqtl_output_dir}{wildcards.TISSUE}/{wildcards.TISSUE}.v8.pc_{wildcards.PC_ID}.susie.txt \
             {input.covariates}
         """

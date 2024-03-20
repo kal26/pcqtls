@@ -9,6 +9,12 @@ clusters_dir = config['clusters_dir']
 chr_list_path = config['chr_list_path']
 genotype_stem = config['genotype_stem']
 filtered_expression_output_dir = config['filtered_expression_output_dir']
+eqtl_output_dir = config['eqtl_output_dir']
+pc_output_dir = config['pc_output_dir']
+overlap_output_dir = config['overlap_output_dir']
+annotations_output_dir = config['annotations_output_dir']
+
+
 
 # load in all the wildcards
 df = pd.read_csv(tissue_id_path, header=0)

@@ -19,7 +19,8 @@ rule run_eqtl_cis_nominal:
         expression = filtered_expression_output_dir + '{TISSUE}.v8.normalized_expression.cluster_genes.bed',
         covariates = covariates_dir + '{TISSUE}.v8.covariates.txt'
     params:
-        genotype_stem = genotype_stem
+        genotype_stem = genotype_stem,
+        eqtl_output_dir = eqtl_output_dir
     resources:
         mem = "10G", 
         time = "2:00:00"
@@ -27,11 +28,11 @@ rule run_eqtl_cis_nominal:
     conda:
         'tensorqtl_r'
     output:
-        expand('output/control_eqtl/{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, allow_missing=True)
+        expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, allow_missing=True)
     shell:"""
         python -m tensorqtl {params.genotype_stem} \
             {input.expression} \
-            output/control_eqtl/{wildcards.TISSUE}/{wildcards.TISSUE}.v8.cluster_genes \
+            {params.eqtl_output_dir}{wildcards.TISSUE}/{wildcards.TISSUE}.v8.cluster_genes \
             --covariates {input.covariates} \
             --mode cis_nominal
         """
@@ -43,7 +44,8 @@ rule run_eqtl_cis:
         expression = filtered_expression_output_dir + '{TISSUE}.v8.normalized_expression.cluster_genes.bed',
         covariates = covariates_dir + '{TISSUE}.v8.covariates.txt'
     params:
-        genotype_stem = genotype_stem
+        genotype_stem = genotype_stem,
+        eqtl_output_dir = eqtl_output_dir 
     resources:
         mem = "10G",
         time = "2:00:00"
@@ -52,11 +54,11 @@ rule run_eqtl_cis:
     conda:
         'tensorqtl_r'
     output:
-        'output/control_eqtl/{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl.txt.gz'
+        eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl.txt.gz'
     shell:"""
         python -m tensorqtl {params.genotype_stem} \
             {input.expression} \
-            output/control_eqtl/{wildcards.TISSUE}/{wildcards.TISSUE}.v8.cluster_genes \
+            {params.eqtl_output_dir}{wildcards.TISSUE}/{wildcards.TISSUE}.v8.cluster_genes \
             --covariates {input.covariates} \
             --mode cis
         """
@@ -69,9 +71,10 @@ rule run_eqtl_cis_independent:
         genotypes = genotype_stem + '.fam',
         expression = filtered_expression_output_dir + '{TISSUE}.v8.normalized_expression.cluster_genes.bed',
         covariates = covariates_dir + '{TISSUE}.v8.covariates.txt',
-        cis_result = 'output/control_eqtl/{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl.txt.gz'
+        cis_result = eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl.txt.gz'
     params:
-        genotype_stem = genotype_stem
+        genotype_stem = genotype_stem,
+        eqtl_output_dir = eqtl_output_dir
     resources:
         mem = "10G",
         time = "2:00:00"
@@ -79,11 +82,11 @@ rule run_eqtl_cis_independent:
     conda:
         'tensorqtl_r'
     output:
-       'output/control_eqtl/{TISSUE}/{TISSUE}.v8.cluster_genes.cis_independent_qtl.txt.gz'
+       eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_independent_qtl.txt.gz'
     shell:"""
         python -m tensorqtl {params.genotype_stem} \
             {input.expression} \
-            output/control_eqtl/{wildcards.TISSUE}/{wildcards.TISSUE}.v8.cluster_genes \
+            {params.eqtl_output_dir}{wildcards.TISSUE}/{wildcards.TISSUE}.v8.cluster_genes \
             --covariates {input.covariates} \
             --cis_output {input.cis_results} \
             --mode cis_independent
@@ -96,7 +99,8 @@ rule run_eqtl_susie:
         expression = filtered_expression_output_dir + '{TISSUE}.v8.normalized_expression.cluster_genes.bed',
         covariates = covariates_dir + '{TISSUE}.v8.covariates.txt',
     params:
-        genotype_stem = genotype_stem
+        genotype_stem = genotype_stem,
+        eqtl_output_dir = eqtl_output_dir 
     resources:
         mem = "10G",
         time = "2:00:00"
@@ -104,11 +108,11 @@ rule run_eqtl_susie:
     conda:
         'tensorqtl_r'
     output:
-       'output/control_eqtl/{TISSUE}/{TISSUE}.v8.cluster_genes.susie.txt'
+       eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie.txt'
     shell:"""
         python workflow/scripts/run_susie.py {params.genotype_stem} \
             {input.expression} \
-            output/control_eqtl/{wildcards.TISSUE}/{wildcards.TISSUE}.v8.cluster_genes.susie.txt \
+            {params.eqtl_output_dir}{wildcards.TISSUE}/{wildcards.TISSUE}.v8.cluster_genes.susie.txt \
             {input.covariates}
         """
 
