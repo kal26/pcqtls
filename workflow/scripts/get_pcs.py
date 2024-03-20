@@ -20,7 +20,7 @@ def get_PC(ts, expression_df_gid, pc_num=1):
 
 # adapted from tensorqtl
 def calculate_residual(phenotype_df, covariates_df, center=False):
-    """Calculate normalized residual genotypes and phenotypes"""
+    """Calculate normalized residual phenotypes"""
     # set up residualize device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     residualizer = Residualizer(torch.tensor(covariates_df.values, dtype=torch.float32).to(device))
