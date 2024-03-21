@@ -49,7 +49,8 @@ def pc_bed(cluster_path, expression_path, covariates_path, pc_out_path, verb=0):
 
 
     # add .bed info to cluster
-    expression_df_gid = expression_df.set_index('gene_id')
+    expression_df['gene_id_split'] = expression_df['gene_id'].str.split('_e_').str[1]
+    expression_df_gid = expression_df.set_index('gene_id_split')
     cluster_df = reformat_cluster_df(cluster_df, expression_df_gid)
 
     # iterate through clusters and gather PCs

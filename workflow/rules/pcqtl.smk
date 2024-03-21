@@ -11,7 +11,7 @@ rule calculate_pcs:
     shell:"""
         python workflow/scripts/get_pcs.py \
             -cl {input.clusters} \
-            -e {input.expression} \
+            -e {input.filtered_normed_expression} \
             -co {input.covariates} \
             -o {output} \
         """
