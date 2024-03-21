@@ -24,7 +24,6 @@ print('Running on tissues:{}'.format(tissue_ids))
 
 df = pd.read_csv(chr_list_path, header=0)
 chr_list = list(df['chr_id'])
-pc_ids = ['1','2']
 
 include: 'rules/pcqtl.smk'
 include: 'rules/eqtl.smk'
@@ -34,8 +33,8 @@ rule all:
     input:
         vep = expand(annotations_output_dir + '{TISSUE}.v8.leadvars.vep.vcf', TISSUE = tissue_ids),
         overlap = expand(overlap_output_dir + '{TISSUE}.v8.overlap.txt', TISSUE = tissue_ids),
-        pcqtl_susie = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pc_{PC_ID}.susie.txt', TISSUE = tissue_ids, PC_ID = pc_ids),
-        pc_nominal = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pc_{PC_ID}.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE = tissue_ids, PC_ID = pc_ids),
+        pcqtl_susie = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.susie.txt', TISSUE = tissue_ids),
+        pc_nominal = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE = tissue_ids),
         eqtl_susie = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie.txt', TISSUE = tissue_ids),
         eqtl_niominal = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE=tissue_ids),
 

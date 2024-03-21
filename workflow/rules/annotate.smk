@@ -1,8 +1,7 @@
 rule annotate_overlap:
     input:
         e_susie = eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie.txt',
-        pc_1_susie = pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pc_1.susie.txt',
-        pc_2_susie = pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pc_2.susie.txt'
+        pc_susie = pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.susie.txt',
     resources:
         mem = "20G"
     conda:

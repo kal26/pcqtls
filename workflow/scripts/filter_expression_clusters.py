@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from get_pcs import calculate_residual
+from residualize import calculate_residual
 
 # load in data
 cluster_df = pd.read_csv(snakemake.input[0])

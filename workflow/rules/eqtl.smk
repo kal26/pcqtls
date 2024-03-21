@@ -6,7 +6,7 @@ rule filter_expression_clusters:
     conda:
         'tensorqtl_r'
     output:
-        filtered_expression = filtered_expression_output_dir + '{TISSUE}.v8.normalized_expression.cluster_genes.bed'
+        filtered_normed_expression = filtered_expression_output_dir + '{TISSUE}.v8.normalized_expression.cluster_genes.bed'
     script:
         '../scripts/filter_expression_clusters.py'
 

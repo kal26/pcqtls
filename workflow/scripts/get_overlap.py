@@ -4,12 +4,11 @@ import re
 
 # load data
 e_susie_df = pd.read_csv(snakemake.input[0], sep='\t', index_col=0)
-pc1_susie_df = pd.read_csv(snakemake.input[1], sep='\t', index_col=0)
-pc2_susie_df = pd.read_csv(snakemake.input[2], sep='\t', index_col=0)
+pc_susie_df = pd.read_csv(snakemake.input[1], sep='\t', index_col=0)
+
 
 # add ids for each credible set
-pc1_susie_df['cs_full_id'] = pc1_susie_df['phenotype_id'].astype(str) + '_cs' + pc1_susie_df['cs_id'].astype(str)
-pc2_susie_df['cs_full_id'] = pc2_susie_df['phenotype_id'].astype(str) + '_cs' + pc2_susie_df['cs_id'].astype(str)
+pc_susie_df['cs_full_id'] = pc_susie_df['phenotype_id'].astype(str) + '_cs' + pc_susie_df['cs_id'].astype(str)
 e_susie_df['cs_full_id'] = e_susie_df['phenotype_id'].astype(str) + '_e_cs' + e_susie_df['cs_id'].astype(str) 
 
 def get_lead_var(susie_df):
@@ -25,10 +24,8 @@ def generate_overlap_df(susie_df):
 # make dfs with one row per credible set to annotate with overlap informaiton
 e_overlap_df = generate_overlap_df(e_susie_df)
 e_overlap_df['orig_cs_dataset'] = 'control_eqtl'
-pc1_overlap_df = generate_overlap_df(pc1_susie_df)
-pc1_overlap_df['orig_cs_dataset'] = 'pc_1_qtl'
-pc2_overlap_df = generate_overlap_df(pc2_susie_df)
-pc2_overlap_df['orig_cs_dataset'] = 'pc_2_qtl'
+pc_overlap_df = generate_overlap_df(pc_susie_df)
+pc_overlap_df['orig_cs_dataset'] = 'pc_qtl'
 
 
 def shared_lead_var(row, overlap_df, match=True):
@@ -37,7 +34,6 @@ def shared_lead_var(row, overlap_df, match=True):
         return matched_cluster_df[matched_cluster_df['lead_variant_id'] == row.lead_variant_id].index.values
     else:
         return overlap_df[overlap_df['lead_variant_id'] == row.lead_variant_id].index.values
-
 
 def num_shared_lead_var(row, overlap_df, match=True):
     return len(shared_lead_var(row, overlap_df, match=match))
@@ -64,48 +60,38 @@ def num_csoverlap(row, overlap_dict, match=True):
 
 # dict for faster indexing
 e_cs_overlap_dict = generate_csoverlap_dict(e_susie_df)
-pc1_cs_overlap_dict = generate_csoverlap_dict(pc1_susie_df)
-pc2_cs_overlap_dict = generate_csoverlap_dict(pc2_susie_df)
+pc_cs_overlap_dict = generate_csoverlap_dict(pc_susie_df)
 
 def annotate_overlap_df(overlap_df):
     # get the overlap with other css with the same lead variant
     overlap_df['e_samelead'] = overlap_df.apply(shared_lead_var, axis=1, args=(e_overlap_df,))
-    overlap_df['pc1_samelead'] = overlap_df.apply(shared_lead_var, axis=1, args=(pc1_overlap_df,))
-    overlap_df['pc2_samelead'] = overlap_df.apply(shared_lead_var, axis=1, args=(pc2_overlap_df,))
+    overlap_df['pc_samelead'] = overlap_df.apply(shared_lead_var, axis=1, args=(pc_overlap_df,))
     overlap_df['num_e_samelead'] = overlap_df.apply(num_shared_lead_var, axis=1, args=(e_overlap_df,))
-    overlap_df['num_pc1_samelead'] = overlap_df.apply(num_shared_lead_var, axis=1, args=(pc1_overlap_df,))
-    overlap_df['num_pc2_samelead'] = overlap_df.apply(num_shared_lead_var, axis=1, args=(pc2_overlap_df,))
+    overlap_df['num_pc_samelead'] = overlap_df.apply(num_shared_lead_var, axis=1, args=(pc_overlap_df,))
     # get the other css with the any credible set variant overlap 
     overlap_df['e_overlap'] = overlap_df.apply(get_overlap_ids_optimized, axis=1, args=(e_cs_overlap_dict,))
-    overlap_df['pc1_overlap'] = overlap_df.apply(get_overlap_ids_optimized, axis=1, args=(pc1_cs_overlap_dict,))
-    overlap_df['pc2_overlap'] = overlap_df.apply(get_overlap_ids_optimized, axis=1, args=(pc2_cs_overlap_dict,))
+    overlap_df['pc_overlap'] = overlap_df.apply(get_overlap_ids_optimized, axis=1, args=(pc_cs_overlap_dict,))
     overlap_df['num_e_overlap'] = overlap_df.apply(num_csoverlap, axis=1, args=(e_cs_overlap_dict,))
-    overlap_df['num_pc1_overlap'] = overlap_df.apply(num_csoverlap, axis=1, args=(pc1_cs_overlap_dict,))
-    overlap_df['num_pc2_overlap'] = overlap_df.apply(num_csoverlap, axis=1, args=(pc2_cs_overlap_dict,))
+    overlap_df['num_pc_overlap'] = overlap_df.apply(num_csoverlap, axis=1, args=(pc_cs_overlap_dict,))
 
     # overlap with same lead, not necessarily matching (for debugging)
     overlap_df['e_samelead_all'] = overlap_df.apply(shared_lead_var, axis=1, args=(e_overlap_df,), match=False)
-    overlap_df['pc1_samelead_all'] = overlap_df.apply(shared_lead_var, axis=1, args=(pc1_overlap_df,), match=False)
-    overlap_df['pc2_samelead_all'] = overlap_df.apply(shared_lead_var, axis=1, args=(pc2_overlap_df,), match=False)
+    overlap_df['pc_samelead_all'] = overlap_df.apply(shared_lead_var, axis=1, args=(pc_overlap_df,), match=False)
     overlap_df['num_e_samelead_all'] = overlap_df.apply(num_shared_lead_var, axis=1, args=(e_overlap_df,), match=False)
-    overlap_df['num_pc1_samelead_all'] = overlap_df.apply(num_shared_lead_var, axis=1, args=(pc1_overlap_df,), match=False)
-    overlap_df['num_pc2_samelead_all'] = overlap_df.apply(num_shared_lead_var, axis=1, args=(pc2_overlap_df,), match=False)
+    overlap_df['num_pc_samelead_all'] = overlap_df.apply(num_shared_lead_var, axis=1, args=(pc_overlap_df,), match=False)
     # overlap any cs variant, not necessarily matching (for debugging)
     overlap_df['e_overlap_all'] = overlap_df.apply(get_overlap_ids_optimized, axis=1, args=(e_cs_overlap_dict,), match=False)
-    overlap_df['pc1_overlap_all'] = overlap_df.apply(get_overlap_ids_optimized, axis=1, args=(pc1_cs_overlap_dict,), match=False)
-    overlap_df['pc2_overlap_all'] = overlap_df.apply(get_overlap_ids_optimized, axis=1, args=(pc2_cs_overlap_dict,), match=False)
+    overlap_df['pc_overlap_all'] = overlap_df.apply(get_overlap_ids_optimized, axis=1, args=(pc_cs_overlap_dict,), match=False)
     overlap_df['num_e_overlap_all'] = overlap_df.apply(num_csoverlap, axis=1, args=(e_cs_overlap_dict,), match=False)
-    overlap_df['num_pc1_overlap_all'] = overlap_df.apply(num_csoverlap, axis=1, args=(pc1_cs_overlap_dict,), match=False)
-    overlap_df['num_pc2_overlap_all'] = overlap_df.apply(num_csoverlap, axis=1, args=(pc2_cs_overlap_dict,), match=False)
+    overlap_df['num_pc_overlap_all'] = overlap_df.apply(num_csoverlap, axis=1, args=(pc_cs_overlap_dict,), match=False)
 
 
 
 # add overlap information
 annotate_overlap_df(e_overlap_df)
-annotate_overlap_df(pc1_overlap_df)
-annotate_overlap_df(pc2_overlap_df)
+annotate_overlap_df(pc_overlap_df)
 
 
 # combine and write out
-full_overlap = pd.concat([e_overlap_df, pc1_overlap_df, pc2_overlap_df])
+full_overlap = pd.concat([e_overlap_df, pc_overlap_df])
 full_overlap.to_csv(snakemake.output[0], sep='\t')
