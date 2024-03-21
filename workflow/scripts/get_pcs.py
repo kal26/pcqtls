@@ -9,21 +9,6 @@ from tensorqtl.core import Residualizer
 from residualize import calculate_residual
 
 
-def reformat_cluster_df(cluster_df, expression_df_gid):
-    # chromosome in different format
-    cluster_df['#chr'] = 'chr' + cluster_df['Chromosome'].astype(str)
-
-    # start and stop
-    def get_start(ts):
-        return expression_df_gid.loc[ts.split(',')]['start'].min()
-    def get_end(ts):
-        return expression_df_gid.loc[ts.split(',')]['end'].max()
-    cluster_df['start'] = cluster_df['Transcripts'].apply(lambda x: get_start(x))
-    cluster_df['end'] = cluster_df['Transcripts'].apply(lambda x: get_end(x))
-
-    return cluster_df
-
-
 def make_bed_order(df):
     # the column order matters, so rearrange columns
     cols = list(df)
@@ -32,8 +17,6 @@ def make_bed_order(df):
     cols.insert(2, cols.pop(cols.index('end')))
     cols.insert(3, cols.pop(cols.index('gene_id')))
     df = df.loc[:, cols]
-    # sort positions
-    df.sort_values(['start'], inplace=True)
     return df
 
 def pc_bed(cluster_path, expression_path, covariates_path, pc_out_path, verb=0):
@@ -42,23 +25,21 @@ def pc_bed(cluster_path, expression_path, covariates_path, pc_out_path, verb=0):
     if verb:
         print('loading data')
     cluster_df = pd.read_csv(cluster_path)
-    cluster_orig_columns = cluster_df.columns.values
     # expression is already residualized
     expression_df = pd.read_csv(expression_path, sep='\t')
     covariates_df = pd.read_csv(covariates_path, sep='\t', index_col=0).T
 
 
     # add .bed info to cluster
-    expression_df['gene_id_split'] = expression_df['gene_id'].str.split('_e_').str[1]
-    expression_df_gid = expression_df.set_index('gene_id_split')
-    cluster_df = reformat_cluster_df(cluster_df, expression_df_gid)
+    expression_df['gene_id'] = expression_df['gene_id'].str.split('_e_').str[1]
+    expression_df_gid = expression_df.set_index('gene_id')
 
     # iterate through clusters and gather PCs
     cluster_pcs_dfs = []
     for idx, row in cluster_df.iterrows():
 
         # get all pcs and combine 
-        cluster = expression_df.loc[row['Transcripts'].split(',')]
+        cluster = expression_df_gid.loc[row['Transcripts'].split(',')]
         X = cluster[cluster.columns[3:]].transpose()
         pca = PCA()
         pc_values = pca.fit_transform(X)
@@ -79,18 +60,21 @@ def pc_bed(cluster_path, expression_path, covariates_path, pc_out_path, verb=0):
 
 
         # make the gene id index a column
-        cluster_pcs_df =cluster_pcs_df.reset_index().rename(columns={'index': 'gene_id'})
-        # add the other information needed for a bed file
-        cluster_pcs_df['start'] = row['start']
-        cluster_pcs_df['end'] = row['end']
-        cluster_pcs_df['#chr'] = row['#chr']
+        cluster_pcs_df = cluster_pcs_df.reset_index().rename(columns={'index': 'gene_id'})
+        cluster_pcs_df['start'] = cluster['start'].min()
+        cluster_pcs_df['end'] = cluster['end'].max()
+        cluster_pcs_df['#chr'] = cluster['#chr'].iloc[0]
         # make the right order for bed
         cluster_pcs_dfs.append(make_bed_order(cluster_pcs_df))
+
+    cluster_pcs_df = pd.concat(cluster_pcs_dfs)
+    # sorting required by tensorqtl
+    cluster_pcs_df.sort_values(['start'], inplace=True)
 
     # write out bed pc file
     if verb:
         print('Writing out to {}'.format(pc_out_path))
-    pd.concat(cluster_pcs_dfs).to_csv(pc_out_path, sep='\t', index=False)
+    cluster_pcs_df.to_csv(pc_out_path, sep='\t', index=False)
 
 def main():
     # Parse arguments from cmd
