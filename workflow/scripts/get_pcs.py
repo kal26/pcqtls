@@ -47,7 +47,6 @@ def pc_bed(cluster_path, expression_path, covariates_path, pc_out_path, verb=0):
         # get an id for each pc
         gene_ids = []
         for pc_num in range(pc_values.shape[1]):
-            print()
             gene_ids.append('_'.join([*sorted(row['Transcripts'].split(',')), f'pc{pc_num+1}']))
 
         # center normalized and residualize the pcs
@@ -67,9 +66,15 @@ def pc_bed(cluster_path, expression_path, covariates_path, pc_out_path, verb=0):
         # make the right order for bed
         cluster_pcs_dfs.append(make_bed_order(cluster_pcs_df))
 
-    cluster_pcs_df = pd.concat(cluster_pcs_dfs)
     # sorting required by tensorqtl
-    cluster_pcs_df.sort_values(['start'], inplace=True)
+    cluster_pcs_df = pd.concat(cluster_pcs_dfs)
+    cluster_pcs_df = cluster_pcs_df.sort_values(['#chr', 'start'])
+
+    # occasionally we get inf for all teh values in a row.
+    # Drop these as the cuase susei to error
+    cluster_pcs_df.replace([np.inf, -np.inf], np.nan, inplace=True)
+    print('Dropped {} rows due to inf'.format(sum(cluster_pcs_df.isna().sum(axis=1) > 0)))
+    cluster_pcs_df.dropna(inplace=True)
 
     # write out bed pc file
     if verb:

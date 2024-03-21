@@ -1,4 +1,4 @@
-tissue_id_path: "data/references/selected_tissue_ids.csv"
+tissue_id_path: "data/references/test_tissue_ids.csv"
 covariates_dir: "data/processed/covariates_tami/"
 expression_dir: "data/processed/normalized_expression_tami/"
 filtered_expression_output_dir: "data/processed/clusters_proteincoding_expression/"
