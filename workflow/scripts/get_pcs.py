@@ -68,7 +68,7 @@ def pc_bed(cluster_path, expression_path, covariates_path, pc_out_path, verb=0):
 
     # sorting required by tensorqtl
     cluster_pcs_df = pd.concat(cluster_pcs_dfs)
-    cluster_pcs_df = cluster_pcs_df.sort_values(['#chr', 'start'])
+    cluster_pcs_df = cluster_pcs_df.sort_values(['#chr', 'start', 'end'])
 
     # occasionally we get inf for all teh values in a row.
     # Drop these as the cuase susei to error
