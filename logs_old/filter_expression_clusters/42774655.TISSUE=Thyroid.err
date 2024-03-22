@@ -1,0 +1,26 @@
+Building DAG of jobs...
+Using shell: /home/klawren/micromamba/bin/bash
+Provided cores: 1 (use --cores to define parallelism)
+Rules claiming more threads will be scaled down.
+Provided resources: mem_mb=1000, mem_mib=954, disk_mb=1000, disk_mib=954, nodes=1, threads=1
+Select jobs to execute...
+
+[Fri Mar 22 13:33:57 2024]
+rule filter_expression_clusters:
+    input: output/clusters_proteincoding_tami/Thyroid_clusters_all_chr.csv, data/processed/normalized_expression_tami/Thyroid.v8.normalized_expression.bed, data/processed/covariates_tami/Thyroid.v8.covariates.txt
+    output: data/processed/clusters_proteincoding_expression/Thyroid.v8.normalized_expression.cluster_genes.bed
+    jobid: 0
+    reason: Missing output files: data/processed/clusters_proteincoding_expression/Thyroid.v8.normalized_expression.cluster_genes.bed
+    wildcards: TISSUE=Thyroid
+    resources: mem_mb=1000, mem_mib=954, disk_mb=1000, disk_mib=954, tmpdir=/local/scratch/klawren/slrmtmp.42774655, partition=batch, account=smontgom, time=00:10:00, mem=1G, nodes=1, threads=1
+
+python -c "from __future__ import print_function; import sys, json; print(json.dumps([sys.version_info.major, sys.version_info.minor]))"
+Activating conda environment: tensorqtl_r
+python /oak/stanford/groups/smontgom/klawren/pcqtls/.snakemake/scripts/tmprnrtmcao.filter_expression_clusters.py
+Activating conda environment: tensorqtl_r
+Warning: The R output will not be colorized because it seems that your terminal does not support ANSI escape codes. isatty(stdout()) returned FALSE.
+
+Not cleaning up /oak/stanford/groups/smontgom/klawren/pcqtls/.snakemake/scripts/tmprnrtmcao.filter_expression_clusters.py
+[Fri Mar 22 13:34:49 2024]
+Finished job 0.
+1 of 1 steps (100%) done

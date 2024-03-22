@@ -1,0 +1,24 @@
+Building DAG of jobs...
+Using shell: /home/klawren/micromamba/bin/bash
+Provided cores: 1 (use --cores to define parallelism)
+Rules claiming more threads will be scaled down.
+Provided resources: mem_mb=1000, mem_mib=954, disk_mb=1000, disk_mib=954, nodes=1, threads=1
+Select jobs to execute...
+
+[Fri Mar 22 13:35:08 2024]
+rule calculate_pcs:
+    input: output/clusters_proteincoding_tami/Whole_Blood_clusters_all_chr.csv, data/processed/clusters_proteincoding_expression/Whole_Blood.v8.normalized_expression.cluster_genes.bed, data/processed/covariates_tami/Whole_Blood.v8.covariates.txt
+    output: output/pcs_proteincoding/Whole_Blood.pcs.bed
+    jobid: 0
+    reason: Missing output files: output/pcs_proteincoding/Whole_Blood.pcs.bed
+    wildcards: TISSUE=Whole_Blood
+    resources: mem_mb=1000, mem_mib=954, disk_mb=1000, disk_mib=954, tmpdir=/local/scratch/klawren/slrmtmp.42774690, partition=batch, account=smontgom, time=00:10:00, mem=1G, nodes=1, threads=1
+
+
+        python workflow/scripts/get_pcs.py             -cl output/clusters_proteincoding_tami/Whole_Blood_clusters_all_chr.csv             -e data/processed/clusters_proteincoding_expression/Whole_Blood.v8.normalized_expression.cluster_genes.bed             -co data/processed/covariates_tami/Whole_Blood.v8.covariates.txt             -o output/pcs_proteincoding/Whole_Blood.pcs.bed         
+Activating conda environment: tensorqtl_r
+Warning: The R output will not be colorized because it seems that your terminal does not support ANSI escape codes. isatty(stdout()) returned FALSE.
+
+[Fri Mar 22 13:35:33 2024]
+Finished job 0.
+1 of 1 steps (100%) done

@@ -1,0 +1,24 @@
+Building DAG of jobs...
+Using shell: /home/klawren/micromamba/bin/bash
+Provided cores: 1 (use --cores to define parallelism)
+Rules claiming more threads will be scaled down.
+Provided resources: mem_mb=20000, mem_mib=954, disk_mb=1000, disk_mib=954, nodes=1, threads=1
+Select jobs to execute...
+
+[Fri Mar 22 14:01:55 2024]
+rule annotate_overlap:
+    input: output/control_eqtl_proteincoding/Esophagus_Muscularis/Esophagus_Muscularis.v8.cluster_genes.susie.txt, output/pcqtl_proteincoding/Esophagus_Muscularis/Esophagus_Muscularis.v8.pcs.susie.txt
+    output: output/overlap_proteincoding/Esophagus_Muscularis.v8.overlap.txt
+    jobid: 0
+    reason: Missing output files: output/overlap_proteincoding/Esophagus_Muscularis.v8.overlap.txt
+    wildcards: TISSUE=Esophagus_Muscularis
+    resources: mem_mb=20000, mem_mib=954, disk_mb=1000, disk_mib=954, tmpdir=/local/scratch/klawren/slrmtmp.42774752, partition=batch, account=smontgom, time=00:10:00, mem=20G, nodes=1, threads=1
+
+python -c "from __future__ import print_function; import sys, json; print(json.dumps([sys.version_info.major, sys.version_info.minor]))"
+Activating conda environment: tensorqtl_r
+python /oak/stanford/groups/smontgom/klawren/pcqtls/.snakemake/scripts/tmpu9312g53.get_overlap.py
+Activating conda environment: tensorqtl_r
+Not cleaning up /oak/stanford/groups/smontgom/klawren/pcqtls/.snakemake/scripts/tmpu9312g53.get_overlap.py
+[Fri Mar 22 14:02:35 2024]
+Finished job 0.
+1 of 1 steps (100%) done
