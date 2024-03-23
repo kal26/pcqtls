@@ -57,13 +57,6 @@ if (length(args)==0) {
 
 
 #-------------#
-# CONSTANTS   #
-#-------------#
-dir_eqtl_output = '/oak/stanford/groups/smontgom/tami/eqtl_project/output/1_correlations/'
-
-
-
-#-------------#
 # FUNCTIONS   #
 #-------------#
 clean_tissue_rnaseq = function(rnaseq_norm_df){

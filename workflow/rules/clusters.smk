@@ -1,7 +1,6 @@
 rule get_covariates:
-??
+## which script does this??
 
-rule get_conditions:
     input:
     params:
         covars_yn = 'yes_covars'
@@ -10,9 +9,10 @@ rule get_conditions:
         factors_break = 15
     output:
         conditions = corr_dir + 'conditions_covars_peers_60_by_15'
+        covariates = covariates_dir + '{TISSUE}.v8.covariates.txt'
     shell:"""
         module load r/4.0
-        Rscript make_conditions_df.R {params.covars_yn} \
+        Rscript get_covariates.R {params.covars_yn} \
         {params.pc_or_peer} \
         {params.n_factors_max} \
         {params.factors_break} \
