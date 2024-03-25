@@ -51,7 +51,9 @@ if (length(args)==0) {
   normalized_expression_path = args[7]
   covariates_path = args[8]
   gencode_path = args[9]
-  correlation_path = args[10]
+  correlation_outpath = args[10]
+  covariates_outpath = args[11]
+  residualized_expression_outpath = args[12]
 }
 
 
@@ -271,7 +273,11 @@ calculate_residuals = function(rnaseq_tissue_chr_df, covars_df,
   
   # Make covariates
   covars_txt = make_covariates_txt(covariates, n_pcs, n_peers)
-  
+
+  # write out covariates
+  write.csv(covars_txt, covariates_outpath,
+            row.names=FALSE) 
+
   # Residualize transcripts 
   if (covars_txt != ''){
     
@@ -397,6 +403,11 @@ for (chr_n in chr_list){
   # b) Residualize on covariates (covars, PCs, PEER factors)
   rnaseq_tissue_chr_resid_df = calculate_residuals(rnaseq_tissue_chr_df, covars_df,
                                                    covariates, n_pcs, n_peers)
+
+  # write out residualized expresion
+  write.csv(rnaseq_tissue_chr_resid_df, residualized_expression_outpath,
+            row.names=FALSE)
+                                                  
     
   # c) Calculate correlations and P-values
   list_cors = calculate_corrs_and_p(rnaseq_tissue_chr_resid_df, ann_df, chr_n)
@@ -437,10 +448,10 @@ for (chr_n in chr_list){
   print(str_interp("There are ${nrow(cor_df)} significant correlations."))
   
   # Save file with distances
-  write.csv(cor_df, correlation_path,
+  write.csv(cor_df, correlation_outpath,
             row.names=FALSE)
   
-  print(str_interp("I saved the output at ${correlation_path}"))
+  print(str_interp("I saved the output at ${correlation_outpath}"))
   
 }
 

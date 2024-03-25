@@ -1,18 +1,16 @@
-rule get_covariates:
-## which script does this??
-
+rule get_covariate_conditions:
+## if you want to compare different number of pcs/peers
     input:
     params:
-        covars_yn = 'yes_covars'
-        pc_or_peer = 'peers_only'
-        n_factors_max = 60
-        factors_break = 15
+        covars_yn = covars_yn,
+        pc_or_peer = pc_or_peer,
+        n_factors_max = n_pcs,
+        factors_break = factors_break
     output:
-        conditions = corr_dir + 'conditions_covars_peers_60_by_15'
-        covariates = covariates_dir + '{TISSUE}.v8.covariates.txt'
+        covariate_ conditions = corr_dir + 'conditions_covars_peers_60_by_15'
     shell:"""
         module load r/4.0
-        Rscript get_covariates.R {params.covars_yn} \
+        Rscript get_covariate_conditions.R {params.covars_yn} \
         {params.pc_or_peer} \
         {params.n_factors_max} \
         {params.factors_break} \
@@ -31,14 +29,18 @@ rule get_correlations:
         n_pcs = n_pcs
     output:
         correlations = corr_dir + '{TISSUE}/sig_corr_df_chr{CHROM}_{covars_yn}_{n_pcs}pcs_{n_peers}peers_w_distances.csv'
+        #?? full_covariates = covariates_dir + '{TISSUE}.v8.full_covariates.txt',
+        residualized_expression = expression_dir + '{TISSUE}.v8.residualized_expression.bed'
+
     shell:"""
         module load r/4.0
-        Rscript ../scripts/calculate_coexpression_within_chr.R {wildcars.TISSUE} \
+        Rscript ../scripts/calculate_expression_correlation.R {wildcars.TISSUE} \
         {params.covars_yn} {params.npeers} \
         {params.n_pcs} {wildcards.CHROM} \
         {input.gene_annotations} {input.normalized_expression} \
         {input.covariates} {input.gencode} \
-        {output.correlations}
+        {output.correlations} {output.full_covariates} \
+        {output.residualized_expression}
         """
 
 
