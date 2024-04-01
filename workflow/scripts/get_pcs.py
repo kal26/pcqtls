@@ -29,18 +29,25 @@ def pc_bed(cluster_path, expression_path, covariates_path, pc_out_path, verb=0):
     expression_df = pd.read_csv(expression_path, sep='\t')
     covariates_df = pd.read_csv(covariates_path, sep='\t', index_col=0).T
 
+    # pull out sample ids
+    sample_ids = expression_df.columns[4:]
+
 
     # add .bed info to cluster
-    expression_df['gene_id'] = expression_df['gene_id'].str.split('_e_').str[1]
-    expression_df_gid = expression_df.set_index('gene_id')
+    expression_df['egene_id'] = expression_df['gene_id'].str.split('_e_').str[1]
+    expression_df['cluster_id'] = expression_df['gene_id'].str.split('_e_').str[0]
+    expression_df_gid = expression_df.set_index('egene_id')
 
     # iterate through clusters and gather PCs
     cluster_pcs_dfs = []
     for idx, row in cluster_df.iterrows():
 
+        # cluster id
+        cluster_id = '_'.join([*sorted(row['Transcripts'].split(','))])
+
         # get all pcs and combine 
         cluster = expression_df_gid.loc[row['Transcripts'].split(',')]
-        X = cluster[cluster.columns[3:]].transpose()
+        X = cluster[sample_ids].transpose()
         pca = PCA()
         pc_values = pca.fit_transform(X)
 
@@ -50,11 +57,11 @@ def pc_bed(cluster_path, expression_path, covariates_path, pc_out_path, verb=0):
             gene_ids.append('_'.join([*sorted(row['Transcripts'].split(',')), f'pc{pc_num+1}']))
 
         # center normalized and residualize the pcs
-        normed_residualized_pcs = calculate_residual(pd.DataFrame(pc_values.T, columns = expression_df.columns[4:]), covariates_df, center=True)
+        normed_residualized_pcs = calculate_residual(pd.DataFrame(pc_values.T, columns = sample_ids), covariates_df, center=True)
 
         # make a dataframe of the pcs for this cluster
         cluster_pcs_df = pd.DataFrame(normed_residualized_pcs, 
-                    columns = expression_df.columns[4:], 
+                    columns = sample_ids, 
                     index = gene_ids)
 
 
