@@ -45,8 +45,11 @@ def pc_bed(cluster_path, expression_path, covariates_path, pc_out_path, verb=0):
         # cluster id
         cluster_id = '_'.join([*sorted(row['Transcripts'].split(','))])
 
-        # get all pcs and combine 
-        cluster = expression_df_gid.loc[row['Transcripts'].split(',')]
+        # get the gene expresion for genes in this cluster
+        cluster_expression_df_gid = expression_df_gid[expression_df_gid['cluster_id']==cluster_id]
+        cluster = cluster_expression_df_gid.loc[row['Transcripts'].split(',')]
+
+        # get all pcs 
         X = cluster[sample_ids].transpose()
         pca = PCA()
         pc_values = pca.fit_transform(X)
