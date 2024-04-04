@@ -81,7 +81,7 @@ def pc_bed(cluster_path, expression_path, covariates_path, pc_out_path, verb=0):
     cluster_pcs_df = cluster_pcs_df.sort_values(['#chr', 'start', 'end'])
 
     # occasionally we get inf for all teh values in a row.
-    # Drop these as the cuase susei to error
+    # Drop these as they cause susie to error
     cluster_pcs_df.replace([np.inf, -np.inf], np.nan, inplace=True)
     print('Dropped {} rows due to inf'.format(sum(cluster_pcs_df.isna().sum(axis=1) > 0)))
     cluster_pcs_df.dropna(inplace=True)

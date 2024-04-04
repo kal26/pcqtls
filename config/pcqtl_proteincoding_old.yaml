@@ -1,0 +1,15 @@
+tissue_id_path: "data/references/selected_tissue_ids.csv"
+covariates_dir: "data/processed/covariates_tami/"
+expression_dir: "data/processed/normalized_expression_tami/"
+chr_list_path: "data/references/chrs.csv"
+genotype_stem: "data/processed/genotypes/GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.SHAPEIT2_phased.MAF01"
+
+
+filtered_expression_output_dir: "data/processed/proteincoding_old/clusters_expression/"
+clusters_dir: "data/processed/proteincoding/clusters_tami/"
+eqtl_output_dir: "output/proteincoding_old/control_eqtl/"
+pcqtl_output_dir: "output/proteincoding_old/pcqtl/"
+pc_output_dir: "output/proteincoding_old/pcs/"
+overlap_output_dir: "output/proteincoding_old/overlap/"
+annotations_output_dir: "output/proteincoding_old/annotations/"
+corr_dir: "output/proteincoding_old/correlations/"
