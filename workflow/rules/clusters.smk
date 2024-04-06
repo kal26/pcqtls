@@ -1,9 +1,19 @@
 rule call_clusters: 
     input:
-        normalized_expression
-        full_covariates
+        normalized_expression = expression_dir + '{TISSUE}.v8.normalized_expression.bed',
+        full_covariates = covariates_dir + '{TISSUE}.v8.covariates.txt'
+    params:
+        max_cluster_size = 50,
+        min_cluster_size = 2,
+        min_corr_cutoff = 0.1,
+        percent_corr_cutoff = .7
+    conda:
+        'tensorqtl_r'
     output:
-        clusters
+        clusters = clusters_dir + '{TISSUE}_clusters_all_chr.csv'
+    script:
+        '../scripts/call_clusters.py'
+
 
 rule get_covariates:
     input: 
