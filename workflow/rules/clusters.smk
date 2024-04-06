@@ -1,3 +1,19 @@
+rule call_clusters: 
+    input:
+        normalized_expression
+        full_covariates
+    output:
+        clusters
+
+rule get_covariates:
+    input: 
+        gtex_provided_covariates
+        normalized_expression
+    output:
+        full_covariates
+
+
+
 rule get_covariate_conditions:
 ## if you want to compare different number of pcs/peers
     input:
@@ -65,29 +81,4 @@ rule call_clusters:
         dir_eqtl_data}/gene_annotations_protein_coding.csv \
         dir_eqtl_data}/${tissue}.v8.normalized_expression.txt \ $### add args in right order
         """
-
-
-rule get_covariates:
-    input:
-        normalized_expression = 
-        gtex_covariates = 
-    output:
-        covariates = covariates_dir + '{TISSUE}.v8.covariates.txt'
-
-
-rule residualized_expression:
-    input:
-        normalized_expression = 
-        covariates = covariates_dir + '{TISSUE}.v8.covariates.txt'
-    output:
-        residualized_expression = 
-
-rule call_clusters:
-    input:
-        residualized_expression = 
-    output:
-        clusters = clusters_dir + '{TISSUE}_clusters_all_chr.csv'
-
-            
-        filtered_normed_expression = filtered_expression_output_dir + '{TISSUE}.v8.normalized_expression.cluster_genes.bed',
-        covariates = covariates_dir + '{TISSUE}.v8.covariates.txt'
+   

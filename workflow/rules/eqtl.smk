@@ -6,7 +6,7 @@ rule filter_expression_clusters:
     conda:
         'tensorqtl_r'
     output:
-        filtered_normed_expression = filtered_expression_output_dir + '{TISSUE}.v8.normalized_expression.cluster_genes.bed'
+        filtered_normed_expression = filtered_expression_output_dir + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed'
     script:
         '../scripts/filter_expression_clusters.py'
 
@@ -17,7 +17,7 @@ rule filter_expression_clusters:
 rule run_eqtl_cis_nominal:
     input:
         genotypes = genotype_stem + '.fam',
-        expression = filtered_expression_output_dir + '{TISSUE}.v8.normalized_expression.cluster_genes.bed',
+        expression = filtered_expression_output_dir + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed',
         covariates = covariates_dir + '{TISSUE}.v8.covariates.txt'
     params:
         genotype_stem = genotype_stem,
@@ -42,7 +42,7 @@ rule run_eqtl_cis_nominal:
 rule run_eqtl_cis:
     input:
         genotypes = genotype_stem + '.fam',
-        expression = filtered_expression_output_dir + '{TISSUE}.v8.normalized_expression.cluster_genes.bed',
+        expression = filtered_expression_output_dir + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed',
         covariates = covariates_dir + '{TISSUE}.v8.covariates.txt'
     params:
         genotype_stem = genotype_stem,
@@ -70,7 +70,7 @@ rule run_eqtl_cis:
 rule run_eqtl_cis_independent:
     input:
         genotypes = genotype_stem + '.fam',
-        expression = filtered_expression_output_dir + '{TISSUE}.v8.normalized_expression.cluster_genes.bed',
+        expression = filtered_expression_output_dir + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed',
         covariates = covariates_dir + '{TISSUE}.v8.covariates.txt',
         cis_result = eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl.txt.gz'
     params:
@@ -97,7 +97,7 @@ rule run_eqtl_cis_independent:
 rule run_eqtl_susie:
     input:
         genotypes = genotype_stem + '.fam',
-        expression = filtered_expression_output_dir + '{TISSUE}.v8.normalized_expression.cluster_genes.bed',
+        expression = filtered_expression_output_dir + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed',
         covariates = covariates_dir + '{TISSUE}.v8.covariates.txt',
     params:
         genotype_stem = genotype_stem,
@@ -118,37 +118,37 @@ rule run_eqtl_susie:
         """
 
 
-# eqtl on all genes instead of cluster genes
-rule get_chr22_expression:
-    input:
-        expression = expression_dir + '{TISSUE}.v8.normalized_expression.bed'
-    conda:
-        'tensorqtl_r'
-    output:
-        'data/processed/chr22_expression/{TISSUE}.v8.normalized_expression.chr22_genes.bed',    
-    script:
-        '../scripts/filter_chr22_expression.py'
+# # eqtl on all genes instead of cluster genes
+# rule get_chr22_expression:
+#     input:
+#         expression = expression_dir + '{TISSUE}.v8.normalized_expression.bed'
+#     conda:
+#         'tensorqtl_r'
+#     output:
+#         'data/processed/chr22_expression/{TISSUE}.v8.normalized_expression.chr22_genes.bed',    
+#     script:
+#         '../scripts/filter_chr22_expression.py'
 
 
-# cis-QTL mapping: susie credible set summary stats
-rule run_eqtl_susie_all:
-    input:
-        genotypes = genotype_stem + '.fam',
-        expression = 'data/processed/chr22_expression/{TISSUE}.v8.normalized_expression.chr22_genes.bed',
-        covariates = covariates_dir + '{TISSUE}.v8.covariates.txt',
-    params:
-        genotype_stem = genotype_stem
-    resources:
-        mem = "30G",
-        time = "2:00:00"
-    threads: 10
-    conda:
-        'tensorqtl_r'
-    output:
-       'output/chr22_eqtl/{TISSUE}/{TISSUE}.v8.chr22_genes.susie.txt'
-    shell:"""
-        python workflow/scripts/run_susie.py {params.genotype_stem} \
-            {input.expression} \
-            output/chr22_eqtl/{wildcards.TISSUE}/{wildcards.TISSUE}.v8.chr22_genes.susie.txt \
-            {input.covariates}
-        """
+# # cis-QTL mapping: susie credible set summary stats
+# rule run_eqtl_susie_all:
+#     input:
+#         genotypes = genotype_stem + '.fam',
+#         expression = 'data/processed/chr22_expression/{TISSUE}.v8.normalized_expression.chr22_genes.bed',
+#         covariates = covariates_dir + '{TISSUE}.v8.covariates.txt',
+#     params:
+#         genotype_stem = genotype_stem
+#     resources:
+#         mem = "30G",
+#         time = "2:00:00"
+#     threads: 10
+#     conda:
+#         'tensorqtl_r'
+#     output:
+#        'output/chr22_eqtl/{TISSUE}/{TISSUE}.v8.chr22_genes.susie.txt'
+#     shell:"""
+#         python workflow/scripts/run_susie.py {params.genotype_stem} \
+#             {input.expression} \
+#             output/chr22_eqtl/{wildcards.TISSUE}/{wildcards.TISSUE}.v8.chr22_genes.susie.txt \
+#             {input.covariates}
+#         """

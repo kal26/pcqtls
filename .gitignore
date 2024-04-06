@@ -4,3 +4,5 @@ data/*
 .snakemake/**
 *.out
 logs/*
+tami_project
+tami_project/*

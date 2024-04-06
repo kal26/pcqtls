@@ -17,6 +17,7 @@ annotations_output_dir = config['annotations_output_dir']
 
 
 
+
 # load in all the wildcards
 df = pd.read_csv(tissue_id_path, header=0)
 tissue_ids = list(df['Tissue'])
@@ -31,7 +32,7 @@ include: 'rules/annotate.smk'
 
 rule all:
     input:
-        vep = expand(annotations_output_dir + '{TISSUE}.v8.leadvars.vep.vcf', TISSUE = tissue_ids),
+        #vep = expand(annotations_output_dir + '{TISSUE}.v8.leadvars.vep.vcf', TISSUE = tissue_ids),
         overlap = expand(overlap_output_dir + '{TISSUE}.v8.overlap.txt', TISSUE = tissue_ids),
         pcqtl_susie = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.susie.txt', TISSUE = tissue_ids),
         pc_nominal = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE = tissue_ids),
