@@ -1,10 +1,14 @@
+# input files
 tissue_id_path: "data/references/selected_tissue_ids.csv"
 covariates_dir: "data/processed/covariates_tami/"
 expression_dir: "data/processed/normalized_expression_tami/"
 chr_list_path: "data/references/chrs.csv"
 genotype_stem: "data/processed/genotypes/GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.SHAPEIT2_phased.MAF01"
+
+# can be input or output - now input
 clusters_dir: "data/processed/proteincoding/clusters_tad/"
 
+# output files
 filtered_expression_output_dir: "data/processed/proteincoding_tad/clusters_expression/"
 eqtl_output_dir: "output/proteincoding_tad/control_eqtl/"
 pcqtl_output_dir: "output/proteincoding_tad/pcqtl/"

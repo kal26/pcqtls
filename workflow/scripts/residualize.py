@@ -1,8 +1,3 @@
-import numpy as np
-import pandas as pd
-import argparse
-from sklearn.decomposition import PCA
-import os
 import tensorqtl
 import torch
 from tensorqtl.core import Residualizer

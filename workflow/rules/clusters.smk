@@ -19,6 +19,9 @@ rule call_clusters:
         min_corr_cutoff = 0.1,
         percent_corr_cutoff = .7,
         cutoff_type = 'pvalue' # or can be 'value'
+    resources:
+        mem = "30G", 
+        time = "2:00:00",
     conda:
         'tensorqtl_r'
     output:

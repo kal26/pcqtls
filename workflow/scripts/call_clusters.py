@@ -1,3 +1,4 @@
+print('running call clusters')
 import pandas as pd
 import numpy as np
 from residualize import calculate_residual
@@ -16,10 +17,14 @@ cutoff_type = snakemake.params[4]
 expression_df = pd.read_csv(snakemake.input[0], sep='\t')
 covariates_df = pd.read_csv(snakemake.input[1], sep='\t', index_col=0).T
 
+print('loaded data')
+
+
 # residulize the expression 
 residal_exp = calculate_residual(expression_df[covariates_df.index], covariates_df, center=True)
 residal_exp = pd.DataFrame(residal_exp, columns=covariates_df.index, index=expression_df['gene_id'])
 
+print('residualized expression')
 
 # function for p value corrs for a dataframe
 def calculate_pvalues(df):
