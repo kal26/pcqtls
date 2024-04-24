@@ -17,7 +17,6 @@ annotations_output_dir = config['annotations_output_dir']
 
 
 
-
 # load in all the wildcards
 df = pd.read_csv(tissue_id_path, header=0)
 tissue_ids = list(df['Tissue'])
@@ -29,6 +28,7 @@ chr_list = list(df['chr_id'])
 include: 'rules/pcqtl.smk'
 include: 'rules/eqtl.smk'
 include: 'rules/annotate.smk'
+include: 'rules/clusters.smk'
 
 rule all:
     input:

@@ -2,7 +2,7 @@
 rule calculate_pcs:
     input:
         clusters = clusters_dir + '{TISSUE}_clusters_all_chr.csv',
-        filtered_normed_expression = filtered_expression_output_dir + '{TISSUE}.v8.normalized_expression.cluster_genes.bed',
+        filtered_normed_expression = filtered_expression_output_dir + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed',
         covariates = covariates_dir + '{TISSUE}.v8.covariates.txt'
     conda:
         'tensorqtl_r'

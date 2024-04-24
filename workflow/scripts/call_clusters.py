@@ -1,12 +1,16 @@
 import pandas as pd
 import numpy as np
 from residualize import calculate_residual
+from scipy.stats import pearsonr
+
 
 # set params
-max_cluster_size = snakemake.params[0],
-min_cluster_size = snakemake.params[1],
-min_corr_cutoff = snakemake.params[2],
-percent_corr_cutoff = snakemake.params[3],
+max_cluster_size = snakemake.params[0]
+min_cluster_size = snakemake.params[1]
+min_corr_cutoff = snakemake.params[2]
+percent_corr_cutoff = snakemake.params[3]
+cutoff_type = snakemake.params[4]
+
 
 # load data
 expression_df = pd.read_csv(snakemake.input[0], sep='\t')
@@ -16,21 +20,39 @@ covariates_df = pd.read_csv(snakemake.input[1], sep='\t', index_col=0).T
 residal_exp = calculate_residual(expression_df[covariates_df.index], covariates_df, center=True)
 residal_exp = pd.DataFrame(residal_exp, columns=covariates_df.index, index=expression_df['gene_id'])
 
-# function for per chr clusters
+
+# function for p value corrs for a dataframe
+def calculate_pvalues(df):
+    dfcols = pd.DataFrame(columns=df.columns)
+    pvalues = dfcols.transpose().join(dfcols, how='outer')
+    for r in df.columns:
+        for c in df.columns:
+            tmp = df[df[r].notnull() & df[c].notnull()]
+            pvalues[r][c] = pearsonr(tmp[r], tmp[c])[1]
+    return pvalues
+
+
+# per cluster correlations and clusters 
 def get_clusters_chr(chr_id, expression_df, residal_exp):
     # genes on this chr
     chr_gene_ids = expression_df[expression_df['#chr'] == f'chr{chr_id}']['gene_id']
     chr_residual_exp = residal_exp.loc[chr_gene_ids]
+    num_pairs_total = len(chr_gene_ids) * (len(chr_gene_ids)-1)
 
     # get correlation
     chr_corr = chr_residual_exp.T.corr()
+
     # zero the diagonal and everything in the lower half
     chr_corr_zeroed = pd.DataFrame(np.triu(chr_corr.values, k=1), index=chr_gene_ids, columns=chr_gene_ids)
 
+    # get p values if necessary
+    if cutoff_type == 'pvalue':
+        corr_pvalues = calculate_pvalues(chr_residual_exp.T.corr())
+        # zero the diagonal and everything in the lower half
+        corr_pvalues_zeroed = pd.DataFrame(np.triu(corr_pvalues.values, k=1), index=chr_gene_ids, columns=chr_gene_ids)
+
 
     # iterate through and call the cluster
-
-
     # list of transcripts that are already in a cluster
     transcript_blacklist = []
 
@@ -45,12 +67,22 @@ def get_clusters_chr(chr_id, expression_df, residal_exp):
         for cluster_start_idx in range(0, len(chr_corr_zeroed)-cluster_size):
             # pull the cluster of this size stating at this index
             cluster_candidate = chr_corr_zeroed.iloc[cluster_start_idx:cluster_start_idx+cluster_size, cluster_start_idx:cluster_start_idx+cluster_size]
-
             # corr values in upper triangle
             cluster_values = cluster_candidate.values[np.triu_indices(cluster_size, k=1)]
             
-            # number of corrs with abs value above cuttoff
-            number_corrs_above_cutoff = sum(sum(abs(cluster_candidate.values)>min_corr_cuntoff))
+            # number of corrs with abs value above cuttoff or p value below cutoff
+            if cutoff_type == 'value':
+                number_corrs_above_cutoff = sum(sum(abs(cluster_candidate.values)>min_corr_cuntoff))
+            elif cutoff_type == 'pvalue':
+                # calculate p values below a bonferonni 0.05
+                cluster_candidate_pvalues = corr_pvalues_zeroed.iloc[cluster_start_idx:cluster_start_idx+cluster_size, cluster_start_idx:cluster_start_idx+cluster_size]
+                # only take top corner 
+                cluster_pvalues = cluster_candidate_pvalues.values[np.triu_indices(cluster_size, k=1)]
+                # pvalues values in upper triangle less than 0.05/total number tests
+                number_corrs_above_cutoff = sum(cluster_pvalues<(0.05/num_pairs_total))
+            else:
+                raise ValueError
+
 
             # transcripts
             cluster_transcripts = cluster_candidate.index.values
@@ -77,6 +109,7 @@ def get_clusters_chr(chr_id, expression_df, residal_exp):
 
     # make one dataframe and write out
     return pd.DataFrame(cluster_output)
+
 
 # cycle thorugh all chrs
 clusters_all_chr = []
