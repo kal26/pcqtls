@@ -21,7 +21,7 @@ rule call_clusters:
         cutoff_type = 'pvalue', # or can be 'value'
         tissue_id = '{wildcards.MODEL}'
     resources:
-        mem = "30G", 
+        mem = "80G", 
         time = "2:00:00",
     conda:
         'tensorqtl_r'
