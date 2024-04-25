@@ -2,8 +2,9 @@ print('running call clusters')
 import pandas as pd
 import numpy as np
 from residualize import calculate_residual
-from scipy.stats import pearsonr
+from scipy.stats import spearmanr
 
+print('starting')
 
 # set params
 max_cluster_size = snakemake.params[0]
@@ -11,51 +12,56 @@ min_cluster_size = snakemake.params[1]
 min_corr_cutoff = snakemake.params[2]
 percent_corr_cutoff = snakemake.params[3]
 cutoff_type = snakemake.params[4]
+tissue_id = snakemake.params[5]
 
 
 # load data
 expression_df = pd.read_csv(snakemake.input[0], sep='\t')
 covariates_df = pd.read_csv(snakemake.input[1], sep='\t', index_col=0).T
-
 print('loaded data')
 
 
 # residulize the expression 
 residal_exp = calculate_residual(expression_df[covariates_df.index], covariates_df, center=True)
 residal_exp = pd.DataFrame(residal_exp, columns=covariates_df.index, index=expression_df['gene_id'])
-
 print('residualized expression')
 
-# function for p value corrs for a dataframe
-def calculate_pvalues(df):
+# calculate total number of pairs considered for bonferroni correction
+total_pairs = 0
+for i in np.arange(1,23,1):
+    chr_gene_ids = expression_df[expression_df['#chr'] == f'chr{i}']['gene_id']
+    upper_corner_idxs = np.triu(np.ones(len(chr_gene_ids)), k=1)
+    excluded_cluster_size_idxs = np.triu(np.ones(len(chr_gene_ids)), k=max_cluster_size)
+    total_pairs += upper_corner_idxs.sum()  - excluded_cluster_size_idxs.sum()
+
+
+# function to avoid calculating far-off diagonal corrs that won't be needed for any clusters
+def get_corr_diag(df, max_cluster_size):
     dfcols = pd.DataFrame(columns=df.columns)
     pvalues = dfcols.transpose().join(dfcols, how='outer')
-    for r in df.columns:
-        for c in df.columns:
-            tmp = df[df[r].notnull() & df[c].notnull()]
-            pvalues[r][c] = pearsonr(tmp[r], tmp[c])[1]
-    return pvalues
+    corrs = dfcols.transpose().join(dfcols, how='outer')
+    for i in range(len(df.columns)):
+            gene_id_1 = df.columns[i]
+            for j in range(len(df.columns)):
+                gene_id_2 = df.columns[j]
+                if (i > j) & (i < j + max_cluster_size):
+                    result = spearmanr(df[gene_id_1], df[gene_id_2])
+                else: 
+                    result = (np.NAN, np.NAN)
+                corrs[gene_id_1][gene_id_2] = result[0]
+                pvalues[gene_id_1][gene_id_2] = result[1]
+    return corrs, pvalues
 
 
-# per cluster correlations and clusters 
-def get_clusters_chr(chr_id, expression_df, residal_exp):
+# get expression clusters on a per-chrom basis
+def get_clusters_chr(chr_id, expression_df, residal_exp, total_pairs):
     # genes on this chr
     chr_gene_ids = expression_df[expression_df['#chr'] == f'chr{chr_id}']['gene_id']
     chr_residual_exp = residal_exp.loc[chr_gene_ids]
-    num_pairs_total = len(chr_gene_ids) * (len(chr_gene_ids)-1)
 
-    # get correlation
-    chr_corr = chr_residual_exp.T.corr()
-
-    # zero the diagonal and everything in the lower half
-    chr_corr_zeroed = pd.DataFrame(np.triu(chr_corr.values, k=1), index=chr_gene_ids, columns=chr_gene_ids)
-
-    # get p values if necessary
-    if cutoff_type == 'pvalue':
-        corr_pvalues = calculate_pvalues(chr_residual_exp.T.corr())
-        # zero the diagonal and everything in the lower half
-        corr_pvalues_zeroed = pd.DataFrame(np.triu(corr_pvalues.values, k=1), index=chr_gene_ids, columns=chr_gene_ids)
-
+    # get correlation and pvalues
+    chr_corr, chr_pvalue = get_corr_diag(chr_residual_exp.T, max_cluster_size)
+    print('calcuated correlations')
 
     # iterate through and call the cluster
     # list of transcripts that are already in a cluster
@@ -69,9 +75,10 @@ def get_clusters_chr(chr_id, expression_df, residal_exp):
         number_pairs = sum(sum(np.triu(np.ones((cluster_size, cluster_size)), k=1)))
 
         # each possible start along the genome
-        for cluster_start_idx in range(0, len(chr_corr_zeroed)-cluster_size):
+        for cluster_start_idx in range(0, len(chr_corr)-cluster_size):
             # pull the cluster of this size stating at this index
-            cluster_candidate = chr_corr_zeroed.iloc[cluster_start_idx:cluster_start_idx+cluster_size, cluster_start_idx:cluster_start_idx+cluster_size]
+            
+            cluster_candidate = chr_corr.iloc[cluster_start_idx:cluster_start_idx+cluster_size, cluster_start_idx:cluster_start_idx+cluster_size]
             # corr values in upper triangle
             cluster_values = cluster_candidate.values[np.triu_indices(cluster_size, k=1)]
             
@@ -80,11 +87,11 @@ def get_clusters_chr(chr_id, expression_df, residal_exp):
                 number_corrs_above_cutoff = sum(sum(abs(cluster_candidate.values)>min_corr_cuntoff))
             elif cutoff_type == 'pvalue':
                 # calculate p values below a bonferonni 0.05
-                cluster_candidate_pvalues = corr_pvalues_zeroed.iloc[cluster_start_idx:cluster_start_idx+cluster_size, cluster_start_idx:cluster_start_idx+cluster_size]
+                cluster_candidate_pvalues = chr_pvalue.iloc[cluster_start_idx:cluster_start_idx+cluster_size, cluster_start_idx:cluster_start_idx+cluster_size]
                 # only take top corner 
                 cluster_pvalues = cluster_candidate_pvalues.values[np.triu_indices(cluster_size, k=1)]
                 # pvalues values in upper triangle less than 0.05/total number tests
-                number_corrs_above_cutoff = sum(cluster_pvalues<(0.05/num_pairs_total))
+                number_corrs_above_cutoff = sum(cluster_pvalues<(0.05/total_pairs))
             else:
                 raise ValueError
 
@@ -115,12 +122,11 @@ def get_clusters_chr(chr_id, expression_df, residal_exp):
     # make one dataframe and write out
     return pd.DataFrame(cluster_output)
 
-
 # cycle thorugh all chrs
 clusters_all_chr = []
 for i in np.arange(1,23,1):
     print(f'Working on chr{i}')
-    clusters_all_chr.append(get_clusters_chr(i, expression_df, residal_exp))
+    clusters_all_chr.append(get_clusters_chr(i, expression_df, residal_exp, total_pairs))
 
 # write out
 pd.concat(clusters_all_chr).to_csv(snakemake.output[0])
