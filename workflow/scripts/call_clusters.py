@@ -3,64 +3,21 @@ import pandas as pd
 import numpy as np
 from residualize import calculate_residual
 from scipy.stats import spearmanr
+import argparse
 
-print('starting')
-
-# set params
-max_cluster_size = snakemake.params[0]
-min_cluster_size = snakemake.params[1]
-min_corr_cutoff = snakemake.params[2]
-percent_corr_cutoff = snakemake.params[3]
-cutoff_type = snakemake.params[4]
-tissue_id = snakemake.params[5]
-
-
-# load data
-expression_df = pd.read_csv(snakemake.input[0], sep='\t')
-covariates_df = pd.read_csv(snakemake.input[1], sep='\t', index_col=0).T
-print('loaded data')
-
-
-# residulize the expression 
-residal_exp = calculate_residual(expression_df[covariates_df.index], covariates_df, center=True)
-residal_exp = pd.DataFrame(residal_exp, columns=covariates_df.index, index=expression_df['gene_id'])
-print('residualized expression')
-
-# calculate total number of pairs considered for bonferroni correction
-total_pairs = 0
-for i in np.arange(1,23,1):
-    chr_gene_ids = expression_df[expression_df['#chr'] == f'chr{i}']['gene_id']
-    upper_corner_idxs = np.triu(np.ones(len(chr_gene_ids)), k=1)
-    excluded_cluster_size_idxs = np.triu(np.ones(len(chr_gene_ids)), k=max_cluster_size)
-    total_pairs += upper_corner_idxs.sum()  - excluded_cluster_size_idxs.sum()
-
-
-# function to avoid calculating far-off diagonal corrs that won't be needed for any clusters
-def get_corr_diag(df, max_cluster_size):
-    dfcols = pd.DataFrame(columns=df.columns)
-    pvalues = dfcols.transpose().join(dfcols, how='outer')
-    corrs = dfcols.transpose().join(dfcols, how='outer')
-    for i in range(len(df.columns)):
-            gene_id_1 = df.columns[i]
-            for j in range(len(df.columns)):
-                gene_id_2 = df.columns[j]
-                if (i > j) & (i < j + max_cluster_size):
-                    result = spearmanr(df[gene_id_1], df[gene_id_2])
-                else: 
-                    result = (np.NAN, np.NAN)
-                corrs[gene_id_1][gene_id_2] = result[0]
-                pvalues[gene_id_1][gene_id_2] = result[1]
-    return corrs, pvalues
 
 
 # get expression clusters on a per-chrom basis
-def get_clusters_chr(chr_id, expression_df, residal_exp, total_pairs):
+def get_clusters_chr(chr_id, expression_df, residal_exp, total_pairs, tissue_id, min_cluster_size, max_cluster_size, min_corr_cutoff, percent_corr_cutoff, cutoff_type):
     # genes on this chr
     chr_gene_ids = expression_df[expression_df['#chr'] == f'chr{chr_id}']['gene_id']
     chr_residual_exp = residal_exp.loc[chr_gene_ids]
 
     # get correlation and pvalues
-    chr_corr, chr_pvalue = get_corr_diag(chr_residual_exp.T, max_cluster_size)
+    chr_corr, chr_pvalue = spearmanr(chr_residual_exp, axis=1)
+    chr_corr = pd.DataFrame(chr_corr, index=chr_residual_exp.index, columns=chr_residual_exp.index)
+    chr_pvalue = pd.DataFrame(chr_pvalue, index=chr_residual_exp.index, columns=chr_residual_exp.index)
+
     print('calcuated correlations')
 
     # iterate through and call the cluster
@@ -84,7 +41,7 @@ def get_clusters_chr(chr_id, expression_df, residal_exp, total_pairs):
             
             # number of corrs with abs value above cuttoff or p value below cutoff
             if cutoff_type == 'value':
-                number_corrs_above_cutoff = sum(sum(abs(cluster_candidate.values)>min_corr_cuntoff))
+                number_corrs_above_cutoff = sum(sum(abs(cluster_candidate.values)>min_corr_cutoff))
             elif cutoff_type == 'pvalue':
                 # calculate p values below a bonferonni 0.05
                 cluster_candidate_pvalues = chr_pvalue.iloc[cluster_start_idx:cluster_start_idx+cluster_size, cluster_start_idx:cluster_start_idx+cluster_size]
@@ -122,11 +79,60 @@ def get_clusters_chr(chr_id, expression_df, residal_exp, total_pairs):
     # make one dataframe and write out
     return pd.DataFrame(cluster_output)
 
-# cycle thorugh all chrs
-clusters_all_chr = []
-for i in np.arange(1,23,1):
-    print(f'Working on chr{i}')
-    clusters_all_chr.append(get_clusters_chr(i, expression_df, residal_exp, total_pairs))
+def get_clusters(expression_path, covariates_path, tissue_id, min_cluster_size=2, max_cluster_size=50, min_corr_cutoff=0.1, percent_corr_cutoff=.7, cutoff_type='pvalue'):
+    # load data
+    expression_df = pd.read_csv(expression_path, sep='\t')
+    covariates_df = pd.read_csv(covariates_path, sep='\t', index_col=0).T
+    print('loaded data')
 
-# write out
-pd.concat(clusters_all_chr).to_csv(snakemake.output[0])
+
+    # residulize the expression 
+    residal_exp = calculate_residual(expression_df[covariates_df.index], covariates_df, center=True)
+    residal_exp = pd.DataFrame(residal_exp, columns=covariates_df.index, index=expression_df['gene_id'])
+    print('residualized expression')
+
+    # calculate total number of pairs considered for bonferroni correction
+    total_pairs = 0
+    for i in np.arange(1,23,1):
+        chr_gene_ids = expression_df[expression_df['#chr'] == f'chr{i}']['gene_id']
+        upper_corner_idxs = np.triu(np.ones(len(chr_gene_ids)), k=1)
+        excluded_cluster_size_idxs = np.triu(np.ones(len(chr_gene_ids)), k=max_cluster_size)
+        total_pairs += upper_corner_idxs.sum()  - excluded_cluster_size_idxs.sum()
+
+    # cycle thorugh all chrs
+    clusters_all_chr = []
+    for i in np.arange(1,23,1):
+        print(f'Working on chr{i}')
+        clusters_all_chr.append(get_clusters_chr(i, expression_df, residal_exp, total_pairs, tissue_id, min_cluster_size, max_cluster_size, min_corr_cutoff, percent_corr_cutoff, cutoff_type))
+
+    # concat and return 
+    return pd.concat(clusters_all_chr)
+
+
+def main():
+    # Parse arguments from cmd
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-e', '--expression_path', help = 'path to .bed normalized expression (not residulaized)')
+    parser.add_argument('-co', '--covariates_path', help = 'path to covariates')
+    parser.add_argument('-o', '--out_path', help = 'path where cluster results should be written out')
+    parser.add_argument('--verbosity', type=int, default=0, help = 'output verbosity')
+        # set params
+
+    parser.add_argument('--max_cluster_size', type=int, default=50, help = 'maximum number of genes per cluster')
+    parser.add_argument('--min_cluster_size', type=int, default=2, help = 'minimum number of genes per cluster')
+    parser.add_argument('--min_corr_cutoff', type=float, default=.01, help = 'minimum corr value to consider (if using value based cutoff)')
+    parser.add_argument('--percent_corr_cutoff', type=float, default=.7, help = 'number of corrs above threshold required')
+    parser.add_argument('--cutoff_type', type=str, default='pvalue', help = 'value for value based, pvalue for p value based (bonferroni corrected)')
+    parser.add_argument('--tissue_id', type=str, default='None', help = 'id for the tissue')
+
+    args = parser.parse_args()
+
+    # call the clusters funciton
+    clusters_all_chr = get_clusters(args.expression_path, args.covariates_path, args.tissue_id, args.min_cluster_size, args.max_cluster_size, args.min_corr_cutoff, args.percent_corr_cutoff, args.cutoff_type)
+
+    # write out 
+    pd.concat(clusters_all_chr).to_csv(args.out_path)
+
+
+if __name__ == "__main__":
+    main()

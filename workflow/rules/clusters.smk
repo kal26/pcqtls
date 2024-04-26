@@ -27,5 +27,15 @@ rule call_clusters:
         'tensorqtl_r'
     output:
         clusters = clusters_dir + '{TISSUE}_clusters_all_chr.csv'
-    script:
-        '../scripts/call_clusters.py'
+    shell:"""
+        python workflow/scripts/call_clusters.py \
+            -e {input.normalized_expression} \
+            -co {input.full_covariates} \
+            -o {output.clusters} \
+            --max_cluster_size {params.max_cluster_size} \
+            --min_cluster_size {params.min_cluster_size} \
+            --min_corr_cutoff {params.min_corr_cutoff} \
+            --percent_corr_cutoff {params.percent_corr_cutoff} \
+            --cutoff_type {params.cutoff_type} \
+            --tissue_id {params.tissue_id}
+        """

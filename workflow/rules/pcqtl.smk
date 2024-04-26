@@ -13,7 +13,7 @@ rule calculate_pcs:
             -cl {input.clusters} \
             -e {input.filtered_normed_expression} \
             -co {input.covariates} \
-            -o {output} \
+            -o {output} 
         """
 
 # PCQTLS
