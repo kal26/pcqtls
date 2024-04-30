@@ -19,7 +19,6 @@ rule call_clusters:
         min_corr_cutoff = 0.1,
         percent_corr_cutoff = .7,
         cutoff_type = 'pvalue', # or can be 'value'
-        tissue_id = '{wildcards.MODEL}'
     resources:
         mem = "80G", 
         time = "2:00:00",
@@ -37,5 +36,5 @@ rule call_clusters:
             --min_corr_cutoff {params.min_corr_cutoff} \
             --percent_corr_cutoff {params.percent_corr_cutoff} \
             --cutoff_type {params.cutoff_type} \
-            --tissue_id {params.tissue_id}
+            --tissue_id {wildcards.TISSUE}
         """

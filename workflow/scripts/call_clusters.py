@@ -131,7 +131,7 @@ def main():
     clusters_all_chr = get_clusters(args.expression_path, args.covariates_path, args.tissue_id, args.min_cluster_size, args.max_cluster_size, args.min_corr_cutoff, args.percent_corr_cutoff, args.cutoff_type)
 
     # write out 
-    pd.concat(clusters_all_chr).to_csv(args.out_path)
+    clusters_all_chr.to_csv(args.out_path)
 
 
 if __name__ == "__main__":
