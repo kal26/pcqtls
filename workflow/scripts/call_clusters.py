@@ -14,7 +14,11 @@ def get_clusters_chr(chr_id, expression_df, residal_exp, total_pairs, tissue_id,
     chr_residual_exp = residal_exp.loc[chr_gene_ids]
 
     # get correlation and pvalues
-    chr_corr, chr_pvalue = spearmanr(chr_residual_exp, axis=1)
+    try:
+        chr_corr, chr_pvalue = spearmanr(chr_residual_exp, axis=1)
+    except IndexError:
+        # no genes on this chr
+        return pd.DataFrame({})
     chr_corr = pd.DataFrame(chr_corr, index=chr_residual_exp.index, columns=chr_residual_exp.index)
     chr_pvalue = pd.DataFrame(chr_pvalue, index=chr_residual_exp.index, columns=chr_residual_exp.index)
 
@@ -79,7 +83,7 @@ def get_clusters_chr(chr_id, expression_df, residal_exp, total_pairs, tissue_id,
     # make one dataframe and write out
     return pd.DataFrame(cluster_output)
 
-def get_clusters(expression_path, covariates_path, tissue_id, min_cluster_size=2, max_cluster_size=50, min_corr_cutoff=0.1, percent_corr_cutoff=.7, cutoff_type='pvalue'):
+def get_clusters_from_paths(expression_path, covariates_path, tissue_id, min_cluster_size=2, max_cluster_size=50, min_corr_cutoff=0.1, percent_corr_cutoff=.7, cutoff_type='pvalue'):
     # load data
     expression_df = pd.read_csv(expression_path, sep='\t')
     covariates_df = pd.read_csv(covariates_path, sep='\t', index_col=0).T
@@ -91,6 +95,10 @@ def get_clusters(expression_path, covariates_path, tissue_id, min_cluster_size=2
     residal_exp = pd.DataFrame(residal_exp, columns=covariates_df.index, index=expression_df['gene_id'])
     print('residualized expression')
 
+    return get_clusters(expression_df, residal_exp, tissue_id, min_cluster_size=min_cluster_size, max_cluster_size=max_cluster_size, min_corr_cutoff=min_corr_cutoff, percent_corr_cutoff=percent_corr_cutoff, cutoff_type=cutoff_type)
+
+
+def get_clusters(expression_df, residal_exp, tissue_id, min_cluster_size=2, max_cluster_size=50, min_corr_cutoff=0.1, percent_corr_cutoff=.7, cutoff_type='pvalue'):
     # calculate total number of pairs considered for bonferroni correction
     total_pairs = 0
     for i in np.arange(1,23,1):
