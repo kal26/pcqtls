@@ -30,6 +30,12 @@ include: 'rules/eqtl.smk'
 include: 'rules/annotate.smk'
 include: 'rules/clusters.smk'
 
+
+# to remove a bloated .snakemake directory after sucessful completion
+import shutil
+onsuccess:
+    shutil.rmtree(".snakemake")
+
 rule all:
     input:
         #vep = expand(annotations_output_dir + '{TISSUE}.v8.leadvars.vep.vcf', TISSUE = tissue_ids),
