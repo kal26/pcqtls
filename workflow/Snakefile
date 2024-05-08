@@ -2,18 +2,27 @@ import os
 import sys
 import pandas as pd
 
+# input paths
 tissue_id_path = config['tissue_id_path']
 covariates_dir = config['covariates_dir']
 expression_dir = config['expression_dir']
-clusters_dir = config['clusters_dir']
 chr_list_path = config['chr_list_path']
 genotype_stem = config['genotype_stem']
+
+# output paths
 filtered_expression_output_dir = config['filtered_expression_output_dir']
+clusters_dir = config['clusters_dir']
 eqtl_output_dir = config['eqtl_output_dir']
 pcqtl_output_dir = config['pcqtl_output_dir']
 pc_output_dir = config['pc_output_dir']
 overlap_output_dir = config['overlap_output_dir']
 annotations_output_dir = config['annotations_output_dir']
+
+# cluster params
+max_cluster_size = 50
+min_cluster_size = 2
+min_corr_cutoff = 0.1
+percent_corr_cutoff = float(config['percent_corr_cutoff'])
 
 
 
@@ -32,9 +41,9 @@ include: 'rules/clusters.smk'
 
 
 # to remove a bloated .snakemake directory after sucessful completion
-import shutil
-onsuccess:
-    shutil.rmtree(".snakemake")
+#import shutil
+#onsuccess:
+#    shutil.rmtree(".snakemake")
 
 rule all:
     input:

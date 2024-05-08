@@ -8,7 +8,7 @@ import argparse
 
 
 # get expression clusters on a per-chrom basis
-def get_clusters_chr(chr_id, expression_df, residal_exp, total_pairs, tissue_id, min_cluster_size=2, max_cluster_size=50, min_corr_cutoff=.01, percent_corr_cutoff=.7, cutoff_type='pvalue'):
+def get_clusters_chr(chr_id, expression_df, residal_exp, total_pairs, tissue_id, min_cluster_size=2, max_cluster_size=50, min_corr_cutoff=.01, percent_corr_cutoff=.7, cutoff_type='pvalue', trim=True):
     # genes on this chr
     chr_gene_ids = expression_df[expression_df['#chr'] == f'chr{chr_id}']['gene_id']
     chr_residual_exp = residal_exp.loc[chr_gene_ids]
@@ -69,42 +69,44 @@ def get_clusters_chr(chr_id, expression_df, residal_exp, total_pairs, tissue_id,
                 # this is the data on each cluster we need
                 # N_genes,Transcripts,Genes,Perc_cor,Mean_cor,Mean_pos_cor,Mean_neg_cor,Chromosome,Tissue
                 
-                # check if the edges of the cluster count be cut off (no correlations)
+                # initiate the trimmed cluster as the full cluster
                 if cutoff_type=='value':
                     cluster_bool_df = cluster_candidate >min_corr_cutoff
                 elif cutoff_type=='pvalue':
                     cluster_bool_df = cluster_candidate_pvalues < (0.05/total_pairs)
 
-                # initiate the trimmed cluster as the full cluster
                 trimmed_cluster = cluster_candidate
                 trimmed_cluster_bool = cluster_bool_df
 
-                # check if the first gene can be trimmed
-                first_gene_inclusion = sum(cluster_bool_df.iloc[1:,0])
-                # while the first gene has no correlations, trim it off
-                while first_gene_inclusion == 0:
-                    # make the cluster smaller
-                    trimmed_cluster_bool = trimmed_cluster_bool.iloc[1:, 1:]
-                    trimmed_cluster = trimmed_cluster.iloc[1:,1:]
-                    # check for the inclusion again
-                    first_gene_inclusion = sum(trimmed_cluster_bool.iloc[1:,0])
+
+                # check if the edges of the cluster count be cut off (no correlations)
+                if trim:
+                    # check if the first gene can be trimmed
+                    first_gene_inclusion = sum(cluster_bool_df.iloc[1:,0])
+                    # while the first gene has no correlations, trim it off
+                    while first_gene_inclusion == 0:
+                        # make the cluster smaller
+                        trimmed_cluster_bool = trimmed_cluster_bool.iloc[1:, 1:]
+                        trimmed_cluster = trimmed_cluster.iloc[1:,1:]
+                        # check for the inclusion again
+                        first_gene_inclusion = sum(trimmed_cluster_bool.iloc[1:,0])
 
 
-                last_gene_inclusion = sum(trimmed_cluster_bool.iloc[-1, :-1])
-                # while the last gene has no correlations, trim it off
-                while last_gene_inclusion == 0:
-                    # make the cluster smaller
-                    trimmed_cluster_bool = trimmed_cluster_bool.iloc[:-1, :-1]
-                    trimmed_cluster = trimmed_cluster.iloc[:-1, :-1]
-                    # check for the inclusion again
                     last_gene_inclusion = sum(trimmed_cluster_bool.iloc[-1, :-1])
+                    # while the last gene has no correlations, trim it off
+                    while last_gene_inclusion == 0:
+                        # make the cluster smaller
+                        trimmed_cluster_bool = trimmed_cluster_bool.iloc[:-1, :-1]
+                        trimmed_cluster = trimmed_cluster.iloc[:-1, :-1]
+                        # check for the inclusion again
+                        last_gene_inclusion = sum(trimmed_cluster_bool.iloc[-1, :-1])
 
 
                 # update the recorded informaiton
                 trimmed_cluster_size = len(trimmed_cluster)
                 cluster_transcripts = trimmed_cluster.index.values
                 number_corrs_above_cutoff = sum(trimmed_cluster_bool.values[np.triu_indices(trimmed_cluster_size, k=1)])
-                precent_corr = number_corrs_above_cutoff/sum(sum(np.triu(np.ones((trimmed_cluster_size, trimmed_cluster_size)), k=1)))
+                percent_corr = number_corrs_above_cutoff/sum(sum(np.triu(np.ones((trimmed_cluster_size, trimmed_cluster_size)), k=1)))
                 trimmed_cluster_values = trimmed_cluster.values[np.triu_indices(trimmed_cluster_size, k=1)]
                 
 
@@ -112,9 +114,9 @@ def get_clusters_chr(chr_id, expression_df, residal_exp, total_pairs, tissue_id,
                 cluster_series = pd.Series({'N_genes':trimmed_cluster_size,
                             'Transcripts':','.join(cluster_transcripts),
                             'Perc_cor':percent_corr,
-                            'Mean_cor':np.mean(cluster_values),
-                            'Mean_pos_cor':np.mean(cluster_values[cluster_values>0]),
-                            'Mean_neg_cor':np.mean(cluster_values[cluster_values<0]),
+                            'Mean_cor':np.mean(trimmed_cluster_values),
+                            'Mean_pos_cor':np.mean(trimmed_cluster_values[trimmed_cluster_values>0]),
+                            'Mean_neg_cor':np.mean(trimmed_cluster_values[trimmed_cluster_values<0]),
                             'Chromosome':chr_id,
                             'Tissue':tissue_id})
                 # record cluster
@@ -124,12 +126,13 @@ def get_clusters_chr(chr_id, expression_df, residal_exp, total_pairs, tissue_id,
 
     # make one dataframe and write out
     out_df = pd.DataFrame(cluster_output)
-    # smaller clusters than the minimum can sneak in through the trimming process, remove these
-    out_df = out_df[out_df['N_genes'] >= min_cluster_size]
+    if trim:
+        # smaller clusters than the minimum can sneak in through the trimming process, remove these
+        out_df = out_df[out_df['N_genes'] >= min_cluster_size]
     # sort by cluster size and return 
     return out_df.sort_values('N_genes', ascending=False)
 
-def get_clusters_from_paths(expression_path, covariates_path, tissue_id, min_cluster_size=2, max_cluster_size=50, min_corr_cutoff=0.1, percent_corr_cutoff=.7, cutoff_type='pvalue'):
+def get_clusters_from_paths(expression_path, covariates_path, tissue_id, min_cluster_size=2, max_cluster_size=50, min_corr_cutoff=0.1, percent_corr_cutoff=.7, cutoff_type='pvalue', trim=True):
     # load data
     expression_df = pd.read_csv(expression_path, sep='\t')
     covariates_df = pd.read_csv(covariates_path, sep='\t', index_col=0).T
@@ -141,23 +144,23 @@ def get_clusters_from_paths(expression_path, covariates_path, tissue_id, min_clu
     residal_exp = pd.DataFrame(residal_exp, columns=covariates_df.index, index=expression_df['gene_id'])
     print('residualized expression')
 
-    return get_clusters(expression_df, residal_exp, tissue_id, min_cluster_size=min_cluster_size, max_cluster_size=max_cluster_size, min_corr_cutoff=min_corr_cutoff, percent_corr_cutoff=percent_corr_cutoff, cutoff_type=cutoff_type)
+    return get_clusters(expression_df, residal_exp, tissue_id, min_cluster_size=min_cluster_size, max_cluster_size=max_cluster_size, min_corr_cutoff=min_corr_cutoff, percent_corr_cutoff=percent_corr_cutoff, cutoff_type=cutoff_type, trim=trim)
 
 
-def get_clusters(expression_df, residal_exp, tissue_id, min_cluster_size=2, max_cluster_size=50, min_corr_cutoff=0.1, percent_corr_cutoff=.7, cutoff_type='pvalue'):
+def get_clusters(expression_df, residal_exp, tissue_id, min_cluster_size=2, max_cluster_size=50, min_corr_cutoff=0.1, percent_corr_cutoff=.7, cutoff_type='pvalue', trim=True):
     # calculate total number of pairs considered for bonferroni correction
     total_pairs = 0
     for i in np.arange(1,23,1):
-        chr_gene_ids = expression_df[expression_df['#chr'] == f'chr{i}']['gene_id']
-        upper_corner_idxs = np.triu(np.ones(len(chr_gene_ids)), k=1)
-        excluded_cluster_size_idxs = np.triu(np.ones(len(chr_gene_ids)), k=max_cluster_size)
+        num_genes_chr = sum(expression_df['#chr'] == f'chr{i}')
+        upper_corner_idxs = np.triu(np.ones(num_genes_chr), k=1)
+        excluded_cluster_size_idxs = np.triu(np.ones(num_genes_chr), k=max_cluster_size)
         total_pairs += upper_corner_idxs.sum()  - excluded_cluster_size_idxs.sum()
 
     # cycle thorugh all chrs
     clusters_all_chr = []
     for i in np.arange(1,23,1):
         print(f'Working on chr{i}')
-        clusters_all_chr.append(get_clusters_chr(i, expression_df, residal_exp, total_pairs, tissue_id, min_cluster_size, max_cluster_size, min_corr_cutoff, percent_corr_cutoff, cutoff_type))
+        clusters_all_chr.append(get_clusters_chr(i, expression_df, residal_exp, total_pairs, tissue_id, min_cluster_size=min_cluster_size, max_cluster_size=max_cluster_size, min_corr_cutoff=min_corr_cutoff, percent_corr_cutoff=percent_corr_cutoff, cutoff_type=cutoff_type, trim=trim))
 
     # concat and return 
     return pd.concat(clusters_all_chr)

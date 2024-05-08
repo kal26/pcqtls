@@ -13,3 +13,6 @@ pcqtl_output_dir: "output/proteincoding_rewrite/pcqtl/"
 pc_output_dir: "output/proteincoding_rewrite/pcs/"
 overlap_output_dir: "output/proteincoding_rewrite/overlap/"
 annotations_output_dir: "output/proteincoding_rewrite/annotations/"
+
+# for clusters
+percent_corr_cutoff: .7

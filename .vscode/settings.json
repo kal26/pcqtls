@@ -1,0 +1,8 @@
+{
+    "files.watcherExclude": {
+        "data/**": true,
+        "logs/**": true,
+        "output/**": true,
+        "tami_project/**": true
+    }
+}

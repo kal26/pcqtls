@@ -14,10 +14,10 @@ rule call_clusters:
         normalized_expression = expression_dir + '{TISSUE}.v8.normalized_expression.bed',
         full_covariates = covariates_dir + '{TISSUE}.v8.covariates.txt'
     params:
-        max_cluster_size = 50,
-        min_cluster_size = 2,
-        min_corr_cutoff = 0.1,
-        percent_corr_cutoff = .7,
+        max_cluster_size = max_cluster_size,
+        min_cluster_size = min_cluster_size,
+        min_corr_cutoff = min_corr_cutoff,
+        percent_corr_cutoff = percent_corr_cutoff,
         cutoff_type = 'pvalue', # or can be 'value'
     resources:
         mem = "80G", 

@@ -13,3 +13,7 @@ pcqtl_output_dir: "output/allgenes_rewrite/pcqtl/"
 pc_output_dir: "output/allgenes_rewrite/pcs/"
 overlap_output_dir: "output/allgenes_rewrite/overlap/"
 annotations_output_dir: "output/allgenes_rewrite/annotations/"
+
+
+# for clusters
+percent_corr_cutoff: .7
