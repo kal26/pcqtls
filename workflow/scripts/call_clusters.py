@@ -135,7 +135,9 @@ def get_clusters_chr(chr_id, expression_df, residal_exp, total_pairs, tissue_id,
 def get_clusters_from_paths(expression_path, covariates_path, tissue_id, min_cluster_size=2, max_cluster_size=50, min_corr_cutoff=0.1, percent_corr_cutoff=.7, cutoff_type='pvalue', trim=True):
     # load data
     expression_df = pd.read_csv(expression_path, sep='\t')
+    print(expression_df.head())
     covariates_df = pd.read_csv(covariates_path, sep='\t', index_col=0).T
+    print(covariates_df.head())
     print('loaded data')
 
 
@@ -151,9 +153,9 @@ def get_clusters(expression_df, residal_exp, tissue_id, min_cluster_size=2, max_
     # calculate total number of pairs considered for bonferroni correction
     total_pairs = 0
     for i in np.arange(1,23,1):
-        num_genes_chr = sum(expression_df['#chr'] == f'chr{i}')
-        upper_corner_idxs = np.triu(np.ones(num_genes_chr), k=1)
-        excluded_cluster_size_idxs = np.triu(np.ones(num_genes_chr), k=max_cluster_size)
+        chr_gene_ids = expression_df[expression_df['#chr'] == f'chr{i}']['gene_id']
+        upper_corner_idxs = np.triu(np.ones(len(chr_gene_ids)), k=1)
+        excluded_cluster_size_idxs = np.triu(np.ones(len(chr_gene_ids)), k=max_cluster_size)
         total_pairs += upper_corner_idxs.sum()  - excluded_cluster_size_idxs.sum()
 
     # cycle thorugh all chrs
@@ -185,7 +187,7 @@ def main():
     args = parser.parse_args()
 
     # call the clusters funciton
-    clusters_all_chr = get_clusters(args.expression_path, args.covariates_path, args.tissue_id, args.min_cluster_size, args.max_cluster_size, args.min_corr_cutoff, args.percent_corr_cutoff, args.cutoff_type)
+    clusters_all_chr = get_clusters_from_paths(args.expression_path, args.covariates_path, args.tissue_id, args.min_cluster_size, args.max_cluster_size, args.min_corr_cutoff, args.percent_corr_cutoff, args.cutoff_type)
 
     # write out 
     clusters_all_chr.to_csv(args.out_path)
