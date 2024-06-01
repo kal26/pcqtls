@@ -149,7 +149,7 @@ def get_clusters_from_paths(expression_path, covariates_path, tissue_id, min_clu
     return get_clusters(expression_df, residal_exp, tissue_id, min_cluster_size=min_cluster_size, max_cluster_size=max_cluster_size, min_corr_cutoff=min_corr_cutoff, percent_corr_cutoff=percent_corr_cutoff, cutoff_type=cutoff_type, trim=trim)
 
 
-def get_clusters(expression_df, residal_exp, tissue_id, min_cluster_size=2, max_cluster_size=50, min_corr_cutoff=0.1, percent_corr_cutoff=.7, cutoff_type='pvalue', trim=True):
+def get_clusters(expression_df, residal_exp, tissue_id, min_cluster_size=2, max_cluster_size=50, min_corr_cutoff=0.1, percent_corr_cutoff=.7, cutoff_type='pvalue', trim=True, verb=1):
     # calculate total number of pairs considered for bonferroni correction
     total_pairs = 0
     for i in np.arange(1,23,1):
@@ -161,7 +161,8 @@ def get_clusters(expression_df, residal_exp, tissue_id, min_cluster_size=2, max_
     # cycle thorugh all chrs
     clusters_all_chr = []
     for i in np.arange(1,23,1):
-        print(f'Working on chr{i}')
+        if verb>0:
+            print(f'Working on chr{i}')
         clusters_all_chr.append(get_clusters_chr(i, expression_df, residal_exp, total_pairs, tissue_id, min_cluster_size=min_cluster_size, max_cluster_size=max_cluster_size, min_corr_cutoff=min_corr_cutoff, percent_corr_cutoff=percent_corr_cutoff, cutoff_type=cutoff_type, trim=trim))
 
     # concat and return 

@@ -1,13 +1,13 @@
 # for inputs
 tissue_id_path: "data/references/selected_tissue_ids.csv"
-covariates_dir: "data/processed/covariates_tami/"
+covariates_dir: "data/processed/covariates_peers/"
 expression_dir: "data/processed/normalized_expression_proteincoding/"
 chr_list_path: "data/references/chrs.csv"
 genotype_stem: "data/processed/genotypes/GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.SHAPEIT2_phased.MAF01"
 
 # for outputs
-filtered_expression_output_dir: "data/processed/proteincoding_rewrite/clusters_expression/"
-clusters_dir: "data/processed/proteincoding_rewrite/clusters/"
+filtered_expression_output_dir: "output/proteincoding_rewrite/clusters_expression/"
+clusters_dir: "output/proteincoding_rewrite/clusters/"
 eqtl_output_dir: "output/proteincoding_rewrite/control_eqtl/"
 pcqtl_output_dir: "output/proteincoding_rewrite/pcqtl/"
 pc_output_dir: "output/proteincoding_rewrite/pcs/"
