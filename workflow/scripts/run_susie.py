@@ -35,7 +35,16 @@ def main():
                     covariates_df)
     # write out
     print('writing out')
-    susie_df.to_csv(args.susie_out_path, sep='\t')
+    print(susie_df)
+
+    if len(susie_df)==0:
+        # if there are no credible sets, the output of susie.map is a list, 
+        # and cannot be properly written out 
+        print('No susie credible sets')
+        pd.DataFrame(columns=['idx', 'phenotype_id', 'variant_id', 'pip', 'af', 'cs_id']).to_csv(args.susie_out_path, sep='\t')
+    else:
+        susie_df.to_csv(args.susie_out_path, sep='\t')
+        
 
 if __name__ == "__main__":
     main()

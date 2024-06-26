@@ -126,6 +126,10 @@ def get_clusters_chr(chr_id, expression_df, residal_exp, total_pairs, tissue_id,
 
     # make one dataframe and write out
     out_df = pd.DataFrame(cluster_output)
+    print('Found {} clusters'.format(len(cluster_output)))
+    if len(cluster_output)==0:
+        # found no clusters, return an empty df
+        return pd.DataFrame(columns=['N_genes', 'Transcripts', 'Perc_cor', 'Mean_cor', 'Mean_pos_cor', 'Mean_neg_cor', 'Chromosome', 'Tissue'])
     if trim:
         # smaller clusters than the minimum can sneak in through the trimming process, remove these
         out_df = out_df[out_df['N_genes'] >= min_cluster_size]

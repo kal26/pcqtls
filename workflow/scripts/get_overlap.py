@@ -6,6 +6,8 @@ import re
 e_susie_df = pd.read_csv(snakemake.input[0], sep='\t', index_col=0)
 pc_susie_df = pd.read_csv(snakemake.input[1], sep='\t', index_col=0)
 
+print('Overlapping {} eqtls and {} pcqtls'.format(len(e_susie_df), len(pc_susie_df)))
+
 
 # add ids for each credible set
 pc_susie_df['cs_full_id'] = pc_susie_df['phenotype_id'].astype(str) + '_cs' + pc_susie_df['cs_id'].astype(str)
@@ -43,6 +45,10 @@ def generate_csoverlap_dict(susie_df):
     return cs_overlap_dict
 
 def get_overlap_ids_optimized(row, overlap_dict, match=True):
+    # check if there is anything to overlap with
+    if len(overlap_dict)==0:
+        return []
+    
     overlap_ids = set()
     for variant_id in row.variant_list:
         if variant_id in overlap_dict:
@@ -69,6 +75,11 @@ def annotate_overlap_df(overlap_df):
     overlap_df['num_e_samelead'] = overlap_df.apply(num_shared_lead_var, axis=1, args=(e_overlap_df,))
     overlap_df['num_pc_samelead'] = overlap_df.apply(num_shared_lead_var, axis=1, args=(pc_overlap_df,))
     # get the other css with the any credible set variant overlap 
+    print('overlap_dict')
+    print(e_cs_overlap_dict)
+    print(pc_cs_overlap_dict)
+    print('test overlap run')
+    print(overlap_df.apply(get_overlap_ids_optimized, axis=1, args=(e_cs_overlap_dict,)))
     overlap_df['e_overlap'] = overlap_df.apply(get_overlap_ids_optimized, axis=1, args=(e_cs_overlap_dict,))
     overlap_df['pc_overlap'] = overlap_df.apply(get_overlap_ids_optimized, axis=1, args=(pc_cs_overlap_dict,))
     overlap_df['num_e_overlap'] = overlap_df.apply(num_csoverlap, axis=1, args=(e_cs_overlap_dict,))
