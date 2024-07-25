@@ -37,7 +37,7 @@ chr_list = list(df['chr_id'])
 include: 'rules/pcqtl.smk'
 include: 'rules/eqtl.smk'
 include: 'rules/annotate.smk'
-include: 'rules/clusters.smk'
+#include: 'rules/clusters.smk'
 
 
 # to remove a bloated .snakemake directory after sucessful completion
@@ -47,12 +47,12 @@ include: 'rules/clusters.smk'
 
 rule all:
     input:
-        clusters = expand(clusters_dir + '{TISSUE}_clusters_all_chr.csv', TISSUE = tissue_ids),
+        #clusters = expand(clusters_dir + '{TISSUE}_clusters_all_chr.csv', TISSUE = tissue_ids),
         #vep = expand(annotations_output_dir + '{TISSUE}.v8.leadvars.vep.vcf', TISSUE = tissue_ids),
         overlap = expand(overlap_output_dir + '{TISSUE}.v8.overlap.txt', TISSUE = tissue_ids),
-        pcqtl_susie = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.susie.txt', TISSUE = tissue_ids),
+        #pcqtl_susie = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.susie.txt', TISSUE = tissue_ids),
         pc_nominal = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE = tissue_ids),
-        eqtl_susie = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie.txt', TISSUE = tissue_ids),
+        #eqtl_susie = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie.txt', TISSUE = tissue_ids),
         eqtl_niominal = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE=tissue_ids),
 
         # controls that are all genes, not just cluster genes
