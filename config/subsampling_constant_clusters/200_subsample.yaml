@@ -1,5 +1,5 @@
 # for inputs
-tissue_id_path: "data/references/selected_tissue_ids.csv"
+tissue_id_path: "data/references/test_tissue_ids.csv"
 covariates_dir: "data/processed/subsampling/200/covariates/"
 expression_dir: "data/processed/subsampling/200/normalized_expression/"
 chr_list_path: "data/references/chrs.csv"
