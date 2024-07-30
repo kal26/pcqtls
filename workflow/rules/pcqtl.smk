@@ -40,7 +40,8 @@ rule run_pcqtl_cis_nominal:
             {input.pcs} \
             {params.pcqtl_output_dir}{wildcards.TISSUE}/{wildcards.TISSUE}.v8.pcs \
             --covariates {input.covariates} \
-            --mode cis_nominal
+            --mode cis_nominal \
+            --maf_threshold .01
         """
 
 # cis eQTL mapping: permutations (i.e. top variant per phenotype group)
@@ -65,7 +66,8 @@ rule run_pcqtl_cis:
             {input.pcs} \
             {params.pcqtl_output_dir}{wildcards.TISSUE}/{wildcards.TISSUE}.v8.pcs \
             --covariates {input.covariates} \
-            --mode cis
+            --mode cis \
+            --maf_threshold .01
         """
 
 # cis-QTL mapping: conditionally independent QTLs
@@ -94,7 +96,8 @@ rule run_pcqtl_cis_independent:
             {params.pcqtl_output_dir}{wildcards.TISSUE}/{wildcards.TISSUE}.v8.pcs \
             --covariates {input.covariates} \
             --cis_output {input.cis_results} \
-            --mode cis_independent
+            --mode cis_independent \
+            --maf_threshold .01
         """
 
 # cis-QTL mapping: susie credible set summary stats

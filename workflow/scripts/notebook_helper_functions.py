@@ -36,6 +36,10 @@ def load_tissue_ids(config):
     tissue_df = pd.read_csv(f"{prefix}/{tissue_id_path}", header=0)
     return list(tissue_df['Tissue'])
 
+def load_tissue_df(config):
+    tissue_id_path = config['tissue_id_path']
+    return pd.read_csv(f"{prefix}/{tissue_id_path}", header=0)
+
 # functions to help with annotating loaded data
 def var_pos(df):
     return df['variant_id'].str.split('_').str[1].astype(int)
