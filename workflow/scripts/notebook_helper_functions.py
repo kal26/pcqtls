@@ -4,7 +4,7 @@ import pandas as pd
 # working directory prefix
 prefix = '/home/klawren/oak/pcqtls'
 
-def get_overlap(config, tissue_id):
+def load_overlap(config, tissue_id):
     return pd.read_csv('{}/{}/{}.v8.overlap.txt'.format(prefix, config['overlap_output_dir'], tissue_id), sep='\t')
 
 
@@ -39,6 +39,40 @@ def load_tissue_ids(config):
 def load_tissue_df(config):
     tissue_id_path = config['tissue_id_path']
     return pd.read_csv(f"{prefix}/{tissue_id_path}", header=0)
+
+
+def load_pc_top_per_phenotype(config, tissue_id):
+    pcqtl_output_dir = config['pcqtl_output_dir']
+    return pd.read_csv(f'{prefix}/{pcqtl_output_dir}/{tissue_id}/{tissue_id}.v8.pcs.cis_qtl.txt.gz', sep='\t')
+
+def load_e_top_per_phenotype(config, tissue_id):
+    eqtl_output_dir = config['eqtl_output_dir']
+    return pd.read_csv(f'{prefix}/{eqtl_output_dir}/{tissue_id}/{tissue_id}.v8.cluster_genes.cis_qtl.txt.gz', sep='\t')
+
+def load_pc_permutation(config, tissue_id):
+    pcqtl_output_dir = config['pcqtl_output_dir']
+    return pd.read_csv(f'{prefix}/{pcqtl_output_dir}/{tissue_id}/{tissue_id}.v8.pcs.cis_independent_qtl.txt.gz', sep='\t')
+
+def load_e_permutation(config, tissue_id):
+    eqtl_output_dir = config['eqtl_output_dir']
+    return pd.read_csv(f'{prefix}/{eqtl_output_dir}/{tissue_id}/{tissue_id}.v8.cluster_genes.cis_independent_qtl.txt.gz', sep='\t')
+
+
+
+
+def load_e_nominal_all_chr(config, tissue_id):
+    e_nominal_dfs=[]
+    for chr_id in range(1,23):
+        e_nominal_dfs.append(load_e_nominal(config, tissue_id, chr_id=chr_id))
+    return pd.concat(e_nominal_dfs)
+
+def load_pc_nominal_all_chr(config, tissue_id):
+    pc_nominal_dfs=[]
+    for chr_id in range(1,23):
+        pc_nominal_dfs.append(load_pc_nominal(config, tissue_id, chr_id=chr_id))
+    return pd.concat(pc_nominal_dfs)
+
+
 
 # functions to help with annotating loaded data
 def var_pos(df):
