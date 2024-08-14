@@ -3,6 +3,8 @@ import pandas as pd
 import argparse
 from tqdm import tqdm 
 import yaml
+import ast
+
 
 
 import sys
@@ -324,6 +326,8 @@ def add_annotations(cluster_df, gid_gencode, gene_enhancer_df, paralog_df, cross
         cluster_df['has_high_pos_corr'] = cluster_df['Mean_pos_cor'] > .5
         print('annotated correlations')
 
+
+
 def load_and_annotate(cluster_df, my_tissue_id, covariates_path, expression_path,
                       gencode_path='data/references/processed_gencode.v26.GRCh38.genes.csv', 
                       full_abc_path = 'data/references/functional_annotations/ABC_predictions/AllPredictions.AvgHiC.ABC0.015.minus150.ForABCPaperV3.txt.gz', 
@@ -332,7 +336,10 @@ def load_and_annotate(cluster_df, my_tissue_id, covariates_path, expression_path
                       ctcf_dir='data/references/functional_annotations/ctcf_chip', 
                       paralog_path='/data/references/functional_annotations/paralogs_biomart_ensembl97.tsv.gz', 
                       go_path='data/references/functional_annotations/go_biomart_ensembl97.tsv.gz', 
-                      cross_map_path='data/references/cross_mappability/cross_mappability_100_agg.csv'):
+                      cross_map_path='data/references/cross_mappability/cross_mappability_100_agg.csv',
+                      verbosity=0):
+    if verbosity:
+        print('loading data')
     gid_gencode, full_gencode = load_gencode(f'{prefix}/{gencode_path}')
     gene_enhancer_df = load_abc(full_gencode, my_tissue_id, f'{prefix}/{full_abc_path}', f'{prefix}/{abc_match_path}')
     ctcf_df = load_ctcf(my_tissue_id, f'{prefix}/{ctcf_match_path}', f'{prefix}/{ctcf_dir}')
@@ -340,10 +347,13 @@ def load_and_annotate(cluster_df, my_tissue_id, covariates_path, expression_path
     go_df = load_go(f'{prefix}/{go_path}')
     cross_mappability = load_cross_map(f'{prefix}/{cross_map_path}')
     residal_exp = get_redidual_expression(covariates_path, expression_path)
+    if verbosity:
+        print('data loaded')
     add_annotations(cluster_df, gid_gencode, gene_enhancer_df, paralog_df, cross_mappability, go_df, ctcf_df, residal_exp)
 
 
-def run_annotate_from_config(config_path, my_tissue_id):
+
+def run_annotate_from_config(config_path, my_tissue_id, verbosity=0):
     # general paths from config
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
@@ -355,7 +365,7 @@ def run_annotate_from_config(config_path, my_tissue_id):
 
     cluster_df = pd.read_csv(f'{prefix}/{clusters_dir}/{my_tissue_id}_clusters_all_chr.csv', index_col=0)
 
-    load_and_annotate(cluster_df, my_tissue_id, covariates_path, expression_path)
+    load_and_annotate(cluster_df, my_tissue_id, covariates_path, expression_path, verbosity=verbosity)
     return cluster_df
 
 def run_annotate_from_paths(my_tissue_id, clusters_path, expression_path, covariates_path):
