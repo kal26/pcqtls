@@ -217,8 +217,10 @@ def annotate_enhancers_jaccard(cluster_df, gene_enhancer_df):
                 # jaccard with reweighting
                 jaccards_weighted.append(enhancer_min_max['ABC.Score_min'].sum()/enhancer_min_max['ABC.Score'].sum())
 
-        #jaccards_unweighted = np.nan_to_num(jaccards_unweighted)
-        #jaccards_weighted = np.nan_to_num(jaccards_weighted)
+        # nan if there are no enhancers for a gene in my abc predictions
+        # mask the nans to 0
+        jaccards_unweighted = np.nan_to_num(jaccards_unweighted)
+        jaccards_weighted = np.nan_to_num(jaccards_weighted)
 
         cluster_df.loc[idx, 'max_jaccard_unweighted'] = max(jaccards_unweighted)
         cluster_df.loc[idx, 'max_jaccard_weighted'] = max(jaccards_weighted)
