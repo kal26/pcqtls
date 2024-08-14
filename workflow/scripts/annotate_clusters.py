@@ -388,7 +388,6 @@ def main():
     parser.add_argument('--verbosity', type=int, default=0, help = 'output verbosity')
 
     args = parser.parse_args()
-    # call the pc funciton
     cluster_df_annotated = run_annotate_from_paths(args.tissue, args.cluster_path, args.expression_path, args.covariates_path)
     cluster_df_annotated.to_csv(args.out_path)
 
