@@ -24,7 +24,7 @@ rule run_eqtl_cis_nominal:
         eqtl_output_dir = eqtl_output_dir
     resources:
         mem = "30G", 
-        time = "2:00:00"
+        time = "4:00:00"
     threads: 10
     conda:
         'tensorqtl_r'
@@ -50,7 +50,7 @@ rule run_eqtl_cis:
         eqtl_output_dir = eqtl_output_dir 
     resources:
         mem = "30G",
-        time = "2:00:00"
+        time = "4:00:00"
 
     threads: 10
     conda:
@@ -80,7 +80,7 @@ rule run_eqtl_cis_independent:
         eqtl_output_dir = eqtl_output_dir
     resources:
         mem = "30G",
-        time = "2:00:00"
+        time = "6:00:00"
     threads: 10
     conda:
         'tensorqtl_r'
@@ -107,7 +107,7 @@ rule run_eqtl_susie:
         eqtl_output_dir = eqtl_output_dir 
     resources:
         mem = "30G",
-        time = "2:00:00"
+        time = "4:00:00"
     threads: 10
     conda:
         'tensorqtl_r'

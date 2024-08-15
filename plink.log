@@ -1,0 +1,26 @@
+PLINK v1.90p 64-bit (30 Nov 2019)
+Options in effect:
+  --bfile data/processed/genotypes/GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.SHAPEIT2_phased.MAF01
+  --keep-allele-order
+  --r square
+
+Hostname: dper730xd-srcf-d16-37.scg.stanford.edu
+Working directory: /oak/stanford/groups/smontgom/klawren/pcqtls
+Start time: Wed Aug 14 15:48:22 2024
+
+Random number seed: 1723675702
+386764 MB RAM detected; reserving 193382 MB for main workspace.
+10770860 variants loaded from .bim file.
+838 people (0 males, 0 females, 838 ambiguous) loaded from .fam.
+Ambiguous sex IDs written to plink.nosex .
+Using up to 27 threads (change this with --threads).
+Before main variant filters, 838 founders and 0 nonfounders present.
+Calculating allele frequencies... done.
+Total genotyping rate is 0.99932.
+10770860 variants and 838 people pass filters and QC.
+Note: No phenotypes present.
+Error: Gigantic (over 400k loci) --r/--r2 unfiltered, non-distributed
+computation.  Rerun with the 'yes-really' modifier if you are SURE you have
+enough hard drive space and want to do this.
+
+End time: Wed Aug 14 15:48:31 2024

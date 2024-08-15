@@ -29,7 +29,7 @@ rule run_pcqtl_cis_nominal:
         pcqtl_output_dir = pcqtl_output_dir
     resources:
         mem = "30G",
-        time = "2:00:00"
+        time = "4:00:00"
     threads: 10
     conda:
         'tensorqtl_r'
@@ -55,7 +55,7 @@ rule run_pcqtl_cis:
         pcqtl_output_dir = pcqtl_output_dir
     resources:
         mem = "30G",
-        time = "2:00:00"
+        time = "4:00:00"
     threads: 10
     conda:
         'tensorqtl_r'
@@ -84,7 +84,7 @@ rule run_pcqtl_cis_independent:
         pcqtl_output_dir = pcqtl_output_dir
     resources:
         mem = "30G",
-        time = "2:00:00"
+        time = "6:00:00"
     threads: 10
     conda:
         'tensorqtl_r'
@@ -111,7 +111,7 @@ rule run_pcqtl_susie:
         pcqtl_output_dir = pcqtl_output_dir
     resources:
         mem = "30G",
-        time = "2:00:00"
+        time = "4:00:00"
     threads: 10
     conda:
         'tensorqtl_r'

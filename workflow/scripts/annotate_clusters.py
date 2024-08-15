@@ -297,7 +297,12 @@ def annotate_cross_maps(cluster_df, cross_mappability):
     cluster_df['num_cross_map'] = cluster_df.apply(get_cross_map, axis=1, args=(cross_mappability,))
     cluster_df['has_cross_map'] = cluster_df['num_cross_map'] > 0
 
-
+def annotate_complexes(cluster_df, complex_df):
+    for idx, row in tqdm(cluster_df.iterrows(), total=len(cluster_df)):
+        complex_list = complex_df[complex_df.index.isin(row['Transcripts'].split(','))]
+        num_complexes = sum(complex_list.explode('ComplexID').duplicated())
+        cluster_df.loc[idx, 'num_complexes'] = num_complexes
+        cluster_df.loc[idx, 'has_complexes'] = num_complexes > 0
 
 # function to add all annotations, give correctly loaded data
 def add_annotations(cluster_df, gid_gencode, gene_enhancer_df, paralog_df, cross_mappability, go_df, ctcf_df, residal_exp):
