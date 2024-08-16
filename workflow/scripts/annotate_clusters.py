@@ -375,10 +375,20 @@ def run_annotate_from_config(config_path, my_tissue_id, verbosity=0):
     load_and_annotate(cluster_df, my_tissue_id, covariates_path, expression_path, verbosity=verbosity)
     return cluster_df
 
-def run_annotate_from_paths(my_tissue_id, clusters_path, expression_path, covariates_path):
+def run_annotate_from_paths(my_tissue_id, clusters_path, expression_path, covariates_path,
+                      gencode_path, full_abc_path, abc_match_path, ctcf_match_path,
+                      ctcf_dir, paralog_path, go_path, cross_map_path):
     # this version for use in snakemake
     cluster_df = pd.read_csv(clusters_path, index_col=0)
-    load_and_annotate(cluster_df, my_tissue_id, covariates_path, expression_path)
+    load_and_annotate(cluster_df, my_tissue_id, covariates_path, expression_path, 
+                      gencode_path=gencode_path, 
+                      full_abc_path = full_abc_path,
+                      abc_match_path=abc_match_path,
+                      ctcf_match_path=ctcf_match_path,
+                      ctcf_dir= ctcf_dir,
+                      paralog_path=paralog_path,
+                      go_path=go_path,
+                      cross_map_path=cross_map_path)
     return cluster_df
 
 
@@ -393,27 +403,17 @@ def main():
     parser.add_argument('--full_abc_path', help = 'path to abc')
     parser.add_argument('--abc_match_path', help = 'path to abc gtex matching')
     parser.add_argument('--ctcf_match_path', help = 'path to ctcf matching')
+    parser.add_argument('--ctcf_dir', help = 'path to ctcf dir')
     parser.add_argument('--paralog_path', help = 'path to paralogs')
     parser.add_argument('--go_path', help = 'path to go')
     parser.add_argument('--cross_map_path', help = 'path to cross map')
-
-gencode_path='data/references/processed_gencode.v26.GRCh38.genes.csv', 
-                      full_abc_path = 'data/references/functional_annotations/ABC_predictions/AllPredictions.AvgHiC.ABC0.015.minus150.ForABCPaperV3.txt.gz', 
-                      abc_match_path='data/references/functional_annotations/ABC_predictions/ABC_matched_gtex.csv', 
-                      ctcf_match_path='data/references/functional_annotations/ctcf_chip/ctcf_matched_gtex.csv', 
-                      ctcf_dir='data/references/functional_annotations/ctcf_chip', 
-                      paralog_path='/data/references/functional_annotations/paralogs_biomart_ensembl97.tsv.gz', 
-                      go_path='data/references/functional_annotations/go_biomart_ensembl97.tsv.gz', 
-                      cross_map_path='data/references/cross_mappability/cross_mappability_100_agg.csv',
-
-
-
-
     parser.add_argument('-o', '--out_path', help='path to write out annotated clusters')
     parser.add_argument('--verbosity', type=int, default=0, help = 'output verbosity')
 
     args = parser.parse_args()
-    cluster_df_annotated = run_annotate_from_paths(args.tissue, args.cluster_path, args.expression_path, args.covariates_path)
+    cluster_df_annotated = run_annotate_from_paths(args.tissue, args.cluster_path, args.expression_path, args.covariates_path,
+                                                   args.gencode_path, args.full_abc_path, args.abc_match_path, args.ctcf_match_path,
+                                                   args.ctcf_dir, args.paralog_path, args.go_path, args.cross_map_path)
     cluster_df_annotated.to_csv(args.out_path)
 
 if __name__ == "__main__":

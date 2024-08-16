@@ -48,6 +48,15 @@ rule annotate_clusters:
     resources:
         mem = "80G", 
         time = "2:00:00"
+    params:
+        gencode_path = gencode_path, 
+        full_abc_path = full_abc_path, 
+        abc_match_path = abc_match_path, 
+        ctcf_match_path = ctcf_match_path, 
+        ctcf_dir = ctcf_dir, 
+        paralog_path = paralog_path,
+        go_path = go_path, 
+        cross_map_path = cross_map_path 
     conda:
         'tensorqtl_r'
     output:
@@ -59,6 +68,14 @@ rule annotate_clusters:
             -e {input.normalized_expression} \
             -co {input.full_covariates} \
             -o {output.annotated_clusters} \
+            --gencode_path {params.gencode_path} \
+            --full_abc_path {params.full_abc_path} \
+            --abc_match_path {params.abc_match_path} \
+            --ctcf_match_path {params.ctcf_match_path} \
+            --ctcf_dir {params.ctcf_dir} \
+            --paralog_path {params.paralog_path} \
+            --go_path {params.go_path} \
+            --cross_map_path {params.cross_map_path} \
             --verbosity 1
         """
 
@@ -71,9 +88,16 @@ rule annotate_nulls:
         mem = "80G", 
         time = "2:00:00"
     params:
-        gencode = gencode_path,
         exclude_cluster_genes = 1,
-        distance_matched = 0
+        distance_matched = 0,
+        gencode_path = gencode_path, 
+        full_abc_path = full_abc_path, 
+        abc_match_path = abc_match_path, 
+        ctcf_match_path = ctcf_match_path, 
+        ctcf_dir = ctcf_dir, 
+        paralog_path = paralog_path,
+        go_path = go_path, 
+        cross_map_path = cross_map_path 
     conda:
         'tensorqtl_r'
     output:
@@ -85,7 +109,14 @@ rule annotate_nulls:
             -e {input.normalized_expression} \
             -co {input.full_covariates} \
             -o {output.annotated_nulls} \
-            -g {params.gencode} \
+            --gencode_path {params.gencode_path} \
+            --full_abc_path {params.full_abc_path} \
+            --abc_match_path {params.abc_match_path} \
+            --ctcf_match_path {params.ctcf_match_path} \
+            --ctcf_dir {params.ctcf_dir} \
+            --paralog_path {params.paralog_path} \
+            --go_path {params.go_path} \
+            --cross_map_path {params.cross_map_path} \
             --cluster_size {wildcards.CLUSTER_SIZE} \
             --exclude_cluster_genes {params.exclude_cluster_genes} \
             --distance_matched {params.distance_matched} \

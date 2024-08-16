@@ -100,11 +100,20 @@ def main():
     parser.add_argument('-e', '--expression_path', help = 'path to .bed normalized expression')
     parser.add_argument('-co', '--covariates_path', help = 'path to covariates')
     parser.add_argument('-o', '--out_path', help='path to write out annotated null clusters')
-    parser.add_argument('-g', '--gencode_path', help='path to gencode')
     parser.add_argument('--cluster_size', type=int, default=2, help = 'genes per cluster')
     parser.add_argument('--exclude_cluster_genes', type=int, default=1, help = 'exlude cluster genes? 0 for no, 1 for yes')
     parser.add_argument('--distance_matched', type=int, default=0, help = 'match to distances in cluster? 0 for no, 1 for yes')
     parser.add_argument('--verbosity', type=int, default=1, help = 'output verbosity')
+    parser.add_argument('--gencode_path', help = 'path to gencode')
+    parser.add_argument('--full_abc_path', help = 'path to abc')
+    parser.add_argument('--abc_match_path', help = 'path to abc gtex matching')
+    parser.add_argument('--ctcf_match_path', help = 'path to ctcf matching')
+    parser.add_argument('--ctcf_dir', help = 'path to ctcf dir')
+    parser.add_argument('--paralog_path', help = 'path to paralogs')
+    parser.add_argument('--go_path', help = 'path to go')
+    parser.add_argument('--cross_map_path', help = 'path to cross map')
+    parser.add_argument('-o', '--out_path', help='path to write out annotated clusters')
+    parser.add_argument('--verbosity', type=int, default=0, help = 'output verbosity')
 
     args = parser.parse_args()
 
@@ -131,7 +140,9 @@ def main():
         null_clusters = get_resamp_null_cluster(null_clusters, cluster_df[cluster_df['N_genes']==args.cluster_size], plot=False)
 
     # annotate the null
-    load_and_annotate(null_clusters, args.tissue, args.covariates_path, args.expression_path, verbosity=args.verbosity)   
+    load_and_annotate(null_clusters, args.tissue, args.covariates_path, args.expression_path, 
+                      args.gencode_path, args.full_abc_path, args.abc_match_path, args.ctcf_match_path,
+                      args.ctcf_dir, args.paralog_path, args.go_path, args.cross_map_path, args.verbosity)   
     # write out
     null_clusters.to_csv(args.out_path)
 
