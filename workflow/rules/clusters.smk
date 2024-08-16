@@ -71,14 +71,13 @@ rule annotate_nulls:
         mem = "80G", 
         time = "2:00:00"
     params:
-        gencode = 'data/references/processed_gencode.v26.GRCh38.genes.csv',
-        cluster_size = 2,
+        gencode = gencode_path,
         exclude_cluster_genes = 1,
         distance_matched = 0
     conda:
         'tensorqtl_r'
     output:
-        annotated_nulls = clusters_dir + '{TISSUE}_null_annotated.csv'
+        annotated_nulls = clusters_dir + '{TISSUE}_null_{params.cluster_size}genes_annotated.csv'
     shell:"""
         python workflow/scripts/annotate_null_clusters.py \
             -t {wildcards.TISSUE} \
@@ -87,7 +86,7 @@ rule annotate_nulls:
             -co {input.full_covariates} \
             -o {output.annotated_nulls} \
             -g {params.gencode} \
-            --cluster_size {params.cluster_size} \
+            --cluster_size {wildcards.CLUSTER_SIZE} \
             --exclude_cluster_genes {params.exclude_cluster_genes} \
             --distance_matched {params.distance_matched} \
             --verbosity 1

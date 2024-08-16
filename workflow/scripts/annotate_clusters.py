@@ -389,6 +389,26 @@ def main():
     parser.add_argument('-c', '--cluster_path', help = 'path to .csv clusters')
     parser.add_argument('-e', '--expression_path', help = 'path to .bed normalized expression')
     parser.add_argument('-co', '--covariates_path', help = 'path to covariates')
+    parser.add_argument('--gencode_path', help = 'path to gencode')
+    parser.add_argument('--full_abc_path', help = 'path to abc')
+    parser.add_argument('--abc_match_path', help = 'path to abc gtex matching')
+    parser.add_argument('--ctcf_match_path', help = 'path to ctcf matching')
+    parser.add_argument('--paralog_path', help = 'path to paralogs')
+    parser.add_argument('--go_path', help = 'path to go')
+    parser.add_argument('--cross_map_path', help = 'path to cross map')
+
+gencode_path='data/references/processed_gencode.v26.GRCh38.genes.csv', 
+                      full_abc_path = 'data/references/functional_annotations/ABC_predictions/AllPredictions.AvgHiC.ABC0.015.minus150.ForABCPaperV3.txt.gz', 
+                      abc_match_path='data/references/functional_annotations/ABC_predictions/ABC_matched_gtex.csv', 
+                      ctcf_match_path='data/references/functional_annotations/ctcf_chip/ctcf_matched_gtex.csv', 
+                      ctcf_dir='data/references/functional_annotations/ctcf_chip', 
+                      paralog_path='/data/references/functional_annotations/paralogs_biomart_ensembl97.tsv.gz', 
+                      go_path='data/references/functional_annotations/go_biomart_ensembl97.tsv.gz', 
+                      cross_map_path='data/references/cross_mappability/cross_mappability_100_agg.csv',
+
+
+
+
     parser.add_argument('-o', '--out_path', help='path to write out annotated clusters')
     parser.add_argument('--verbosity', type=int, default=0, help = 'output verbosity')
 
