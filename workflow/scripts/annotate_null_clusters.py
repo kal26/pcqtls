@@ -103,7 +103,6 @@ def main():
     parser.add_argument('--cluster_size', type=int, default=2, help = 'genes per cluster')
     parser.add_argument('--exclude_cluster_genes', type=int, default=1, help = 'exlude cluster genes? 0 for no, 1 for yes')
     parser.add_argument('--distance_matched', type=int, default=0, help = 'match to distances in cluster? 0 for no, 1 for yes')
-    parser.add_argument('--verbosity', type=int, default=1, help = 'output verbosity')
     parser.add_argument('--gencode_path', help = 'path to gencode')
     parser.add_argument('--full_abc_path', help = 'path to abc')
     parser.add_argument('--abc_match_path', help = 'path to abc gtex matching')
@@ -112,7 +111,6 @@ def main():
     parser.add_argument('--paralog_path', help = 'path to paralogs')
     parser.add_argument('--go_path', help = 'path to go')
     parser.add_argument('--cross_map_path', help = 'path to cross map')
-    parser.add_argument('-o', '--out_path', help='path to write out annotated clusters')
     parser.add_argument('--verbosity', type=int, default=0, help = 'output verbosity')
 
     args = parser.parse_args()
