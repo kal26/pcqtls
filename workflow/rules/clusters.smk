@@ -101,7 +101,7 @@ rule annotate_nulls:
     conda:
         'tensorqtl_r'
     output:
-        annotated_nulls = clusters_dir + '{TISSUE}_null_{params.cluster_size}genes_annotated.csv'
+        annotated_nulls = clusters_dir + '{TISSUE}_null_{CLUSTER_SIZE}genes_annotated.csv'
     shell:"""
         python workflow/scripts/annotate_null_clusters.py \
             -t {wildcards.TISSUE} \
