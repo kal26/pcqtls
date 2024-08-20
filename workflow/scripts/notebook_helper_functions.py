@@ -7,6 +7,12 @@ prefix = '/home/klawren/oak/pcqtls'
 def load_overlap(config, tissue_id):
     return pd.read_csv('{}/{}/{}.v8.overlap.txt'.format(prefix, config['overlap_output_dir'], tissue_id), sep='\t')
 
+def load_clusters_annotated(config, tissue_id):
+    return pd.read_csv('{}/{}/{}_clusters_annotated.csv'.format(prefix, config['annotations_output_dir'], tissue_id), index_col=0)
+
+def load_null_clusters_annotated(config, tissue_id, num_genes=2):
+    return pd.read_csv('{}/{}/{}_null_{}genes_annotated.csv'.format(prefix, config['annotations_output_dir'], tissue_id, num_genes), index_col=0)
+
 
 # load in e nominal
 def load_e_nominal(config, tissue_id, chr_id=22, get_var_position=False):

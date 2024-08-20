@@ -1,14 +1,3 @@
-
-rule get_covariates:
-    input: 
-        normalized_expression =  expression_dir + '{TISSUE}.v8.normalized_expression.bed',
-        gtex_provided_covariates =  covariates_dir + '{TISSUE}.v8.gtex_covariates.bed'
-    output:
-        full_covariates =  covariates_dir + '{TISSUE}.v8.covariates.txt'
-    script:
-        '../scripts/get_covariates.py'
-
-
 rule call_clusters: 
     input:
         normalized_expression = expression_dir + '{TISSUE}.v8.normalized_expression.bed',

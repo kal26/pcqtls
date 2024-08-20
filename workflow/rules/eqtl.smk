@@ -69,6 +69,34 @@ rule run_eqtl_cis:
 # cis-QTL mapping: conditionally independent QTLs
 # This mode maps conditionally independent cis-QTLs using the stepwise regression procedure described in GTEx Consortium, 2017. 
 # The output from the permutation step (see map_cis above) is required. 
+# rule run_eqtl_cis_independent:
+#     input:
+#         genotypes = genotype_stem + '.fam',
+#         expression = filtered_expression_output_dir + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed',
+#         covariates = covariates_dir + '{TISSUE}.v8.covariates.txt',
+#         cis_results = eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl.txt.gz'
+#     params:
+#         genotype_stem = genotype_stem,
+#         eqtl_output_dir = eqtl_output_dir,
+#         tissue = {TISSUE}
+#     resources:
+#         mem = "30G",
+#         time = "6:00:00"
+#     threads: 10
+#     conda:
+#         'tensorqtl_r'
+#     output:
+#        eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_independent_qtl.txt.gz'
+#     shell:"""
+#         python -m tensorqtl {params.genotype_stem} \
+#             {input.expression} \
+#             {params.eqtl_output_dir}{wildcards.TISSUE}/{wildcards.TISSUE}.v8.cluster_genes \
+#             --covariates {input.covariates} \
+#             --cis_output {input.cis_results} \
+#             --mode cis_independent \
+#             --maf_threshold .01
+#         """
+
 rule run_eqtl_cis_independent:
     input:
         genotypes = genotype_stem + '.fam',
@@ -77,7 +105,8 @@ rule run_eqtl_cis_independent:
         cis_results = eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl.txt.gz'
     params:
         genotype_stem = genotype_stem,
-        eqtl_output_dir = eqtl_output_dir
+        eqtl_output_dir = eqtl_output_dir,
+        tissue = {TISSUE}
     resources:
         mem = "30G",
         time = "6:00:00"
@@ -86,15 +115,9 @@ rule run_eqtl_cis_independent:
         'tensorqtl_r'
     output:
        eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_independent_qtl.txt.gz'
-    shell:"""
-        python -m tensorqtl {params.genotype_stem} \
-            {input.expression} \
-            {params.eqtl_output_dir}{wildcards.TISSUE}/{wildcards.TISSUE}.v8.cluster_genes \
-            --covariates {input.covariates} \
-            --cis_output {input.cis_results} \
-            --mode cis_independent \
-            --maf_threshold .01
-        """
+    script:
+        '../scripts/run_gtex_qtl_permutations.py'
+
 
 # cis-QTL mapping: susie credible set summary stats
 rule run_eqtl_susie:

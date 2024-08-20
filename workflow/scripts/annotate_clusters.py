@@ -39,8 +39,11 @@ def get_redidual_expression(covariates_path, expression_path):
 
 def load_abc(my_tissue_id, full_gencode=None, full_abc_path= 'data/references/functional_annotations/ABC_predictions/AllPredictions.AvgHiC.ABC0.015.minus150.ForABCPaperV3.txt.gz', 
              abc_match_path='data/references/functional_annotations/ABC_predictions/ABC_matched_gtex.csv'):
-    if full_gencode==None:
-        gid_gencode, full_gencode = load_gencode()
+    try:
+        if full_gencode==None:
+            gid_gencode, full_gencode = load_gencode()
+    except ValueError:
+        pass
     # load in ABC data for enhancer gene connections
     full_abc_pred_df = pd.read_csv(full_abc_path, sep='\t')
     # load in tissue matching for ABC-gtex tissues
