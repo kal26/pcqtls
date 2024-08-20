@@ -18,7 +18,9 @@ def get_null_clusters(expressed_gencode, cluster_size, cluster_df=None):
     null_cluster_dfs = []
     for chr_id in range (1,23,1):
         chr_subset_gencode = expressed_gencode[expressed_gencode['chr'] == f'chr{chr_id}']
-        transcripts = chr_subset_gencode['transcript_id'].astype(str) + ',' + chr_subset_gencode['transcript_id'].shift(-(cluster_size-1)).astype(str)
+        transcripts = chr_subset_gencode['transcript_id'].astype(str)
+        for i in range(1,cluster_size):
+            transcripts = transcripts + ',' + chr_subset_gencode['transcript_id'].shift(-i).astype(str)
         chr_sizes = chr_subset_gencode['end'].shift(-(cluster_size-1)) - chr_subset_gencode['start']
 
         # trim off the blanks created from shifting
@@ -38,6 +40,7 @@ def get_null_clusters(expressed_gencode, cluster_size, cluster_df=None):
     null_df = pd.concat(null_cluster_dfs)
     null_df.reset_index(drop=True, inplace=True)
     null_df['Chromosome'] = null_df['chr']
+    null_df['N_genes'] = cluster_size
     return null_df
 
 

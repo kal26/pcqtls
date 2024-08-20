@@ -1,0 +1,39 @@
+import os 
+import sys
+import pandas as pd
+
+# input paths
+tissue_id_path = config['tissue_id_path']
+covariates_dir = config['covariates_dir']
+expression_dir = config['expression_dir']
+chr_list_path = config['chr_list_path']
+genotype_stem = config['genotype_stem']
+
+# output paths
+filtered_expression_output_dir = config['filtered_expression_output_dir']
+clusters_dir = config['clusters_dir']
+eqtl_output_dir = config['eqtl_output_dir']
+pcqtl_output_dir = config['pcqtl_output_dir']
+pc_output_dir = config['pc_output_dir']
+
+
+# load in all the wildcards
+df = pd.read_csv(tissue_id_path, header=0)
+tissue_ids = list(df['Tissue'])
+print('Running on tissues:{}'.format(tissue_ids))
+
+df = pd.read_csv(chr_list_path, header=0)
+chr_list = list(df['chr_id'])
+
+include: 'rules/pcqtl.smk'
+include: 'rules/eqtl.smk'
+
+
+rule all:
+    input:
+        pc_permutation = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_independent_qtl.txt.gz', TISSUE = tissue_ids),
+        eqtl_permutation = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_independent_qtl.txt.gz', TISSUE=tissue_ids),
+
+
+
+

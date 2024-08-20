@@ -58,8 +58,6 @@ def load_e_permutation(config, tissue_id):
     return pd.read_csv(f'{prefix}/{eqtl_output_dir}/{tissue_id}/{tissue_id}.v8.cluster_genes.cis_independent_qtl.txt.gz', sep='\t')
 
 
-
-
 def load_e_nominal_all_chr(config, tissue_id):
     e_nominal_dfs=[]
     for chr_id in range(1,23):

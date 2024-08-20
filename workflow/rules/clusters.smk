@@ -60,7 +60,7 @@ rule annotate_clusters:
     conda:
         'tensorqtl_r'
     output:
-        annotated_clusters = clusters_dir + '{TISSUE}_clusters_annotated.csv'
+        annotated_clusters = annotations_output_dir + '{TISSUE}_clusters_annotated.csv'
     shell:"""
         python workflow/scripts/annotate_clusters.py \
             -t {wildcards.TISSUE} \
@@ -101,7 +101,7 @@ rule annotate_nulls:
     conda:
         'tensorqtl_r'
     output:
-        annotated_nulls = clusters_dir + '{TISSUE}_null_{CLUSTER_SIZE}genes_annotated.csv'
+        annotated_nulls = annotations_output_dir + '{TISSUE}_null_{CLUSTER_SIZE}genes_annotated.csv'
     shell:"""
         python workflow/scripts/annotate_null_clusters.py \
             -t {wildcards.TISSUE} \

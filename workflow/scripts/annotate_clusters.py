@@ -17,7 +17,7 @@ prefix = '/home/klawren/oak/pcqtls'
 
 # functions to load in external data
 
-def load_gencode(gencode_path, protien_coding_only = True):
+def load_gencode(gencode_path='data/references/processed_gencode.v26.GRCh38.genes.csv', protien_coding_only = True):
     # load in gene data
     full_gencode=pd.read_csv(gencode_path)
     # filter to protien coding
@@ -37,7 +37,10 @@ def get_redidual_expression(covariates_path, expression_path):
     return residal_exp
 
 
-def load_abc(full_gencode, my_tissue_id, full_abc_path, abc_match_path):
+def load_abc(my_tissue_id, full_gencode=None, full_abc_path= 'data/references/functional_annotations/ABC_predictions/AllPredictions.AvgHiC.ABC0.015.minus150.ForABCPaperV3.txt.gz', 
+             abc_match_path='data/references/functional_annotations/ABC_predictions/ABC_matched_gtex.csv'):
+    if full_gencode==None:
+        gid_gencode, full_gencode = load_gencode()
     # load in ABC data for enhancer gene connections
     full_abc_pred_df = pd.read_csv(full_abc_path, sep='\t')
     # load in tissue matching for ABC-gtex tissues
@@ -107,6 +110,11 @@ def get_cluster_tss_size(row, gid_gencode):
     cluster_gencode = gid_gencode.loc[transcript_ids]
     return  cluster_gencode['tss_start'].max() - cluster_gencode['tss_start'].min()
 
+def get_num_overlapping(row, gid_gencode):
+    transcript_ids = row['Transcripts'].split(',')
+    cluster_gencode = gid_gencode.loc[transcript_ids]
+    return  sum((cluster_gencode['tss_start'] - cluster_gencode['tss_start'].shift(1)) < 1000)
+
 def get_cluster_start_ids(cluster_df):
     # the first for pairs, the first and second for threes, ect
     cluster_start_ids = []
@@ -160,6 +168,7 @@ def annotate_enhancers(cluster_df, gene_enhancer_df):
         num_shared_enhancers = sum(full_enhancer_list.duplicated())
         num_shared_strong_enhancers = sum(strong_enhancer_list.duplicated())
         num_shared_very_strong_enhancers = sum(very_strong_enhancer_list.duplicated())
+        cluster_df.loc[idx, 'num_abc_genes'] = len(enhancer_list.index.unique())
         cluster_df.loc[idx, 'num_shared_enhancers'] = num_shared_enhancers
         cluster_df.loc[idx, 'num_shared_strong_enhancers'] = num_shared_strong_enhancers
         cluster_df.loc[idx, 'num_enhancers'] = len(full_enhancer_list)
@@ -306,6 +315,7 @@ def annotate_complexes(cluster_df, complex_df):
 
 # function to add all annotations, give correctly loaded data
 def add_annotations(cluster_df, gid_gencode, gene_enhancer_df, paralog_df, cross_mappability, go_df, ctcf_df, residal_exp):
+    cluster_df.reset_index(drop=True, inplace=True)
     annotate_sizes(cluster_df, gid_gencode)
     print('annotated sizes')
     annotate_positions(cluster_df, gid_gencode) # this must go before annotate ctcf
@@ -348,7 +358,7 @@ def load_and_annotate(cluster_df, my_tissue_id, covariates_path, expression_path
     if verbosity:
         print('loading data')
     gid_gencode, full_gencode = load_gencode(f'{prefix}/{gencode_path}')
-    gene_enhancer_df = load_abc(full_gencode, my_tissue_id, f'{prefix}/{full_abc_path}', f'{prefix}/{abc_match_path}')
+    gene_enhancer_df = load_abc(my_tissue_id, full_gencode, f'{prefix}/{full_abc_path}', f'{prefix}/{abc_match_path}')
     ctcf_df = load_ctcf(my_tissue_id, f'{prefix}/{ctcf_match_path}', f'{prefix}/{ctcf_dir}')
     paralog_df = load_paralogs(f'{prefix}/{paralog_path}')
     go_df = load_go(f'{prefix}/{go_path}')
@@ -356,6 +366,7 @@ def load_and_annotate(cluster_df, my_tissue_id, covariates_path, expression_path
     residal_exp = get_redidual_expression(covariates_path, expression_path)
     if verbosity:
         print('data loaded')
+    cluster_df.reset_index(drop=True, inplace=True)
     add_annotations(cluster_df, gid_gencode, gene_enhancer_df, paralog_df, cross_mappability, go_df, ctcf_df, residal_exp)
 
 
@@ -371,7 +382,7 @@ def run_annotate_from_config(config_path, my_tissue_id, verbosity=0):
     covariates_path = f'{prefix}/{covariates_dir}/{my_tissue_id}.v8.covariates.txt'
 
     cluster_df = pd.read_csv(f'{prefix}/{clusters_dir}/{my_tissue_id}_clusters_all_chr.csv', index_col=0)
-
+    cluster_df.reset_index(drop=True, inplace=True)
     load_and_annotate(cluster_df, my_tissue_id, covariates_path, expression_path, verbosity=verbosity)
     return cluster_df
 
@@ -380,6 +391,7 @@ def run_annotate_from_paths(my_tissue_id, clusters_path, expression_path, covari
                       ctcf_dir, paralog_path, go_path, cross_map_path):
     # this version for use in snakemake
     cluster_df = pd.read_csv(clusters_path, index_col=0)
+    cluster_df.reset_index(drop=True, inplace=True)
     load_and_annotate(cluster_df, my_tissue_id, covariates_path, expression_path, 
                       gencode_path=gencode_path, 
                       full_abc_path = full_abc_path,

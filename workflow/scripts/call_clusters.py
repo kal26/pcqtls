@@ -193,7 +193,7 @@ def main():
 
     # call the clusters funciton
     clusters_all_chr = get_clusters_from_paths(args.expression_path, args.covariates_path, args.tissue_id, args.min_cluster_size, args.max_cluster_size, args.min_corr_cutoff, args.percent_corr_cutoff, args.cutoff_type)
-
+    clusters_all_chr.reset_index(drop=True, inplace=True)
     # write out 
     clusters_all_chr.to_csv(args.out_path)
 
