@@ -106,7 +106,7 @@ rule run_eqtl_cis_independent:
     params:
         genotype_stem = genotype_stem,
         eqtl_output_dir = eqtl_output_dir,
-        tissue = {TISSUE}
+        tissue = '{TISSUE}'
     resources:
         mem = "30G",
         time = "6:00:00"

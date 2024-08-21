@@ -17,7 +17,7 @@ prefix = '/home/klawren/oak/pcqtls'
 
 # functions to load in external data
 
-def load_gencode(gencode_path='data/references/processed_gencode.v26.GRCh38.genes.csv', protien_coding_only = True):
+def load_gencode(gencode_path='/home/klawren/oak/pcqtls/data/references/processed_gencode.v26.GRCh38.genes.csv', protien_coding_only = True):
     # load in gene data
     full_gencode=pd.read_csv(gencode_path)
     # filter to protien coding
@@ -37,8 +37,8 @@ def get_redidual_expression(covariates_path, expression_path):
     return residal_exp
 
 
-def load_abc(my_tissue_id, full_gencode=None, full_abc_path= 'data/references/functional_annotations/ABC_predictions/AllPredictions.AvgHiC.ABC0.015.minus150.ForABCPaperV3.txt.gz', 
-             abc_match_path='data/references/functional_annotations/ABC_predictions/ABC_matched_gtex.csv'):
+def load_abc(my_tissue_id, full_gencode=None, full_abc_path= '/home/klawren/oak/pcqtls/data/references/functional_annotations/ABC_predictions/AllPredictions.AvgHiC.ABC0.015.minus150.ForABCPaperV3.txt.gz', 
+             abc_match_path='/home/klawren/oak/pcqtls/data/references/functional_annotations/ABC_predictions/ABC_matched_gtex.csv'):
     try:
         if full_gencode==None:
             gid_gencode, full_gencode = load_gencode()
@@ -60,7 +60,8 @@ def load_abc(my_tissue_id, full_gencode=None, full_abc_path= 'data/references/fu
     return gene_enhancer_df
 
 
-def load_ctcf(my_tissue_id, ctcf_match_path, ctcf_dir):
+def load_ctcf(my_tissue_id, ctcf_match_path='/home/klawren/oak/pcqtls/data/references/functional_annotations/ctcf_chip/ctcf_matched_gtex.csv', 
+                      ctcf_dir='/home/klawren/oak/pcqtls/data/references/functional_annotations/ctcf_chip'):
     # load in ctcf data
     ctcf_gtex_match = pd.read_csv(ctcf_match_path)
     ctcf_file = ctcf_gtex_match[ctcf_gtex_match['GTEX'] == my_tissue_id].iloc[0]['ctcf']
@@ -113,6 +114,7 @@ def get_cluster_tss_size(row, gid_gencode):
     cluster_gencode = gid_gencode.loc[transcript_ids]
     return  cluster_gencode['tss_start'].max() - cluster_gencode['tss_start'].min()
 
+
 def get_num_overlapping(row, gid_gencode):
     transcript_ids = row['Transcripts'].split(',')
     cluster_gencode = gid_gencode.loc[transcript_ids]
@@ -133,12 +135,16 @@ def annotate_sizes(cluster_df, gid_gencode):
     cluster_df['cluster_size'] = cluster_df.apply(get_cluster_size, axis=1, args=(gid_gencode,))
     cluster_df['cluster_tss_size'] = cluster_df.apply(get_cluster_tss_size, axis=1, args=(gid_gencode,))
 
+
 def annotate_positions(cluster_df, gid_gencode):
     for idx, row in cluster_df.iterrows():
         transcript_ids = row['Transcripts'].split(',')
         cluster_gencode = gid_gencode.loc[transcript_ids]
         cluster_df.loc[idx, 'start'] = cluster_gencode['start'].min()
         cluster_df.loc[idx, 'end'] = cluster_gencode['end'].max()
+        cluster_df.loc[idx, 'tss_min'] = cluster_gencode['tss_start'].min()
+        cluster_df.loc[idx, 'tss_max'] = cluster_gencode['tss_start'].max()
+
 
 def get_bidirectional(row, gid_gencode):
     transcript_ids = row['Transcripts'].split(',')
@@ -181,7 +187,7 @@ def annotate_enhancers(cluster_df, gene_enhancer_df):
         cluster_df.loc[idx, 'has_shared_very_strong_enhancer'] = num_shared_very_strong_enhancers > 0
 
 def annotate_ctcf(cluster_df, ctcf_df):
-    cluster_df['interval'] = pd.arrays.IntervalArray.from_arrays(cluster_df['start'], cluster_df['end'])
+    cluster_df['interval'] = pd.arrays.IntervalArray.from_arrays(cluster_df['tss_min'], cluster_df['tss_max'])
     # ctcf intervals for each chromosome
     chr_ctcf_peaks={}
     chr_ctcf_points={}

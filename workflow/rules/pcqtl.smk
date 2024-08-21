@@ -110,7 +110,7 @@ rule run_pcqtl_cis_independent:
     params:
         genotype_stem = genotype_stem,
         pcqtl_output_dir = pcqtl_output_dir,
-        tissue = {TISSUE}
+        tissue = '{TISSUE}'
     resources:
         mem = "30G",
         time = "6:00:00"
@@ -118,7 +118,7 @@ rule run_pcqtl_cis_independent:
     conda:
         'tensorqtl_r'
     output:
-       eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_independent_qtl.txt.gz'
+        pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_independent_qtl.txt.gz'
     script:
         '../scripts/run_gtex_qtl_permutations.py'
 
