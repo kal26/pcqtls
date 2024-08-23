@@ -15,6 +15,8 @@ def load_clusters_annotated(config, tissue_id):
 def load_null_clusters_annotated(config, tissue_id, num_genes=2):
     return pd.read_csv('{}/{}/{}_null_{}genes_annotated.csv'.format(prefix, config['annotations_output_dir'], tissue_id, num_genes), index_col=0)
 
+def load_cluster(config, tissue_id):
+    return  pd.read_csv('{}/{}/{}_clusters_all_chr.csv'.format(prefix, config['clusters_dir'], tissue_id),index_col=0)
 
 # load in e nominal
 def load_e_nominal(config, tissue_id, chr_id=22, get_var_position=False):
@@ -71,11 +73,15 @@ def load_e_top_per_phenotype(config, tissue_id):
 
 def load_pc_permutation(config, tissue_id):
     pcqtl_output_dir = config['pcqtl_output_dir']
-    return pd.read_csv(f'{prefix}/{pcqtl_output_dir}/{tissue_id}/{tissue_id}.v8.pcs.cis_independent_qtl.txt.gz', sep='\t')
+    pc_permutation_df = pd.read_csv(f'{prefix}/{pcqtl_output_dir}/{tissue_id}/{tissue_id}.v8.pcs.cis_independent_qtl.txt.gz', sep='\t')
+    pc_permutation_df['cluster_id'] = pc_permutation_df['phenotype_id'].str.split('_pc').str[0]
+    return pc_permutation_df
 
 def load_e_permutation(config, tissue_id):
     eqtl_output_dir = config['eqtl_output_dir']
-    return pd.read_csv(f'{prefix}/{eqtl_output_dir}/{tissue_id}/{tissue_id}.v8.cluster_genes.cis_independent_qtl.txt.gz', sep='\t')
+    e_permutation_df = pd.read_csv(f'{prefix}/{eqtl_output_dir}/{tissue_id}/{tissue_id}.v8.cluster_genes.cis_independent_qtl.txt.gz', sep='\t')
+    e_permutation_df['cluster_id'] = e_permutation_df['phenotype_id'].str.split('_pc').str[0]
+    return e_permutation_df
 
 
 def load_e_nominal_all_chr(config, tissue_id):

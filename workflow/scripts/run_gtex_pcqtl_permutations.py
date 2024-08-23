@@ -10,8 +10,7 @@ covariates_path = snakemake.input[2]
 cis_results_path = snakemake.input[3]
 
 # only difference betwen this and pcqtl is in the output dir
-try:
-    os.system(f"python -m tensorqtl {genotype_stem} \
+os.system(f"python -m tensorqtl {genotype_stem} \
             {expression_path} \
             {cis_output_dir}{tissue}/{tissue}.v8.pcs \
             --covariates {covariates_path} \
@@ -19,9 +18,9 @@ try:
             --mode cis_independent \
             --maf_threshold .01")
 
-except ValueError:
-    # error raised when there are no signifigant results
-    outpath = snakemake.output[0]
+outpath = snakemake.output[0]
+# error raised when there are no signifigant results, and no file is written out
+if not os.path.isfile(outpath):
     print('writing out blank file')
     pd.DataFrame(columns=['phenotype_id', 'num_var', 'beta_shape1', 'beta_shape2', 'true_df',
        'pval_true_df', 'variant_id', 'start_distance', 'end_distance',
