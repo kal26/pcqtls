@@ -116,7 +116,7 @@ rule run_eqtl_cis_independent:
     output:
        eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_independent_qtl.txt.gz'
     script:
-        '../scripts/run_gtex_qtl_permutations.py'
+        '../scripts/run_gtex_eqtl_permutations.py'
 
 
 # cis-QTL mapping: susie credible set summary stats

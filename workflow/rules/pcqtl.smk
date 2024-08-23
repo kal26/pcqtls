@@ -120,7 +120,7 @@ rule run_pcqtl_cis_independent:
     output:
         pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_independent_qtl.txt.gz'
     script:
-        '../scripts/run_gtex_qtl_permutations.py'
+        '../scripts/run_gtex_pcqtl_permutations.py'
 
 # cis-QTL mapping: susie credible set summary stats
 rule run_pcqtl_susie:
