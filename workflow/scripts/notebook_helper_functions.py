@@ -45,6 +45,7 @@ def load_pc_susie(config, tissue_id):
     pc_susie_df['cs_num'] = pc_susie_df['cs_id'] 
     pc_susie_df['cs_id'] = pc_susie_df['phenotype_id'] + '_' + pc_susie_df['cs_id'].astype(str)
     pc_susie_df['pc_num'] = pc_susie_df['phenotype_id'].str.split('_pc').str[-1].astype(int)
+    pc_susie_df['cluster_id'] = pc_susie_df['phenotype_id'].str.split('_pc').str[0]
     pc_susie_df = add_lead_var(pc_susie_df)
     pc_susie_df = add_num_vars_cs(pc_susie_df)
     return pc_susie_df
