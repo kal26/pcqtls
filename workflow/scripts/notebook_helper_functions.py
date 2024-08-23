@@ -5,7 +5,9 @@ import pandas as pd
 prefix = '/home/klawren/oak/pcqtls'
 
 def load_overlap(config, tissue_id):
-    return pd.read_csv('{}/{}/{}.v8.overlap.txt'.format(prefix, config['overlap_output_dir'], tissue_id), sep='\t')
+    overlap_df = pd.read_csv('{}/{}/{}.v8.overlap.txt'.format(prefix, config['overlap_output_dir'], tissue_id), sep='\t')
+    overlap_df['var_cluster'] = overlap_df['lead_variant_id'] + '_' + overlap_df['cluster_id']
+    return overlap_df
 
 def load_clusters_annotated(config, tissue_id):
     return pd.read_csv('{}/{}/{}_clusters_annotated.csv'.format(prefix, config['annotations_output_dir'], tissue_id), index_col=0)
@@ -22,6 +24,8 @@ def load_e_nominal(config, tissue_id, chr_id=22, get_var_position=False):
     if get_var_position:
         e_nominal_df['variant_pos'] = var_pos(e_nominal_df)
     e_nominal_df['cluster_id'] = e_nominal_df['phenotype_id'].str.split('_e_').str[0]
+    e_nominal_df['var_cluster'] = e_nominal_df['variant_id'] + '_' + e_nominal_df['cluster_id']
+    e_nominal_df['egene_id'] = e_nominal_df['phenotype_id'].str.split('_e_').str[1]
     return e_nominal_df
 
 def load_pc_nominal(config, tissue_id, chr_id=22, get_var_position=False):
@@ -31,11 +35,20 @@ def load_pc_nominal(config, tissue_id, chr_id=22, get_var_position=False):
     if get_var_position:
         pc_nominal_df['variant_pos'] = var_pos(pc_nominal_df)
     pc_nominal_df['cluster_id'] = pc_nominal_df['phenotype_id'].str[:-4]
+    pc_nominal_df['var_cluster'] = pc_nominal_df['variant_id'] + '_' + pc_nominal_df['cluster_id']
     return pc_nominal_df
 
-def load_susie(config, tissue_id):
+def load_pc_susie(config, tissue_id):
     pcqtl_output_dir = config['pcqtl_output_dir']
-    return pd.read_csv(f'{prefix}/{pcqtl_output_dir}/{tissue_id}/{tissue_id}.v8.pcs.susie.txt', sep='\t', index_col=0)
+    pc_susie_df =  pd.read_csv(f'{prefix}/{pcqtl_output_dir}/{tissue_id}/{tissue_id}.v8.pcs.susie.txt', sep='\t', index_col=0)
+    pc_susie_df['var_cluster'] = pc_susie_df['variant_id'] + '_' + pc_susie_df['phenotype_id'].str.split('_pc1').str[0]
+    pc_susie_df['cs_num'] = pc_susie_df['cs_id'] 
+    pc_susie_df['cs_id'] = pc_susie_df['phenotype_id'] + '_' + pc_susie_df['cs_id'].astype(str)
+    pc_susie_df['pc_num'] = pc_susie_df['phenotype_id'].str.split('_pc').str[-1].astype(int)
+    pc_susie_df = add_lead_var(pc_susie_df)
+    pc_susie_df = add_num_vars_cs(pc_susie_df)
+    return pc_susie_df
+
 
 def load_tissue_ids(config):
     tissue_id_path = config['tissue_id_path']
@@ -81,3 +94,15 @@ def load_pc_nominal_all_chr(config, tissue_id):
 # functions to help with annotating loaded data
 def var_pos(df):
     return df['variant_id'].str.split('_').str[1].astype(int)
+
+def add_lead_var(susie_df):
+    lead_vars = susie_df.loc[susie_df.groupby('cs_id')['pip'].idxmax(),['cs_id','variant_id']].set_index('cs_id')
+    susie_df = susie_df.merge(lead_vars, how='left', left_on='cs_id', right_index=True)
+    susie_df = susie_df.rename(columns={'variant_id_y':'lead_variant_id', 'variant_id_x':'variant_id'})
+    return susie_df
+
+def add_num_vars_cs(susie_df):
+    num_vars = susie_df.groupby('cs_id').agg({'variant_id':'count'})
+    num_vars = num_vars.rename(columns={'variant_id':'num_vars'})
+    susie_df = susie_df.merge(num_vars, how='left', left_on='cs_id', right_index=True)
+    return susie_df
