@@ -17,6 +17,15 @@ prefix = '/home/klawren/oak/pcqtls'
 
 # functions to load in external data
 
+# download the tad boundries
+# data from http://dna.cs.miami.edu/TADKB/search.php
+def load_tad(tad_path = '/home/klawren/oak/pcqtls/data/references/TAD_annotations/TADs_hg38/converted_HiC_IMR90_DI_10kb.txt'):
+    tad_df = pd.read_csv(tad_path, header=None, sep='\t', names=['Chromosome', 'start','end'])
+    tad_df['Chromosome'] = tad_df['Chromosome'].str.strip('chr')
+    tad_df = tad_df[tad_df['Chromosome'].isin([f'{i}' for i in range(24)])]
+    tad_df['Chromosome'] = tad_df['Chromosome'].astype(int)
+    return tad_df
+
 def load_gencode(gencode_path='/home/klawren/oak/pcqtls/data/references/processed_gencode.v26.GRCh38.genes.csv', protien_coding_only = True):
     # load in gene data
     full_gencode=pd.read_csv(gencode_path)
@@ -206,6 +215,34 @@ def annotate_ctcf(cluster_df, ctcf_df):
         cluster_df.loc[idx, 'has_ctcf_point'] = num_ctcf_point > 0
 
 
+def count_tad_overlap(row, tad_df, inter_column):
+    tad_chr = tad_df[tad_df['Chromosome']==row.Chromosome]
+    # intervals for the TADs and TAD edges
+    chr_tad_intervals = pd.arrays.IntervalArray.from_arrays(tad_chr['start'], tad_chr['end'])
+    chr_tad_edges = pd.arrays.IntervalArray.from_arrays(pd.concat([tad_chr['start'], tad_chr['end']]), pd.concat([tad_chr['start']+1, tad_chr['end']+1]))
+
+    # number of TADs and TAD edges overlapped
+    tad_overlaps = sum(chr_tad_intervals.overlaps(row[inter_column]))
+    tad_edge_overlaps = sum(chr_tad_edges.overlaps(row[inter_column]))
+    # 0: in no TADs
+    if tad_edge_overlaps==0 and tad_overlaps==0:
+        return 0
+    # 2: crossing a TAD edge
+    elif tad_edge_overlaps > 0:
+        return 2
+    # 1: containted within 1 TAD (can be nested inside multiple TADs)
+    else:
+        return 1
+
+def annotate_tads(cluster_df, tad_df):
+    cluster_df['tss_inter'] = pd.arrays.IntervalArray.from_arrays(cluster_df['tss_min'], cluster_df['tss_max'])
+    cluster_df['gene_inter'] = pd.arrays.IntervalArray.from_arrays(cluster_df['start'], cluster_df['end'])
+    cluster_df['num_tads_gene'] = cluster_df.apply(count_tad_overlap, axis=1, args=(tad_df, 'gene_inter'))
+    cluster_df['num_tads_tss'] = cluster_df.apply(count_tad_overlap, axis=1, args=(tad_df, 'tss_inter'))
+    cluster_df['has_tads_gene'] = cluster_df['num_tads_gene'] > 1
+    cluster_df['has_tads_tss'] = cluster_df['num_tads_tss'] > 1
+
+
 
 def annotate_enhancers_jaccard(cluster_df, gene_enhancer_df):
     for idx, row in tqdm(cluster_df.iterrows(), total=len(cluster_df)):
@@ -323,12 +360,14 @@ def annotate_complexes(cluster_df, complex_df):
         cluster_df.loc[idx, 'has_complexes'] = num_complexes > 0
 
 # function to add all annotations, give correctly loaded data
-def add_annotations(cluster_df, gid_gencode, gene_enhancer_df, paralog_df, cross_mappability, go_df, ctcf_df, residal_exp):
+def add_annotations(cluster_df, gid_gencode, gene_enhancer_df, paralog_df, cross_mappability, go_df, ctcf_df, residal_exp, tad_df):
     cluster_df.reset_index(drop=True, inplace=True)
     annotate_sizes(cluster_df, gid_gencode)
     print('annotated sizes')
-    annotate_positions(cluster_df, gid_gencode) # this must go before annotate ctcf
+    annotate_positions(cluster_df, gid_gencode) # this must go before annotate ctcf and tads
     print('annotated positions')
+    annotate_tads(cluster_df, tad_df)
+    print('annotated tads')
     annotate_bidirectional(cluster_df, gid_gencode)
     print('annotated bidirectional promoters')
     annotate_enhancers(cluster_df, gene_enhancer_df)
@@ -363,6 +402,7 @@ def load_and_annotate(cluster_df, my_tissue_id, covariates_path, expression_path
                       paralog_path='/data/references/functional_annotations/paralogs_biomart_ensembl97.tsv.gz', 
                       go_path='data/references/functional_annotations/go_biomart_ensembl97.tsv.gz', 
                       cross_map_path='data/references/cross_mappability/cross_mappability_100_agg.csv',
+                      tad_path='data/references/TAD_annotations/TADs_hg38/converted_HiC_IMR90_DI_10kb.txt',
                       verbosity=0):
     if verbosity:
         print('loading data')
@@ -373,10 +413,11 @@ def load_and_annotate(cluster_df, my_tissue_id, covariates_path, expression_path
     go_df = load_go(f'{prefix}/{go_path}')
     cross_mappability = load_cross_map(f'{prefix}/{cross_map_path}')
     residal_exp = get_redidual_expression(covariates_path, expression_path)
+    tad_df = load_tad(f'{prefix}/{tad_path}')
     if verbosity:
         print('data loaded')
     cluster_df.reset_index(drop=True, inplace=True)
-    add_annotations(cluster_df, gid_gencode, gene_enhancer_df, paralog_df, cross_mappability, go_df, ctcf_df, residal_exp)
+    add_annotations(cluster_df, gid_gencode, gene_enhancer_df, paralog_df, cross_mappability, go_df, ctcf_df, residal_exp, tad_df)
 
 
 
@@ -397,7 +438,7 @@ def run_annotate_from_config(config_path, my_tissue_id, verbosity=0):
 
 def run_annotate_from_paths(my_tissue_id, clusters_path, expression_path, covariates_path,
                       gencode_path, full_abc_path, abc_match_path, ctcf_match_path,
-                      ctcf_dir, paralog_path, go_path, cross_map_path):
+                      ctcf_dir, paralog_path, go_path, cross_map_path, tad_path):
     # this version for use in snakemake
     cluster_df = pd.read_csv(clusters_path, index_col=0)
     cluster_df.reset_index(drop=True, inplace=True)
@@ -409,7 +450,8 @@ def run_annotate_from_paths(my_tissue_id, clusters_path, expression_path, covari
                       ctcf_dir= ctcf_dir,
                       paralog_path=paralog_path,
                       go_path=go_path,
-                      cross_map_path=cross_map_path)
+                      cross_map_path=cross_map_path, 
+                      tad_path=tad_path)
     return cluster_df
 
 
@@ -428,13 +470,14 @@ def main():
     parser.add_argument('--paralog_path', help = 'path to paralogs')
     parser.add_argument('--go_path', help = 'path to go')
     parser.add_argument('--cross_map_path', help = 'path to cross map')
+    parser.add_argument('--tad_path', help = 'path to tad data')
     parser.add_argument('-o', '--out_path', help='path to write out annotated clusters')
     parser.add_argument('--verbosity', type=int, default=0, help = 'output verbosity')
 
     args = parser.parse_args()
     cluster_df_annotated = run_annotate_from_paths(args.tissue, args.cluster_path, args.expression_path, args.covariates_path,
                                                    args.gencode_path, args.full_abc_path, args.abc_match_path, args.ctcf_match_path,
-                                                   args.ctcf_dir, args.paralog_path, args.go_path, args.cross_map_path)
+                                                   args.ctcf_dir, args.paralog_path, args.go_path, args.cross_map_path, args.tad_path)
     cluster_df_annotated.to_csv(args.out_path)
 
 if __name__ == "__main__":

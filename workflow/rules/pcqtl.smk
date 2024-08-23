@@ -106,7 +106,7 @@ rule run_pcqtl_cis_independent:
         genotypes = genotype_stem + '.fam',
         pcs = pc_output_dir + '{TISSUE}.pcs.bed',
         covariates = covariates_dir + '{TISSUE}.v8.covariates.txt',
-        cis_results = eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl.txt.gz'
+        cis_results = pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl.txt.gz'
     params:
         genotype_stem = genotype_stem,
         pcqtl_output_dir = pcqtl_output_dir,

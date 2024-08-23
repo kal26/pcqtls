@@ -36,6 +36,7 @@ ctcf_dir = config['ctcf_dir']
 paralog_path = config['paralog_path']
 go_path = config['go_path']
 cross_map_path = config['cross_map_path']
+tad_path = config['tad_path']
 
 
 # load in all the wildcards

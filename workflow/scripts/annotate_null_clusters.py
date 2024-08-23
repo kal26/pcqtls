@@ -114,6 +114,7 @@ def main():
     parser.add_argument('--paralog_path', help = 'path to paralogs')
     parser.add_argument('--go_path', help = 'path to go')
     parser.add_argument('--cross_map_path', help = 'path to cross map')
+    parser.add_argument('--tad_path', help = 'path to tad data')
     parser.add_argument('--verbosity', type=int, default=0, help = 'output verbosity')
 
     args = parser.parse_args()
@@ -143,7 +144,7 @@ def main():
     # annotate the null
     load_and_annotate(null_clusters, args.tissue, args.covariates_path, args.expression_path, 
                       args.gencode_path, args.full_abc_path, args.abc_match_path, args.ctcf_match_path,
-                      args.ctcf_dir, args.paralog_path, args.go_path, args.cross_map_path, args.verbosity)   
+                      args.ctcf_dir, args.paralog_path, args.go_path, args.cross_map_path, args.tad_path, args.verbosity)   
     # write out
     null_clusters.to_csv(args.out_path)
 

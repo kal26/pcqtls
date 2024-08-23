@@ -26,4 +26,5 @@ ctcf_dir: 'data/references/functional_annotations/ctcf_chip'
 paralog_path: '/data/references/functional_annotations/paralogs_biomart_ensembl97.tsv.gz'
 go_path: 'data/references/functional_annotations/go_biomart_ensembl97.tsv.gz'
 cross_map_path: 'data/references/cross_mappability/cross_mappability_100_agg.csv'
+tad_path: 'data/references/TAD_annotations/TADs_hg38/converted_HiC_IMR90_DI_10kb.txt'
 

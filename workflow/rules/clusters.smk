@@ -45,7 +45,8 @@ rule annotate_clusters:
         ctcf_dir = ctcf_dir, 
         paralog_path = paralog_path,
         go_path = go_path, 
-        cross_map_path = cross_map_path 
+        cross_map_path = cross_map_path, 
+        tad_path = tad_path
     conda:
         'tensorqtl_r'
     output:
@@ -65,6 +66,7 @@ rule annotate_clusters:
             --paralog_path {params.paralog_path} \
             --go_path {params.go_path} \
             --cross_map_path {params.cross_map_path} \
+            --tad_path {params.tad_path} \
             --verbosity 1
         """
 
@@ -86,7 +88,8 @@ rule annotate_nulls:
         ctcf_dir = ctcf_dir, 
         paralog_path = paralog_path,
         go_path = go_path, 
-        cross_map_path = cross_map_path 
+        cross_map_path = cross_map_path,
+        tad_path = tad_path
     conda:
         'tensorqtl_r'
     output:
@@ -106,6 +109,7 @@ rule annotate_nulls:
             --paralog_path {params.paralog_path} \
             --go_path {params.go_path} \
             --cross_map_path {params.cross_map_path} \
+            --tad_path {params.tad_path} \
             --cluster_size {wildcards.CLUSTER_SIZE} \
             --exclude_cluster_genes {params.exclude_cluster_genes} \
             --distance_matched {params.distance_matched} \
