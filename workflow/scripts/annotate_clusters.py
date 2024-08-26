@@ -16,9 +16,10 @@ prefix = '/home/klawren/oak/pcqtls'
 
 
 # functions to load in external data
+def load_avg_exression(avg_expression_path = f'{prefix}/data/processed/GTEx_Analysis_RSEMv1.gene_tpm.tissue_avg.csv'):
+    tissue_avg_expression = pd.read_csv(avg_expression_path, sep='\t', index_col=0)
+    return tissue_avg_expression
 
-# download the tad boundries
-# data from http://dna.cs.miami.edu/TADKB/search.php
 def load_tad(tad_path = '/home/klawren/oak/pcqtls/data/references/TAD_annotations/TADs_hg38/converted_HiC_IMR90_DI_10kb.txt'):
     tad_df = pd.read_csv(tad_path, header=None, sep='\t', names=['Chromosome', 'start','end'])
     tad_df['Chromosome'] = tad_df['Chromosome'].str.strip('chr')
@@ -358,6 +359,14 @@ def annotate_complexes(cluster_df, complex_df):
         num_complexes = sum(complex_list.explode('ComplexID').duplicated())
         cluster_df.loc[idx, 'num_complexes'] = num_complexes
         cluster_df.loc[idx, 'has_complexes'] = num_complexes > 0
+
+
+def annotate_avg_expression(cluster_df, tissue_avg_expression):
+    for idx, row in tqdm(cluster_df.iterrows(), total=len(cluster_df)):
+        transcript_list = row['Transcripts'].split(',')
+        cluster_avg_expression = tissue_avg_expression.loc[row['tissue'],transcript_list]
+        cluster_df.loc[idx, 'avg_expression'] = np.mean(cluster_avg_expression)
+        cluster_df.loc[idx, 'avg_log_expression'] = np.mean(np.log10(cluster_avg_expression))
 
 # function to add all annotations, give correctly loaded data
 def add_annotations(cluster_df, gid_gencode, gene_enhancer_df, paralog_df, cross_mappability, go_df, ctcf_df, residal_exp, tad_df):

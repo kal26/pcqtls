@@ -1,4 +1,4 @@
-f# functions to load the requested file types given a config pointing the right directories
+# functions to load the requested file types given a config pointing the right directories
 import pandas as pd
 
 # working directory prefix
@@ -18,7 +18,7 @@ def load_null_clusters_annotated(config, tissue_id, num_genes=2):
 def load_cluster(config, tissue_id):
     cluster_df =  pd.read_csv('{}/{}/{}_clusters_all_chr.csv'.format(prefix, config['clusters_dir'], tissue_id),index_col=0)
     for idx, row in cluster_df.iterrows():
-        cluster_df.loc[idx, 'cluster_id_sort']  = '_'.join([*sorted(row['Transcripts'].split(','))])
+        cluster_df.loc[idx, 'cluster_id']  = '_'.join([*sorted(row['Transcripts'].split(','))])
     return cluster_df
 
 # load in e nominal
@@ -103,6 +103,9 @@ def load_pc_nominal_all_chr(config, tissue_id):
         pc_nominal_dfs.append(load_pc_nominal(config, tissue_id, chr_id=chr_id))
     return pd.concat(pc_nominal_dfs)
 
+def load_expression(config, tissue_id):
+    expression_path = '/{}/{}/{}.v8.normalized_expression.bed'.format(prefix, config['expression_dir'], tissue_id)
+    return pd.read_csv(expression_path, sep='\t')
 
 
 # functions to help with annotating loaded data
@@ -120,3 +123,4 @@ def add_num_vars_cs(susie_df):
     num_vars = num_vars.rename(columns={'variant_id':'num_vars'})
     susie_df = susie_df.merge(num_vars, how='left', left_on='cs_id', right_index=True)
     return susie_df
+
