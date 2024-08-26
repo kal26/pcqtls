@@ -1,4 +1,4 @@
-# functions to load the requested file types given a config pointing the right directories
+f# functions to load the requested file types given a config pointing the right directories
 import pandas as pd
 
 # working directory prefix
@@ -16,7 +16,10 @@ def load_null_clusters_annotated(config, tissue_id, num_genes=2):
     return pd.read_csv('{}/{}/{}_null_{}genes_annotated.csv'.format(prefix, config['annotations_output_dir'], tissue_id, num_genes), index_col=0)
 
 def load_cluster(config, tissue_id):
-    return  pd.read_csv('{}/{}/{}_clusters_all_chr.csv'.format(prefix, config['clusters_dir'], tissue_id),index_col=0)
+    cluster_df =  pd.read_csv('{}/{}/{}_clusters_all_chr.csv'.format(prefix, config['clusters_dir'], tissue_id),index_col=0)
+    for idx, row in cluster_df.iterrows():
+        cluster_df.loc[idx, 'cluster_id_sort']  = '_'.join([*sorted(row['Transcripts'].split(','))])
+    return cluster_df
 
 # load in e nominal
 def load_e_nominal(config, tissue_id, chr_id=22, get_var_position=False):
@@ -71,16 +74,20 @@ def load_e_top_per_phenotype(config, tissue_id):
     eqtl_output_dir = config['eqtl_output_dir']
     return pd.read_csv(f'{prefix}/{eqtl_output_dir}/{tissue_id}/{tissue_id}.v8.cluster_genes.cis_qtl.txt.gz', sep='\t')
 
-def load_pc_permutation(config, tissue_id):
+def load_pc_permutation(config, tissue_id, pc1_only=False):
     pcqtl_output_dir = config['pcqtl_output_dir']
-    pc_permutation_df = pd.read_csv(f'{prefix}/{pcqtl_output_dir}/{tissue_id}/{tissue_id}.v8.pcs.cis_independent_qtl.txt.gz', sep='\t')
+    if pc1_only:
+        pc_path = f'{prefix}/{pcqtl_output_dir}/{tissue_id}/{tissue_id}.v8.pc1_only.cis_independent_qtl.txt.gz'
+    else:
+        pc_path = f'{prefix}/{pcqtl_output_dir}/{tissue_id}/{tissue_id}.v8.pcs.cis_independent_qtl.txt.gz'
+    pc_permutation_df = pd.read_csv(pc_path, sep='\t')
     pc_permutation_df['cluster_id'] = pc_permutation_df['phenotype_id'].str.split('_pc').str[0]
     return pc_permutation_df
 
 def load_e_permutation(config, tissue_id):
     eqtl_output_dir = config['eqtl_output_dir']
     e_permutation_df = pd.read_csv(f'{prefix}/{eqtl_output_dir}/{tissue_id}/{tissue_id}.v8.cluster_genes.cis_independent_qtl.txt.gz', sep='\t')
-    e_permutation_df['cluster_id'] = e_permutation_df['phenotype_id'].str.split('_pc').str[0]
+    e_permutation_df['cluster_id'] = e_permutation_df['phenotype_id'].str.split('_e').str[0]
     return e_permutation_df
 
 
@@ -99,8 +106,8 @@ def load_pc_nominal_all_chr(config, tissue_id):
 
 
 # functions to help with annotating loaded data
-def var_pos(df):
-    return df['variant_id'].str.split('_').str[1].astype(int)
+def var_pos(df, column='variant_id'):
+    return df[column].str.split('_').str[1].astype(int)
 
 def add_lead_var(susie_df):
     lead_vars = susie_df.loc[susie_df.groupby('cs_id')['pip'].idxmax(),['cs_id','variant_id']].set_index('cs_id')

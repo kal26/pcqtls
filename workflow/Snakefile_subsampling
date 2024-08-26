@@ -28,11 +28,12 @@ chr_list = list(df['chr_id'])
 include: 'rules/pcqtl.smk'
 include: 'rules/eqtl.smk'
 
-
 rule all:
     input:
         pc_permutation = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_independent_qtl.txt.gz', TISSUE = tissue_ids),
         eqtl_permutation = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_independent_qtl.txt.gz', TISSUE=tissue_ids),
+        pc1_permutation = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pc1_only.cis_independent_qtl.txt.gz', TISSUE=tissue_ids)
+
 
 
 
