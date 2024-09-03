@@ -6,18 +6,18 @@ chr_list_path: "data/references/chrs.csv"
 genotype_stem: "data/processed/genotypes/GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.SHAPEIT2_phased.MAF01"
 
 # for outputs
-filtered_expression_output_dir: "output/proteincoding_main/clusters_expression/"
-clusters_dir: "output/proteincoding_main/clusters/"
-eqtl_output_dir: "output/proteincoding_main/control_eqtl/"
-pcqtl_output_dir: "output/proteincoding_main/pcqtl/"
-pc_output_dir: "output/proteincoding_main/pcs/"
-overlap_output_dir: "output/proteincoding_main/overlap/"
-annotations_output_dir: "output/proteincoding_main/annotations/"
+filtered_expression_output_dir: "output/proteincoding_corr_0.5/clusters_expression/"
+clusters_dir: "output/proteincoding_corr_0.5/clusters/"
+eqtl_output_dir: "output/proteincoding_corr_0.5/control_eqtl/"
+pcqtl_output_dir: "output/proteincoding_corr_0.5/pcqtl/"
+pc_output_dir: "output/proteincoding_corr_0.5/pcs/"
+overlap_output_dir: "output/proteincoding_corr_0.5/overlap/"
+annotations_output_dir: "output/proteincoding_corr_0.5/annotations/"
 
 # for clusters
 percent_corr_cutoff: .7
-cutoff_type: 'pvalue'
-min_corr_cutoff: 0.1 # this doesn't matter with pvalue as cutoff type
+cutoff_type: 'value'
+min_corr_cutoff: 0.5
 
 # for cluster annotation
 gencode_path: 'data/references/processed_gencode.v26.GRCh38.genes.csv'

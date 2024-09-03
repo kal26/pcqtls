@@ -130,16 +130,16 @@ def get_num_overlapping(row, gid_gencode):
     cluster_gencode = gid_gencode.loc[transcript_ids]
     return  sum((cluster_gencode['tss_start'] - cluster_gencode['tss_start'].shift(1)) < 1000)
 
-def get_cluster_start_ids(cluster_df):
-    # the first for pairs, the first and second for threes, ect
-    cluster_start_ids = []
-    for i in range(cluster_df['N_genes'].max()):
-        out_ids = cluster_df[cluster_df['N_genes'] == i]['Transcripts'].str.split(',').str[:i-1].values
-        if len(out_ids)>0:
-            cluster_start_ids.append(np.concatenate(out_ids))
-        else:
-            cluster_start_ids.append([])
-    return cluster_start_ids
+# def get_cluster_start_ids(cluster_df):
+#     # the first for pairs, the first and second for threes, ect
+#     cluster_start_ids = []
+#     for i in range(cluster_df['N_genes'].max()):
+#         out_ids = cluster_df[cluster_df['N_genes'] == i]['Transcripts'].str.split(',').str[:i-1].values
+#         if len(out_ids)>0:
+#             cluster_start_ids.append(np.concatenate(out_ids))
+#         else:
+#             cluster_start_ids.append([])
+#     return cluster_start_ids
 
 def annotate_sizes(cluster_df, gid_gencode):
     cluster_df['cluster_size'] = cluster_df.apply(get_cluster_size, axis=1, args=(gid_gencode,))

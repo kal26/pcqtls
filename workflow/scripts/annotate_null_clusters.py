@@ -27,15 +27,22 @@ def get_null_clusters(expressed_gencode, cluster_size, cluster_df=None):
         transcripts = transcripts.iloc[:-(cluster_size-1)]
         chr_sizes = chr_sizes.iloc[:-(cluster_size-1)]
 
+        chr_null_df = pd.DataFrame({'Transcripts':transcripts, 'cluster_size':chr_sizes, 'chr':chr_id})
+
         # select those that are not already clusters
         try:
-            cluster_start_ids = get_cluster_start_ids(cluster_df)
-            this_cluster_size_start_ids = np.concatenate(cluster_start_ids[cluster_size:])
-            in_cluster_bool = pd.Series(chr_subset_gencode['transcript_id'].iloc[:-(cluster_size-1)]).isin(this_cluster_size_start_ids).values
-            null_cluster_dfs.append(pd.DataFrame({'Transcripts':transcripts[~in_cluster_bool], 'cluster_size':chr_sizes[~in_cluster_bool], 'chr':chr_id}))
+            cluster_ids = np.concatenate(cluster_df['Transcripts'].str.split(',').values)
+            chr_null_df['transcript_list'] = chr_null_df['Transcripts'].str.split(',')
+            # exclude any null clusters that contain two genes both in a cluster
+            null_clusters_exploded = chr_null_df.explode('transcript_list')
+            null_clusters_exploded['in_cluster'] = null_clusters_exploded['transcript_list'].isin(cluster_ids).astype(int)
+            null_clusters_cluster_df_count = null_clusters_exploded.groupby('Transcripts').agg({'in_cluster':sum})
+            exlcuded_clusters = null_clusters_cluster_df_count[null_clusters_cluster_df_count['in_cluster'] > 1].index
+            # add to the nulls
+            null_cluster_dfs.append(chr_null_df[~chr_null_df['Transcripts'].isin(exlcuded_clusters)])
         except TypeError:
             # no subselection wanted, i.e.None passed for cluster_df
-            null_cluster_dfs.append(pd.DataFrame({'Transcripts':transcripts, 'cluster_size':chr_sizes, 'chr':chr_id}))
+            null_cluster_dfs.append(chr_null_df)
 
     null_df = pd.concat(null_cluster_dfs)
     null_df.reset_index(drop=True, inplace=True)

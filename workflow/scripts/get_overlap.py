@@ -75,11 +75,6 @@ def annotate_overlap_df(overlap_df):
     overlap_df['num_e_samelead'] = overlap_df.apply(num_shared_lead_var, axis=1, args=(e_overlap_df,))
     overlap_df['num_pc_samelead'] = overlap_df.apply(num_shared_lead_var, axis=1, args=(pc_overlap_df,))
     # get the other css with the any credible set variant overlap 
-    print('overlap_dict')
-    print(e_cs_overlap_dict)
-    print(pc_cs_overlap_dict)
-    print('test overlap run')
-    print(overlap_df.apply(get_overlap_ids_optimized, axis=1, args=(e_cs_overlap_dict,)))
     overlap_df['e_overlap'] = overlap_df.apply(get_overlap_ids_optimized, axis=1, args=(e_cs_overlap_dict,))
     overlap_df['pc_overlap'] = overlap_df.apply(get_overlap_ids_optimized, axis=1, args=(pc_cs_overlap_dict,))
     overlap_df['num_e_overlap'] = overlap_df.apply(num_csoverlap, axis=1, args=(e_cs_overlap_dict,))

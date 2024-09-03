@@ -8,7 +8,7 @@ import argparse
 
 
 # get expression clusters on a per-chrom basis
-def get_clusters_chr(chr_id, expression_df, residal_exp, total_pairs, tissue_id, min_cluster_size=2, max_cluster_size=50, min_corr_cutoff=.01, percent_corr_cutoff=.7, cutoff_type='pvalue', trim=True):
+def get_clusters_chr(chr_id, expression_df, residal_exp, total_pairs, tissue_id, min_cluster_size=2, max_cluster_size=50, min_corr_cutoff=.01, percent_corr_cutoff=.7, cutoff_type='pvalue', trim=False):
     # genes on this chr
     chr_gene_ids = expression_df[expression_df['#chr'] == f'chr{chr_id}']['gene_id']
     chr_residual_exp = residal_exp.loc[chr_gene_ids]
@@ -45,7 +45,7 @@ def get_clusters_chr(chr_id, expression_df, residal_exp, total_pairs, tissue_id,
             
             # number of corrs with abs value above cuttoff or p value below cutoff
             if cutoff_type == 'value':
-                number_corrs_above_cutoff = sum(sum(abs(cluster_candidate.values)>min_corr_cutoff))
+                number_corrs_above_cutoff = sum(abs(cluster_values)>min_corr_cutoff)
             elif cutoff_type == 'pvalue':
                 # calculate p values below a bonferonni 0.05
                 cluster_candidate_pvalues = chr_pvalue.iloc[cluster_start_idx:cluster_start_idx+cluster_size, cluster_start_idx:cluster_start_idx+cluster_size]
@@ -71,7 +71,7 @@ def get_clusters_chr(chr_id, expression_df, residal_exp, total_pairs, tissue_id,
                 
                 # initiate the trimmed cluster as the full cluster
                 if cutoff_type=='value':
-                    cluster_bool_df = cluster_candidate >min_corr_cutoff
+                    cluster_bool_df = abs(cluster_candidate) > min_corr_cutoff
                 elif cutoff_type=='pvalue':
                     cluster_bool_df = cluster_candidate_pvalues < (0.05/total_pairs)
 

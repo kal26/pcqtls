@@ -7,7 +7,7 @@ rule call_clusters:
         min_cluster_size = min_cluster_size,
         min_corr_cutoff = min_corr_cutoff,
         percent_corr_cutoff = percent_corr_cutoff,
-        cutoff_type = 'pvalue', # or can be 'value'
+        cutoff_type = cutoff_type, # or can be 'value'
     resources:
         mem = "80G", 
         time = "2:00:00",

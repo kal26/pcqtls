@@ -21,8 +21,10 @@ annotations_output_dir = config['annotations_output_dir']
 # cluster params
 max_cluster_size = 50
 min_cluster_size = 2
-min_corr_cutoff = 0.1
+min_corr_cutoff = config['min_corr_cutoff']
 percent_corr_cutoff = float(config['percent_corr_cutoff'])
+cutoff_type = config['cutoff_type']
+
 
 # null params
 null_sizes=[2,3,4,5]
@@ -63,14 +65,14 @@ rule all:
         clusters = expand(clusters_dir + '{TISSUE}_clusters_all_chr.csv', TISSUE = tissue_ids),
         annotated_clusters = expand(annotations_output_dir + '{TISSUE}_clusters_annotated.csv', TISSUE = tissue_ids),
         annotated_nulls =  expand(annotations_output_dir + '{TISSUE}_null_{CLUSTER_SIZE}genes_annotated.csv', TISSUE = tissue_ids, CLUSTER_SIZE = null_sizes),
-        #vep = expand(annotations_output_dir + '{TISSUE}.v8.leadvars.vep.vcf', TISSUE = tissue_ids),
-        #overlap = expand(overlap_output_dir + '{TISSUE}.v8.overlap.txt', TISSUE = tissue_ids),
-        #pcqtl_susie = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.susie.txt', TISSUE = tissue_ids),
-        #pc_permutation = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_independent_qtl.txt.gz', TISSUE = tissue_ids),
-        #pcqtl_nominal = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE = tissue_ids),
-        #eqtl_susie = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie.txt', TISSUE = tissue_ids),
-        #eqtl_permutation = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_independent_qtl.txt.gz', TISSUE=tissue_ids),
-        #eqtl_nominal = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE=tissue_ids),
+        vep = expand(annotations_output_dir + '{TISSUE}.v8.leadvars.vep.vcf', TISSUE = tissue_ids),
+        overlap = expand(overlap_output_dir + '{TISSUE}.v8.overlap.txt', TISSUE = tissue_ids),
+        pcqtl_susie = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.susie.txt', TISSUE = tissue_ids),
+        pc_permutation = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_independent_qtl.txt.gz', TISSUE = tissue_ids),
+        pcqtl_nominal = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE = tissue_ids),
+        eqtl_susie = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie.txt', TISSUE = tissue_ids),
+        eqtl_permutation = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_independent_qtl.txt.gz', TISSUE=tissue_ids),
+        eqtl_nominal = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE=tissue_ids),
         # controls that are all genes, not just cluster genes
         #chr22_susie = expand('output/chr22_eqtl/{TISSUE}/{TISSUE}.v8.chr22_genes.susie.txt', TISSUE = tissue_ids),
         #control_vep = expand('output/chr22_eqtl_annotations/{TISSUE}.v8.chr22_genes.leadvars.vep.vcf', TISSUE = tissue_ids)

@@ -10,7 +10,10 @@ def load_overlap(config, tissue_id):
     return overlap_df
 
 def load_clusters_annotated(config, tissue_id):
-    return pd.read_csv('{}/{}/{}_clusters_annotated.csv'.format(prefix, config['annotations_output_dir'], tissue_id), index_col=0)
+    annot_cluster = pd.read_csv('{}/{}/{}_clusters_annotated.csv'.format(prefix, config['annotations_output_dir'], tissue_id), index_col=0)
+    for idx, row in annot_cluster.iterrows():
+        annot_cluster.loc[idx, 'cluster_id']  = '_'.join([*sorted(row['Transcripts'].split(','))])
+    return annot_cluster
 
 def load_null_clusters_annotated(config, tissue_id, num_genes=2):
     return pd.read_csv('{}/{}/{}_null_{}genes_annotated.csv'.format(prefix, config['annotations_output_dir'], tissue_id, num_genes), index_col=0)
@@ -20,6 +23,18 @@ def load_cluster(config, tissue_id):
     for idx, row in cluster_df.iterrows():
         cluster_df.loc[idx, 'cluster_id']  = '_'.join([*sorted(row['Transcripts'].split(','))])
     return cluster_df
+
+def load_pc_cis(config, tissue_id):
+    pc_cis_path = '{}/{}/{}/{}.v8.pcs.cis_qtl.txt.gz'.format(prefix, config['pcqtl_output_dir'], tissue_id, tissue_id)
+    pc_cis_df = pd.read_csv(pc_cis_path, sep='\t', index_col=0)
+    pc_cis_df['cluster_id'] = pc_cis_df.index.str.split('_pc').str[0]
+    return pc_cis_df
+
+def load_e_cis(config, tissue_id):
+    e_cis_path = '{}/{}/{}/{}.v8.cluster_genes.cis_qtl.txt.gz'.format(prefix, config['eqtl_output_dir'], tissue_id, tissue_id)
+    e_cis_df = pd.read_csv(e_cis_path, sep='\t', index_col=0)
+    e_cis_df['cluster_id'] = e_cis_df.index.str.split('_e').str[0]
+    return e_cis_df
 
 # load in e nominal
 def load_e_nominal(config, tissue_id, chr_id=22, get_var_position=False):
