@@ -115,3 +115,26 @@ rule annotate_nulls:
             --distance_matched {params.distance_matched} \
             --verbosity 1
         """
+
+
+
+# this is used by coloc
+rule get_cluster_list:
+    input:
+        clusters = clusters_dir + '{TISSUE}_clusters_all_chr.csv'
+    output:
+        cluster_list = expand(coloc_output_dir + '{TISSUE}/temp/{TISSUE}.{CHROM}.cluster_list.txt', CHROM=chr_list, allow_missing=True)
+    params:
+        tissue_id = '{TISSUE}'
+    run:
+        import pandas as pd
+        import os
+        tissue_id = params[0]
+        cluster_df =  pd.read_csv(input[0],index_col=0)
+        for idx, row in cluster_df.iterrows():
+            cluster_df.loc[idx, 'cluster_id']  = '_'.join([*sorted(row['Transcripts'].split(','))])
+        output_head = output[0].split('/temp/')[0]
+        for chrom in cluster_df['Chromosome'].unique():
+            outpath = f'{output_head}/temp/{tissue_id}.chr{chrom}.cluster_list.txt'.replace(" ", "")
+            print(outpath)
+            cluster_df[cluster_df['Chromosome']==chrom]['cluster_id'].to_csv(outpath, index=False, header=False)

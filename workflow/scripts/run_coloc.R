@@ -1,13 +1,12 @@
-## following tutorial at https://hanruizhang.github.io/GWAS-eQTL-Colocalization/
-## in r/4.2.2
 
-setwd('/home/klawren/oak/pcqtls/')
+library(argparse)
 library(coloc)
 library(arrow)
 library(tidyverse)
 library(data.table)
 
-####### funtions #########
+
+########### functions #########
 
 get_ld_missing_snps <- function(ld_matrix){
   # drop snps with missing values from LD for eqtl
@@ -99,42 +98,65 @@ split_qtl <- function(qtl, snplist, ld_missing_snps, cleaned_ld_matrix){
 
 
 
-###### main #######
+#############
 
-# paths to data
-eqtl_path <- 'output/proteincoding_main/control_eqtl/Adipose_Subcutaneous/Adipose_Subcutaneous.v8.cluster_genes.cis_qtl_pairs.chr22.parquet'
-pcqtl_path <- '/home/klawren/oak/pcqtls/output/proteincoding_main/pcqtl/Adipose_Subcutaneous/Adipose_Subcutaneous.v8.pcs.cis_qtl_pairs.chr22.parquet'
-ld_path <- 'output/temp/test.ld'
-snp_list_path <- 'output/temp/snp_list.csv'
-gwas_meta_path <- '/home/klawren/oak/pcqtls/data/references/gwas_metadata.txt'
-gtex_meta_path <- '/home/klawren/oak/pcqtls/data/references/gtex_sample_sizes.csv'
-tissue_id <- 'Adipose_Subcutaneous'
-gwas_folder <- '/oak/stanford/groups/smontgom/shared/gwas_summary_stats/barbeira_gtex_imputed/imputed_gwas_hg38_1.1'
+# Create Argument Parser
+parser <- ArgumentParser()
+parser$add_argument("--eqtl_path", help="Input file path for eQTL pairs")
+parser$add_argument("--pcqtl_path", help="Input file path for PCQTL pairs")
+parser$add_argument("--gwas_meta", help="Input file path for GWAS metadata, with sample size and quant vs cc")
+parser$add_argument("--gtex_meta", help="Input file path for GTEX metadata with sample size")
+parser$add_argument("--cluster", help="cluster id")
+parser$add_argument("--tissue", help="tissue id")
+parser$add_argument("--snp_list_path", help="Input file path for snp list")
+parser$add_argument("--ld_path", help="Input file path for LD matrix")
+parser$add_argument("--gwas_folder", help="Folder path for GWAS data")
+parser$add_argument("--output_path", help="Output file path for coloc results")
 
 
-gwas_id <- 'imputed_UKB_50_Standing_height'
+# Parse the Arguments
+args <- parser$parse_args()
 
-# get number gtex samples form gtex_meta and tisuse
+# Access the arguments
+eqtl_path <- args$eqtl_path
+pcqtl_path <- args$pcqtl_path
+gwas_meta <- args$gwas_meta
+gtex_meta <- args$gtex_meta
+ld_path <- args$ld_path
+cluster_id <- args$cluster
+tissue_id <- args$tissue
+snp_list_path <- args$snp_list_path
+gwas_folder <- args$gwas_folder
+output_path <- args$output_path
+
+
+
+# Print or use the arguments as needed in the script
+cat("eQTL Path:", eqtl_path, "\n")
+cat("PCQTL Path:", pcqtl_path, "\n")
+cat("GWAS Metadata:", gwas_meta, "\n")
+cat("GTEX Metadata:", gwas_meta, "\n")
+cat("LD Path:", ld_path, "\n")
+cat("Cluster ID:", cluster_id, "\n")
+cat("Tissue ID:", cluster_id, "\n")
+cat("GWAS Folder:", gwas_folder, "\n")
+cat("Output Path:", output_path, "\n")
+
+# read in gtex meta
 gtex_meta <- read.table(gtex_meta_path, sep='\t', header = T)
 num_gtex_samples <- gtex_meta[gtex_meta$tissue_id == tissue_id, 'sample_size']
 
-# gwas metadata
+# read om gwas meta
 gwas_meta <- fread(gwas_meta_path)
-gwas_meta <- gwas_meta[3:5]
-
 
 #load in eqtl data
 eqtl <- read_parquet(eqtl_path)
 pcqtl <- read_parquet(pcqtl_path)
 
-
 # load in snp list
 snp_list <- read_table(snp_list_path)
 print("Total snps")
 print(length(snp_list$variant_id))
-
-# sample cluster id 
-cluster_id = strsplit(as.character(eqtl[1,'phenotype_id']), '_e_')[[1]][1]
 
 # load in ld matrix
 # can't use fread here,  not sure why
@@ -149,6 +171,7 @@ cleaned_ld_matrix <- ld_matrix[!rownames(ld_matrix) %in% ld_missing_snps, !colna
 print("Number snps with ld missing")
 print(length(ld_missing_snps))
 cleaned_ld_matrix <- ld_matrix[!rownames(ld_matrix) %in% ld_missing_snps, !colnames(ld_matrix) %in% ld_missing_snps]
+
 
 
 # combine pc and eqtls 
@@ -174,7 +197,7 @@ gwas_coloc_results <- data.frame(gwas_id = character(),
                                  idx1 = numeric(),
                                  stringsAsFactors = FALSE)
 
-qtls_for_coloc <- eqtls_for_coloc[1:4][!sapply(eqtls_for_coloc[1:4], is.null)]
+
 
 if (length(qtls_for_coloc) != 0){
   print(paste('running susie on', length(qtls_for_coloc), 'qtls'))
@@ -217,148 +240,6 @@ if (length(qtls_for_coloc) != 0){
 
 gwas_coloc_results$gwas_cs_is <- gwas_coloc_results$idx1 
 gwas_coloc_results$qtl_cs_is <- gwas_coloc_results$idx2
-write.table(gwas_coloc_results, file='output/temp/coloc.txt', row.names=FALSE, sep='\t')
-
-
-
-
-dim(gwas_meta)[[0]]
-for (i in seq_along(qtl_susies)){
-  print(i)
-}
-
-
-
-
-
-
-
-
-
-
-
-
-susie_gwas = runsusie(gwas_for_coloc)
-summary(susie_gwas)
-plot_dataset(gwas_for_coloc, susie_obj = susie_gwas)
-
-
-susie_eqtl = runsusie(eqtl_for_coloc)
-summary(susie_eqtl)
-plot_dataset(eqtl_for_coloc, susie_obj = susie_eqtl)
-
-
-coloc=coloc.susie(susie_gwas,susie_eqtl)
-print("test")
-print(coloc$summary)
-
-
-merged <- merge(test_eqtl, gwas_filtered, by="rsid", all=FALSE, suffixes=c("1","2"))
-plot()
-
-
-eqtl_for_coloc
-
-#### debug ####
-
-
-##### ploting ###
-
-plot_merged <- function(gwas_filtered, test_eqtl){
-  
-  gwas_filtered$rsid <- gwas_filtered$panel_variant_id
-  gwas_filtered$pval <- gwas_filtered$pvalue
-  gwas_filtered$logp <- -log(gwas_filtered$pval)
-  
-  test_eqtl$rsid <- test_eqtl$variant_id
-  test_eqtl$pval <- test_eqtl$pval_nominal
-  test_eqtl$logp <- -log(test_eqtl$pval)
-  
-  merged <- merge(test_eqtl, gwas_filtered, by="rsid", all=FALSE, suffixes=c("1","2"))
-  plot(x=merged$logp1, y=merged$logp2)
-  
-}
-
-
-
-# susie version
-
-
-print(summary(gwas_susie))
-
-susie1 = runsusie(clean_eqtl_list)
-print(summary(susie1))
-plot_dataset(cleaned_eqtl_list, susie_obj = eqtl_susie)
-
-
-
-
-
-# colocalize the susie resutls
-# note that snps do not need to perfectly match for this
-susie.res=coloc.susie(gwas_susie,eqlt_susie)
-print("test")
-print(susie.res$summary)
-plot_dataset(cleaned_eqtl_list, susie_obj = eqtl_susie)
-plot_dataset(susie.res)
-
-library(locuscomparer)
-cleaned_gwas$pval <- cleaned_gwas$pvalue
-cleaned_gwas$rsid <- cleaned_gwas$panel_variant_id
-cleaned_eqtl$pval <- cleaned_eqtl$pval_nominal
-cleaned_eqtl$rsid <- cleaned_eqtl$variant_id
-
-locuscompare(in_fn1 = c(cleaned_eqtl$rsid, cleaned_eqtl$pvall) , in_fn2 =c(cleaned_gwas$rsid, cleaned_gwas$pvall))
-
-
-
-
-
-
-# filter to variants in both 
-gwas_filtered <- gwas[gwas$panel_variant_id %in% eqtl$variant_id, ]
-eqtl_filtered <- eqtl[eqtl$variant_id %in% gwas_filtered$panel_variant_id, ]
-
-# make some columns to play well with coloc
-eqtl_filtered <- eqtl_filtered %>%
-  mutate(position = as.integer(str_split(variant_id, "_") %>% sapply(pluck, 2)))
-
-# sdY is 1 as expression is normalized
-# TODO file for eqtl sample size
-eqtl_list <- list(beta = eqtl_filtered$slope, 
-                  varbeta = eqtl_filtered$slope_se**2, 
-                  snp = eqtl_filtered$variant_id, 
-                  position = eqtl_filtered$position, 
-                  type = "quant", 
-                  N = 581, 
-                  MAF = eqtl_filtered$af,
-                  sdY = 1)
-check_dataset(eqtl_list)
-
-# plot the eqtl
-plot_dataset(eqtl_list)
-
-# check is case-control or quantitative for gwas 
-# TODO make a file for this
-# is sdY = 1?????????
-gwas_list <- list(MAF = gwas_filtered$frequency, 
-                  snp = gwas_filtered$panel_variant_id, 
-                  position = gwas_filtered$position, 
-                  type = 'quant', 
-                  N = 337119, 
-                  #sdY = 1, 
-                  pvalues=gwas_filtered$pvalue)
-check_dataset(gwas_list)
-
-
-# plot the gwas
-gwas_filtered$logpval <- -log10(gwas_filtered$pvalue)
-plot_dataset(gwas_filtered, alty=gwas_filtered$logpval)
-
-result <- coloc.abf(dataset1=gwas_list, dataset2=eqtl_list)
-result
-
-sensitivity(result,rule="H4 > 0.5") 
-
+write.table(gwas_coloc_results, file=output_path, row.names=FALSE, sep='\t')
 
 

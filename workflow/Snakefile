@@ -41,13 +41,21 @@ cross_map_path = config['cross_map_path']
 tad_path = config['tad_path']
 
 
+# coloc paths
+coloc_output_dir = config['coloc_output_dir']
+gwas_meta = config['gwas_meta']
+gtex_meta = config['gtex_meta']
+gwas_folder = config['gwas_folder']
+
 # load in all the wildcards
 df = pd.read_csv(tissue_id_path, header=0)
 tissue_ids = list(df['Tissue'])
 print('Running on tissues:{}'.format(tissue_ids))
 
+
 df = pd.read_csv(chr_list_path, header=0)
 chr_list = list(df['chr_id'])
+
 
 include: 'rules/pcqtl.smk'
 include: 'rules/eqtl.smk'
@@ -55,16 +63,11 @@ include: 'rules/annotate.smk'
 include: 'rules/clusters.smk'
 
 
-# to remove a bloated .snakemake directory after sucessful completion
-#import shutil
-#onsuccess:
-#    shutil.rmtree(".snakemake")
-
 rule all:
     input:
         # clusters = expand(clusters_dir + '{TISSUE}_clusters_all_chr.csv', TISSUE = tissue_ids),
-        annotated_clusters = expand(annotations_output_dir + '{TISSUE}_clusters_annotated.csv', TISSUE = tissue_ids),
-        annotated_nulls =  expand(annotations_output_dir + '{TISSUE}_null_{CLUSTER_SIZE}genes_annotated.csv', TISSUE = tissue_ids, CLUSTER_SIZE = null_sizes),
+        #annotated_clusters = expand(annotations_output_dir + '{TISSUE}_clusters_annotated.csv', TISSUE = tissue_ids),
+        #annotated_nulls =  expand(annotations_output_dir + '{TISSUE}_null_{CLUSTER_SIZE}genes_annotated.csv', TISSUE = tissue_ids, CLUSTER_SIZE = null_sizes),
         # vep = expand(annotations_output_dir + '{TISSUE}.v8.leadvars.vep.vcf', TISSUE = tissue_ids),
         # overlap = expand(overlap_output_dir + '{TISSUE}.v8.overlap.txt', TISSUE = tissue_ids),
         # pcqtl_susie = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.susie.txt', TISSUE = tissue_ids),
@@ -76,7 +79,7 @@ rule all:
         # controls that are all genes, not just cluster genes
         #chr22_susie = expand('output/chr22_eqtl/{TISSUE}/{TISSUE}.v8.chr22_genes.susie.txt', TISSUE = tissue_ids),
         #control_vep = expand('output/chr22_eqtl_annotations/{TISSUE}.v8.chr22_genes.leadvars.vep.vcf', TISSUE = tissue_ids)
-
-
+        #gwas_coloc = expand(coloc_output_dir + '{TISSUE}/{TISSUE}.{CHROM}.coloc_results.txt', CHROM=chr_list, TISSUE=tissue_ids)
+        cluster_list = expand(coloc_output_dir + '{TISSUE}/temp/{TISSUE}.{CHROM}.cluster_list.txt', CHROM=chr_list, TISSUE=tissue_ids)
 
 
