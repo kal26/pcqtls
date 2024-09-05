@@ -16,7 +16,7 @@ get_ld_missing_snps <- function(ld_matrix){
   return(ld_missing_snps)
 }
 
-clean_eqtl <- function(eqtl_filtered, cleaned_ld_matrix){
+clean_eqtl <- function(eqtl_filtered, cleaned_ld_matrix, num_gtex_samples){
   # make some columns to play well with coloc
   eqtl_filtered <- eqtl_filtered %>%
     mutate(position = as.integer(str_split(variant_id, "_") %>% sapply(pluck, 2)))
@@ -41,7 +41,7 @@ clean_eqtl <- function(eqtl_filtered, cleaned_ld_matrix){
   }    
 }
 
-clean_gwas <- function(gwas_filtered, cleaned_ld_matrix){
+clean_gwas <- function(gwas_filtered, cleaned_ld_matrix, gwas_type, num_gwas_samples){
   # susie needs effect sizes, so we must also drop the snps with na for gwas effect
   gwas_missing_snps <- gwas_filtered[is.na(gwas_filtered$effect_size), 'panel_variant_id']
   print("Number snps with ld or gwas missing")
@@ -84,18 +84,120 @@ filter_qtl <- function(qtl, snplist, ld_missing_snps){
   return(qtl_filtered)
 }
 
-split_qtl <- function(qtl, snplist, ld_missing_snps, cleaned_ld_matrix){
+split_qtl <- function(qtl, snplist, ld_missing_snps, cleaned_ld_matrix, num_gtex_samples){
   qtl_filtered <- filter_qtl(qtl, snplist, ld_missing_snps)
   # split eqtl to each of the egenes and clean up
   split_qtls <- split(qtl_filtered, qtl_filtered$phenotype_id)
   qtls_for_coloc <- list()
   for(i in seq_along(split_qtls)) {
-    this_qtl_for_coloc <- clean_eqtl(split_qtls[[i]], cleaned_ld_matrix)
+    this_qtl_for_coloc <- clean_eqtl(split_qtls[[i]], cleaned_ld_matrix, num_gtex_samples)
     qtls_for_coloc[[i]] <- this_qtl_for_coloc
   }
   return(qtls_for_coloc)
 }
 
+gwas_from_path <- function(gwas_folder, gwas_meta, snp_list, ld_missing_snps, cleaned_ld_matrix){
+  gwas_id <- gwas_meta$Tag
+  print(paste("working on gwas ", gwas_id))
+  num_gwas_samples <- gwas_meta$Sample_Size
+  if (gwas_meta$Binary == 0) {
+    gwas_type <- 'quant'
+  } else {
+    gwas_type <- 'cc'
+  }
+  gwas_path <- paste(gwas_folder, '/imputed_', gwas_id, '.txt.gz', sep = '')
+  gwas <- fread(gwas_path)
+  
+  # filter gwas and clean gwas data
+  gwas_filtered <- filter_gwas(gwas, snp_list, ld_missing_snps)
+  gwas_for_coloc <- clean_gwas(gwas_filtered, cleaned_ld_matrix, gwas_type, num_gwas_samples)
+  return(gwas_for_coloc)
+}
+
+get_empty_gwas_coloc <- function(){
+  gwas_coloc_results <- data.frame(gwas_id = character(), 
+                                   qtl_id = character(), 
+                                   nsnps = numeric(),
+                                   hit_gwas = character(),
+                                   hit_qtl = character(),
+                                   PP.H0.abf = numeric(),
+                                   PP.H1.abf = numeric(),
+                                   PP.H2.abf = numeric(),
+                                   PP.H3.abf = numeric(),
+                                   PP.H4.abf = numeric(),
+                                   idx1 = numeric(),
+                                   idx1 = numeric(),
+                                   stringsAsFactors = FALSE)
+  return(gwas_coloc_results)
+} 
+
+
+get_gwas_coloc_cluster <- function(eqtl, pcqtl, cluster_id, tissue_id, chr_id, snp_path_head, gwas_folder, gwas_meta, num_gtex_samples){
+  
+  # get snp list path from cluster id
+  snp_list_path <-paste(snp_path_head, tissue_id, '.', chr_id, '.cluster_', cluster_id, 'snp_list.txt')
+  print(snp_list_path)
+  # load in snp list
+  snp_list <- read_table(snp_list_path)
+  print("Total snps")
+  print(length(snp_list$variant_id))
+  
+  ld_matrix_path <- paste(snp_path_head, tissue_id, '.', chr_id, '.cluster_', cluster_id, '.ld')
+  print(ld_matrix_path)
+  # load in ld matrix
+  # can't use fread here,  not sure why
+  ld_matrix <- read.table(ld_path)
+  rownames(ld_matrix) <- snp_list$variant_id
+  colnames(ld_matrix) <- snp_list$variant_id
+  
+  # drop snps with missing values from LD 
+  ld_missing_snps = get_ld_missing_snps(ld_matrix)
+  cleaned_ld_matrix <- ld_matrix[!rownames(ld_matrix) %in% ld_missing_snps, !colnames(ld_matrix) %in% ld_missing_snps]
+  print("Number snps with ld missing")
+  print(length(ld_missing_snps))
+  cleaned_ld_matrix <- ld_matrix[!rownames(ld_matrix) %in% ld_missing_snps, !colnames(ld_matrix) %in% ld_missing_snps]
+  
+  
+  # filter eqtls and pcqtls
+  eqtls_for_coloc <- split_qtl(eqtl, snplist, ld_missing_snps, cleaned_ld_matrix, num_gtex_samples)
+  pcqtls_for_coloc <- split_qtl(pcqtl, snplist, ld_missing_snps, cleaned_ld_matrix, num_gtex_samples)
+  # conmbine them into one list
+  qtls_for_coloc <- c(eqtls_for_coloc, pcqtls_for_coloc)
+  # remove the nulls (from when there isn't a strong enough signal to finemap)
+  qtls_for_coloc <- qtls_for_coloc[!sapply(qtls_for_coloc, is.null)]
+  
+
+  # initialize a null
+  gwas_coloc_results <- get_empty_gwas_coloc()
+  
+  if (length(qtls_for_coloc) != 0){
+    print(paste('running susie on', length(qtls_for_coloc), 'qtls'))
+    qtl_susies <- lapply(qtls_for_coloc, runsusie)
+    
+    for (i in 1:nrow(gwas_meta)){
+      gwas_for_coloc <- gwas_from_path(gwas_folder, gwas_meta[i], snp_list, ld_missing_snps, cleaned_ld_matrix)
+      if (!is.null(gwas_for_coloc)){
+        gwas_susie <- runsusie(gwas_for_coloc)
+        print(summary(gwas_susie))
+        # coloc this gwas with each qtl
+        for (i in seq_along(qtl_susies)) {
+          this_qtl_susie <- qtl_susies[[i]]
+          this_qtl_id <- short_qtls_for_coloc[[i]]$phenotype_id
+          print(paste("coloc for", gwas_id, "and", this_qtl_id))
+          this_coloc <- run_coloc(gwas_susie,this_qtl_susie)
+          this_coloc$gwas_id <- gwas_id
+          this_coloc$qtl_id <- short_qtls_for_coloc[[i]]$phenotype_id
+          gwas_coloc_results <- rbind(gwas_coloc_results, this_coloc)
+          print(paste(dim(gwas_coloc_results), " total colocalizations run"))
+        }
+      }
+    }
+  }
+  
+  gwas_coloc_results$gwas_cs_is <- gwas_coloc_results$idx1 
+  gwas_coloc_results$qtl_cs_is <- gwas_coloc_results$idx2
+  return(gwas_coloc_results)
+}
 
 
 #############
@@ -106,10 +208,9 @@ parser$add_argument("--eqtl_path", help="Input file path for eQTL pairs")
 parser$add_argument("--pcqtl_path", help="Input file path for PCQTL pairs")
 parser$add_argument("--gwas_meta", help="Input file path for GWAS metadata, with sample size and quant vs cc")
 parser$add_argument("--gtex_meta", help="Input file path for GTEX metadata with sample size")
-parser$add_argument("--cluster", help="cluster id")
+parser$add_argument("--chr_id", help="cluster id")
 parser$add_argument("--tissue", help="tissue id")
-parser$add_argument("--snp_list_path", help="Input file path for snp list")
-parser$add_argument("--ld_path", help="Input file path for LD matrix")
+parser$add_argument("--snp_path_head", help="directory file path for snp list and ld")
 parser$add_argument("--gwas_folder", help="Folder path for GWAS data")
 parser$add_argument("--output_path", help="Output file path for coloc results")
 
@@ -120,12 +221,11 @@ args <- parser$parse_args()
 # Access the arguments
 eqtl_path <- args$eqtl_path
 pcqtl_path <- args$pcqtl_path
-gwas_meta <- args$gwas_meta
-gtex_meta <- args$gtex_meta
-ld_path <- args$ld_path
-cluster_id <- args$cluster
+gwas_meta_path <- args$gwas_meta
+gtex_meta_path <- args$gtex_meta
+chr_id <- args$chr_id
 tissue_id <- args$tissue
-snp_list_path <- args$snp_list_path
+snp_path_head <- args$snp_path_head
 gwas_folder <- args$gwas_folder
 output_path <- args$output_path
 
@@ -134,10 +234,10 @@ output_path <- args$output_path
 # Print or use the arguments as needed in the script
 cat("eQTL Path:", eqtl_path, "\n")
 cat("PCQTL Path:", pcqtl_path, "\n")
-cat("GWAS Metadata:", gwas_meta, "\n")
-cat("GTEX Metadata:", gwas_meta, "\n")
-cat("LD Path:", ld_path, "\n")
-cat("Cluster ID:", cluster_id, "\n")
+cat("GWAS Metadata:", gwas_meta_path, "\n")
+cat("GTEX Metadata:", gtex_meta_path, "\n")
+cat("LD and snplist dir:", snp_path_head, "\n")
+cat("Chr ID:", chr_id, "\n")
 cat("Tissue ID:", cluster_id, "\n")
 cat("GWAS Folder:", gwas_folder, "\n")
 cat("Output Path:", output_path, "\n")
@@ -148,98 +248,26 @@ num_gtex_samples <- gtex_meta[gtex_meta$tissue_id == tissue_id, 'sample_size']
 
 # read om gwas meta
 gwas_meta <- fread(gwas_meta_path)
+# subset for debugging
+gwas_meta <- gwas_meta[37:38]
 
 #load in eqtl data
 eqtl <- read_parquet(eqtl_path)
 pcqtl <- read_parquet(pcqtl_path)
 
-# load in snp list
-snp_list <- read_table(snp_list_path)
-print("Total snps")
-print(length(snp_list$variant_id))
+# get a list of clusters
+eqtl$cluster_id <- sapply(eqtl$phenotype_id, function(x) unlist(strsplit(as.character(x), '_e_'))[1])
+unique_cluster_ids <- unique(eqtl$cluster_id)
 
-# load in ld matrix
-# can't use fread here,  not sure why
-ld_matrix <- read.table(ld_path)
-rownames(ld_matrix) <- snp_list$variant_id
-colnames(ld_matrix) <- snp_list$variant_id
+# initialize the output
+gwas_coloc_results <- get_empty_gwas_coloc()
 
-
-# drop snps with missing values from LD 
-ld_missing_snps = get_ld_missing_snps(ld_matrix)
-cleaned_ld_matrix <- ld_matrix[!rownames(ld_matrix) %in% ld_missing_snps, !colnames(ld_matrix) %in% ld_missing_snps]
-print("Number snps with ld missing")
-print(length(ld_missing_snps))
-cleaned_ld_matrix <- ld_matrix[!rownames(ld_matrix) %in% ld_missing_snps, !colnames(ld_matrix) %in% ld_missing_snps]
-
-
-
-# combine pc and eqtls 
-eqtls_for_coloc <- split_qtl(eqtl, snplist, ld_missing_snps, cleaned_ld_matrix)
-pcqtls_for_coloc <- split_qtl(pcqtl, snplist, ld_missing_snps, cleaned_ld_matrix)
-qtls_for_coloc <- c(eqtls_for_coloc, pcqtls_for_coloc)
-qtls_for_coloc <- qtls_for_coloc[!sapply(qtls_for_coloc, is.null)]
-
-
-# intialize a null result
-gwas_coloc_results <-  list()
-gwas_coloc_results <- data.frame(gwas_id = character(), 
-                                 qtl_id = character(), 
-                                 nsnps = numeric(),
-                                 hit_gwas = character(),
-                                 hit_qtl = character(),
-                                 PP.H0.abf = numeric(),
-                                 PP.H1.abf = numeric(),
-                                 PP.H2.abf = numeric(),
-                                 PP.H3.abf = numeric(),
-                                 PP.H4.abf = numeric(),
-                                 idx1 = numeric(),
-                                 idx1 = numeric(),
-                                 stringsAsFactors = FALSE)
-
-
-
-if (length(qtls_for_coloc) != 0){
-  print(paste('running susie on', length(qtls_for_coloc), 'qtls'))
-  qtl_susies <- lapply(qtls_for_coloc, runsusie)
-  
-  for (i in 1:nrow(gwas_meta)){
-    this_gwas <- gwas_meta[i]
-    gwas_id <- this_gwas$Tag
-    print(paste("working on gwas ", gwas_id))
-    num_gwas_samples <- this_gwas$Sample_Size
-    if (this_gwas$Binary == 0) {
-      gwas_type <- 'quant'
-    } else {
-      gwas_type <- 'cc'
-    }
-    gwas_path <- paste(gwas_folder, '/imputed_', gwas_id, '.txt.gz', sep = '')
-    gwas <- fread(gwas_path)
-    
-    # filter gwas and clean gwas data
-    gwas_filtered <- filter_gwas(gwas, snp_list, ld_missing_snps)
-    gwas_for_coloc <- clean_gwas(gwas_filtered, cleaned_ld_matrix)
-    if (!is.null(gwas_for_coloc)){
-      gwas_susie <- runsusie(gwas_for_coloc)
-      print(summary(gwas_susie))
-      # coloc this gwas with each qtl
-      for (i in seq_along(qtl_susies)) {
-        this_qtl_susie <- qtl_susies[[i]]
-        this_qtl_id <- short_qtls_for_coloc[[i]]$phenotype_id
-        print(paste("coloc for", gwas_id, "and", this_qtl_id))
-        this_coloc <- run_coloc(gwas_susie,this_qtl_susie)
-        this_coloc$gwas_id <- gwas_id
-        this_coloc$qtl_id <- short_qtls_for_coloc[[i]]$phenotype_id
-        gwas_coloc_results <- rbind(gwas_coloc_results, this_coloc)
-        print(paste(dim(gwas_coloc_results), " total colocalizations run"))
-      }
-    }
-  }
+# run coloc for each cluster
+for (cluster_id in unique_cluster_ids){
+  this_cluster_coloc <- get_gwas_coloc_cluster(eqtl, pcqtl, cluster_id, tissue_id, chr_id, snp_path_head, gwas_folder, gwas_meta, num_gtex_samples)
+  gwas_coloc_results <- rbind(gwas_coloc_results, this_cluster_coloc) 
 }
 
-
-gwas_coloc_results$gwas_cs_is <- gwas_coloc_results$idx1 
-gwas_coloc_results$qtl_cs_is <- gwas_coloc_results$idx2
 write.table(gwas_coloc_results, file=output_path, row.names=FALSE, sep='\t')
 
 

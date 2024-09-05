@@ -3,6 +3,8 @@ import sys
 import pandas as pd
 import numpy as np
 
+from snakemake.utils import Paramspace
+
 # input paths
 tissue_id_path = config['tissue_id_path']
 covariates_dir = config['covariates_dir']
@@ -35,41 +37,42 @@ print('Running on tissues:{}'.format(tissue_ids))
 df = pd.read_csv(chr_list_path, header=0)
 chr_list = list(df['chr_id'])
 
-chr_list = ['chr20', 'chr21']
-tissue_ids = ['Lung']
-
 def get_clusters(TISSUE, CHROM):
     outpath = f'{coloc_output_dir}/{TISSUE}/temp/{TISSUE}.{CHROM}.cluster_list.txt'.replace(' ', '')
     return open(outpath).read().strip().split("\n")
 
-clusters = []
-chr_zipped = []
-tissue_zipped = []
-
-for tissue_id in tissue_ids:
-    for chrom in chr_list:
-        this_chr_clusters = get_clusters(tissue_id, chrom)
-        print(f'{len(this_chr_clusters)} on {tissue_id}, {chrom}')
-        clusters.extend(this_chr_clusters)
-        chr_zipped.extend([chrom] * len(this_chr_clusters))
-        tissue_zipped.extend([tissue_id] * len(this_chr_clusters))
-
-clusters = np.asarray(clusters)
-chr_zipped = np.asarray(chr_zipped)
-tissue_zipped = np.asarray(tissue_zipped)
 
 
-#include: 'rules/pcqtl.smk'
-#include: 'rules/eqtl.smk'
-#include: 'rules/annotate.smk'
+
+#chr_list = ['chr21']
+#tissue_ids = ['Lung']
+
+# clusters = []
+# chr_zipped = []
+# tissue_zipped = []
+
+# for tissue_id in tissue_ids:
+#     for chrom in chr_list:
+#         this_chr_clusters = get_clusters(tissue_id, chrom)
+#         print(f'{len(this_chr_clusters)} on {tissue_id}, {chrom}')
+#         clusters.extend(this_chr_clusters)
+#         chr_zipped.extend([chrom] * len(this_chr_clusters))
+#         tissue_zipped.extend([tissue_id] * len(this_chr_clusters))
+
+# clusters = np.asarray(clusters)
+# chr_zipped = np.asarray(chr_zipped)
+# tissue_zipped = np.asarray(tissue_zipped)
+
+# paramspace = Paramspace(pd.DataFrame({'CLUSTER':clusters, 'CHROM':chr_zipped, 'TISSUE':tissue_zipped}))
+
+
+include: 'rules/pcqtl.smk'
+include: 'rules/eqtl.smk'
+# include: 'rules/annotate.smk'
 include: 'rules/coloc.smk'
 
 
 
 rule all:
     input:
-        gwas_coloc = expand(coloc_output_dir + '{TISSUE}/temp/colocs/{TISSUE}.v8.{CHROM}.cluster_{CLUSTER}.gwas_coloc.txt', zip, CLUSTER=clusters, TISSUE=tissue_zipped, CHROM=chr_zipped)
-
-
-
-
+        gwas_coloc = expand(coloc_output_dir + '{TISSUE}/temp/colocs/{TISSUE}.v8.{CHROM}.gwas_coloc.txt', TISSUE=tissue_ids, CHROM=chr_list)
