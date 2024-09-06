@@ -6,6 +6,7 @@ library(coloc)
 library(arrow)
 library(tidyverse)
 library(data.table)
+library(Rfast)
 
 ####### funtions #########
 
@@ -102,17 +103,22 @@ split_qtl <- function(qtl, snplist, ld_missing_snps, cleaned_ld_matrix){
 ###### main #######
 
 # paths to data
-eqtl_path <- 'output/proteincoding_main/control_eqtl/Adipose_Subcutaneous/Adipose_Subcutaneous.v8.cluster_genes.cis_qtl_pairs.chr22.parquet'
-pcqtl_path <- '/home/klawren/oak/pcqtls/output/proteincoding_main/pcqtl/Adipose_Subcutaneous/Adipose_Subcutaneous.v8.pcs.cis_qtl_pairs.chr22.parquet'
-ld_path <- 'output/temp/test.ld'
-snp_list_path <- 'output/temp/snp_list.csv'
+ld_path <- 'output/proteincoding_main/gwas_coloc/Lung/temp/ENSG00000275464.4_ENSG00000280071.3_ENSG00000280433.1.ld'
+snp_list_path <- 'output/proteincoding_main/gwas_coloc/Lung/temp/ENSG00000275464.4_ENSG00000280071.3_ENSG00000280433.1.snp_list.txt'
+
+cluster_id <- 'ENSG00000275464.4_ENSG00000280071.3_ENSG00000280433.1'
+
+eqtl_path <- 'output/proteincoding_main/control_eqtl/Lung/Lung.v8.cluster_genes.cis_qtl_pairs.chr21.parquet'
+pcqtl_path <- '/home/klawren/oak/pcqtls/output/proteincoding_main/pcqtl/Lung/Lung.v8.pcs.cis_qtl_pairs.chr21.parquet'
+
+
+
 gwas_meta_path <- '/home/klawren/oak/pcqtls/data/references/gwas_metadata.txt'
 gtex_meta_path <- '/home/klawren/oak/pcqtls/data/references/gtex_sample_sizes.csv'
-tissue_id <- 'Adipose_Subcutaneous'
+tissue_id <- 'Lung'
 gwas_folder <- '/oak/stanford/groups/smontgom/shared/gwas_summary_stats/barbeira_gtex_imputed/imputed_gwas_hg38_1.1'
+snp_path_head <- 'output/temp/'
 
-
-gwas_id <- 'imputed_UKB_50_Standing_height'
 
 # get number gtex samples form gtex_meta and tisuse
 gtex_meta <- read.table(gtex_meta_path, sep='\t', header = T)
@@ -120,7 +126,7 @@ num_gtex_samples <- gtex_meta[gtex_meta$tissue_id == tissue_id, 'sample_size']
 
 # gwas metadata
 gwas_meta <- fread(gwas_meta_path)
-gwas_meta <- gwas_meta[3:5]
+gwas_meta <- gwas_meta[37:38]
 
 
 #load in eqtl data
@@ -128,13 +134,16 @@ eqtl <- read_parquet(eqtl_path)
 pcqtl <- read_parquet(pcqtl_path)
 
 
+gwas_coloc_results <- '/home/klawren/oak/pcqtls/output/proteincoding_main/gwas_coloc/Lung/temp/ENSG00000275464.4_ENSG00000280071.3_ENSG00000280433.1.coloc_qtl.txt'
+this_cluster_coloc <- read.table(gwas_coloc_results, sep='\t', header=T)
+
+
+
 # load in snp list
 snp_list <- read_table(snp_list_path)
 print("Total snps")
 print(length(snp_list$variant_id))
 
-# sample cluster id 
-cluster_id = strsplit(as.character(eqtl[1,'phenotype_id']), '_e_')[[1]][1]
 
 # load in ld matrix
 # can't use fread here,  not sure why
@@ -156,6 +165,50 @@ eqtls_for_coloc <- split_qtl(eqtl, snplist, ld_missing_snps, cleaned_ld_matrix)
 pcqtls_for_coloc <- split_qtl(pcqtl, snplist, ld_missing_snps, cleaned_ld_matrix)
 qtls_for_coloc <- c(eqtls_for_coloc, pcqtls_for_coloc)
 qtls_for_coloc <- qtls_for_coloc[!sapply(qtls_for_coloc, is.null)]
+
+
+###new
+
+get_qtl_pairwise_coloc <- function(qtls_for_coloc, qtl_susies){
+  qtl_coloc_results <- data.frame(qtl1_id = character(), 
+                                  qtl2_id = character(), 
+                                  nsnps = numeric(),
+                                  hit1 = character(),
+                                  hit2 = character(),
+                                  PP.H0.abf = numeric(),
+                                  PP.H1.abf = numeric(),
+                                  PP.H2.abf = numeric(),
+                                  PP.H3.abf = numeric(),
+                                  PP.H4.abf = numeric(),
+                                  idx1 = numeric(),
+                                  idx1 = numeric(),
+                                  stringsAsFactors = FALSE)
+  
+  qtl_pair_idxs <- combn(seq_along(qtls_for_coloc), 2, simplty=TRUE)
+
+  for (i in 1:ncol(qtl_pair_idxs)) {
+    qtl1 <- qtls_for_coloc[[qtl_pair_idxs[1, i]]]
+    qtl2 <- qtls_for_coloc[[qtl_pair_idxs[2, i]]]
+    susie1 <- qtl_susies[[qtl_pair_idxs[1, i]]]
+    susie2 <- qtl_susies[[qtl_pair_idxs[2, i]]]
+    cat(paste("coloc for", qtl1$phenotype_id , "-", qtl2$phenotype_id), "\n")
+    this_coloc <- run_coloc(susie1,susie2)
+    this_coloc$qtl1_id <- qtl1$phenotype_id
+    this_coloc$qtl2_id <- qtl2$phenotype_id
+    qtl_coloc_results <- rbind(qtl_coloc_results, this_coloc)
+  }
+  return(qtl_coloc_results)
+}
+
+
+qtl_susies <- lapply(qtls_for_coloc, runsusie)
+
+qtl_coloc_results <- get_qtl_pairwise_coloc(qtls_for_coloc, qtl_susies)
+
+write.table(qtl_coloc_results, file='output/temp/coloc_qtl.txt', quote=FALSE, row.names=FALSE, sep='\t')
+
+
+
 
 
 # intialize a null result

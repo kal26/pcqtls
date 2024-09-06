@@ -17,7 +17,7 @@ annotations_output_dir: "output/proteincoding_corr_0.5/annotations/"
 # for clusters
 percent_corr_cutoff: .7
 cutoff_type: 'value'
-min_corr_cutoff: 0.5
+min_corr_cutoff: 0.4
 
 # for cluster annotation
 gencode_path: 'data/references/processed_gencode.v26.GRCh38.genes.csv'

@@ -41,6 +41,14 @@ def get_clusters(TISSUE, CHROM):
     outpath = f'{coloc_output_dir}/{TISSUE}/temp/{TISSUE}.{CHROM}.cluster_list.txt'.replace(' ', '')
     return open(outpath).read().strip().split("\n")
 
+def get_all_ld_paths(tissue_ids, chr_list):
+    ld_paths=[]
+    for tissue in tissue_ids:
+        for chrom in chr_list:
+            clusters = get_clusters(tissue,chrom)
+            ld_paths.extend([f'{coloc_output_dir}{tissue}/temp/{tissue}.{chrom}.cluster_{cluster}.ld'.strip() for cluster in clusters])
+
+    return ld_paths
 
 
 
@@ -75,4 +83,8 @@ include: 'rules/coloc.smk'
 
 rule all:
     input:
-        gwas_coloc = expand(coloc_output_dir + '{TISSUE}/temp/colocs/{TISSUE}.v8.{CHROM}.gwas_coloc.txt', TISSUE=tissue_ids, CHROM=chr_list)
+        #snp_list = expand(coloc_output_dir + '{TISSUE}/temp/{TISSUE}.{CHROM}.made_snp_list.txt', TISSUE=tissue_ids, CHROM=chr_list),
+        colocs = expand(coloc_output_dir + '{TISSUE}/{TISSUE}.v8.{CHROM}.gwas_coloc.txt', TISSUE=tissue_ids, CHROM=chr_list)
+        #ld_matrix = get_all_ld_paths(tissue_ids, chr_list)
+
+       #gwas_coloc = expand(coloc_output_dir + '{TISSUE}/temp/colocs/{TISSUE}.v8.{CHROM}.gwas_coloc.txt', TISSUE=tissue_ids, CHROM=chr_list)
