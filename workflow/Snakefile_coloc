@@ -53,7 +53,7 @@ def get_all_ld_paths(tissue_ids, chr_list):
 
 
 #chr_list = ['chr21']
-#tissue_ids = ['Lung']
+tissue_ids = ['Skin_Not_Sun_Exposed_Suprapubic']
 
 # clusters = []
 # chr_zipped = []

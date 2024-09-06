@@ -196,35 +196,30 @@ get_gwas_coloc_cluster <- function(eqtl, pcqtl, cluster_id, tissue_id, chr_id, s
     qtl_coloc_path <- paste(snp_path_head, cluster_id, '.qtl_coloc.txt', sep="")
     write.table(qtl_coloc_results, file=qtl_coloc_path, quote=FALSE, row.names=FALSE, sep='\t')
     
-    cluster_coloc_path <-  paste(snp_path_head, cluster_id, '.gwas_coloc.txt', sep="")
-    if (file.exists(cluster_coloc_path)) {
-      cat(paste("coloc with gwas for", cluster_id, "already exists\n"))
-    } else {
-      if (length(qtl_susies) != 0){
-        for (i in 1:nrow(gwas_meta)){
-          # check if I've already done this gwas
-          gwas_id <- gwas_meta[i]$Tag
-            gwas_for_coloc <- gwas_from_path(gwas_folder, gwas_meta[i], snp_list, ld_missing_snps, cleaned_ld_matrix)
-            if (!is.null(gwas_for_coloc)){
-              gwas_susie <- tryCatch({
-              runsusie(gwas_for_coloc)  # Call runsusie function for each QTL
-            }, error = function(e) {
-              cat("An error occurred for gwas:", gwas_id, "\n")
-              cat("Error Message:", conditionMessage(e), "\n")  # Print the error message
-              NULL  # Return NULL if an error occurs
-            })
-            if (!is.null(gwas_susie)){
-            # coloc this gwas with each qtl
-              for (i in seq_along(qtl_susies)) {
-                this_qtl_susie <- qtl_susies[[i]]
-                this_qtl_id <- qtls_for_coloc[[i]]$phenotype_id
-                cat(paste("coloc for", gwas_id, "and", this_qtl_id, "\n"))
-                this_coloc <- run_coloc(gwas_susie,this_qtl_susie)
-                this_coloc$gwas_id <- gwas_id
-                this_coloc$qtl_id <- this_qtl_id
-                gwas_coloc_results <- rbind(gwas_coloc_results, this_coloc)
-                cat(paste(dim(gwas_coloc_results), " total colocalizations run so far\n"))
-              }
+    if (length(qtl_susies) != 0){
+      for (i in 1:nrow(gwas_meta)){
+        # check if I've already done this gwas
+        gwas_id <- gwas_meta[i]$Tag
+          gwas_for_coloc <- gwas_from_path(gwas_folder, gwas_meta[i], snp_list, ld_missing_snps, cleaned_ld_matrix)
+          if (!is.null(gwas_for_coloc)){
+            gwas_susie <- tryCatch({
+            runsusie(gwas_for_coloc)  # Call runsusie function for each QTL
+          }, error = function(e) {
+            cat("An error occurred for gwas:", gwas_id, "\n")
+            cat("Error Message:", conditionMessage(e), "\n")  # Print the error message
+            NULL  # Return NULL if an error occurs
+          })
+          if (!is.null(gwas_susie)){
+          # coloc this gwas with each qtl
+            for (i in seq_along(qtl_susies)) {
+              this_qtl_susie <- qtl_susies[[i]]
+              this_qtl_id <- qtls_for_coloc[[i]]$phenotype_id
+              cat(paste("coloc for", gwas_id, "and", this_qtl_id, "\n"))
+              this_coloc <- run_coloc(gwas_susie,this_qtl_susie)
+              this_coloc$gwas_id <- gwas_id
+              this_coloc$qtl_id <- this_qtl_id
+              gwas_coloc_results <- rbind(gwas_coloc_results, this_coloc)
+              cat(paste(dim(gwas_coloc_results), " total colocalizations run so far\n"))
             }
           }
         }
@@ -236,7 +231,6 @@ get_gwas_coloc_cluster <- function(eqtl, pcqtl, cluster_id, tissue_id, chr_id, s
   gwas_coloc_results$qtl_cs_is <- gwas_coloc_results$idx2
   # write out this cluster coloc
   # this allows me to save my work a bit
-  write.table(gwas_coloc_results, file=cluster_coloc_path, quote=FALSE, row.names=FALSE, sep='\t')
   return(gwas_coloc_results)
 }
 
@@ -400,7 +394,7 @@ for (cluster_id in unique_cluster_ids){
     cat("generated ld matrix\n")
   }
   
-  cluster_coloc_path <-  paste(snp_path_head, cluster_id, '.coloc_gwas.txt', sep="")
+  cluster_coloc_path <-  paste(snp_path_head, cluster_id, '.gwas_coloc.txt', sep="")
   # Check if the file exists
   if (file.exists(cluster_coloc_path)) {
     cat("this cluster already colocalized\n")
