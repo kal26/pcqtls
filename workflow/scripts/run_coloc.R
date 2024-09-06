@@ -5,6 +5,7 @@ library(arrow)
 library(tidyverse)
 library(data.table)
 library(Rfast)
+library(susieR)
 
 
 ########### functions #########
@@ -17,26 +18,26 @@ get_ld_missing_snps <- function(ld_matrix){
   return(ld_missing_snps)
 }
 
-clean_eqtl <- function(eqtl_filtered, cleaned_ld_matrix, num_gtex_samples){
+clean_qtl <- function(qtl_filtered, cleaned_ld_matrix, num_gtex_samples){
   # make some columns to play well with coloc
-  eqtl_filtered <- eqtl_filtered %>%
+  qtl_filtered <- qtl_filtered %>%
     mutate(position = as.integer(str_split(variant_id, "_") %>% sapply(pluck, 2)))
-  cleaned_eqtl_list <- list(beta = eqtl_filtered$slope, 
-                            varbeta = eqtl_filtered$slope_se**2, 
-                            snp = eqtl_filtered$variant_id, 
-                            position = eqtl_filtered$position, 
-                            pvalues = eqtl_filtered$pval_nominal,
+  cleaned_qtl_list <- list(beta = qtl_filtered$slope, 
+                            varbeta = qtl_filtered$slope_se**2, 
+                            snp = qtl_filtered$variant_id, 
+                            position = qtl_filtered$position, 
+                            pvalues = qtl_filtered$pval_nominal,
                             type = "quant", 
                             N = num_gtex_samples, 
-                            MAF = eqtl_filtered$af,
+                            MAF = qtl_filtered$af,
                             sdY = 1,
-                            phenotype_id = eqtl_filtered$phenotype_id[1],
+                            phenotype_id = qtl_filtered$phenotype_id[1],
                             LD = as.matrix(cleaned_ld_matrix))
   #print(check_dataset(cleaned_eqtl_list,req="LD"))
   # if there isn't a signal, further analysis should not be run
-  if (min(cleaned_eqtl_list$pvalues) < 1e-6){
+  if (min(cleaned_qtl_list$pvalues) < 1e-6){
     cat('\t signal found \n')
-    return(cleaned_eqtl_list)
+    return(cleaned_qtl_list)
   } else{
     cat('\t no signal found \n')
   }    
@@ -92,7 +93,8 @@ split_qtl <- function(qtl, snp_list, ld_missing_snps, cleaned_ld_matrix, num_gte
   split_qtls <- split(qtl_filtered, qtl_filtered$phenotype_id)
   qtls_for_coloc <- list()
   for(i in seq_along(split_qtls)) {
-    this_qtl_for_coloc <- clean_eqtl(split_qtls[[i]], cleaned_ld_matrix, num_gtex_samples)
+    cat(paste("looking for signals in", split_qtls[[i]]$phenotype_id))
+    this_qtl_for_coloc <- clean_qtl(split_qtls[[i]], cleaned_ld_matrix, num_gtex_samples)
     qtls_for_coloc[[i]] <- this_qtl_for_coloc
   }
   return(qtls_for_coloc)
@@ -133,6 +135,36 @@ get_empty_gwas_coloc <- function(){
   return(gwas_coloc_results)
 } 
 
+get_empty_qtl_coloc <- function(){
+  qtl_coloc_results <- data.frame(qtl1_id = character(), 
+                                  qtl2_id = character(), 
+                                  nsnps = numeric(),
+                                  hit1 = character(),
+                                  hit2 = character(),
+                                  PP.H0.abf = numeric(),
+                                  PP.H1.abf = numeric(),
+                                  PP.H2.abf = numeric(),
+                                  PP.H3.abf = numeric(),
+                                  PP.H4.abf = numeric(),
+                                  idx1 = numeric(),
+                                  idx1 = numeric(),
+                                  stringsAsFactors = FALSE)
+  return(qtl_coloc_results)                                
+}
+
+runsusie_errorcatch <- function(dataset){
+  start <- Sys.time()
+  susie <- tryCatch({
+    runsusie(dataset)  # Call runsusie function for each QTL
+  }, error = function(e) {
+    cat("An error occurred for QTL \n")
+    cat("Error Message:", conditionMessage(e), "\n")  # Print the error message
+    NULL  # Return NULL if an error occurs
+  })
+  cat(Sys.time()-start)
+  return(susie)  # Store the result or NULL in the qtl_susies list
+}
+
 
 get_gwas_coloc_cluster <- function(eqtl, pcqtl, cluster_id, tissue_id, chr_id, snp_path_head, gwas_folder, gwas_meta, num_gtex_samples){
   
@@ -163,10 +195,10 @@ get_gwas_coloc_cluster <- function(eqtl, pcqtl, cluster_id, tissue_id, chr_id, s
   # filter eqtls and pcqtls
   eqtls_for_coloc <- split_qtl(eqtl, snp_list, ld_missing_snps, cleaned_ld_matrix, num_gtex_samples)
   pcqtls_for_coloc <- split_qtl(pcqtl, snp_list, ld_missing_snps, cleaned_ld_matrix, num_gtex_samples)
-  cat(length(eqtls_for_coloc))
-  cat(" qtl phenotypes \n")
   # conmbine them into one list
   qtls_for_coloc <- c(eqtls_for_coloc, pcqtls_for_coloc)
+  cat(length(qtls_for_coloc))
+  cat(" qtl phenotypes\n")
   # remove the nulls (from when there isn't a strong enough signal to finemap)
   qtls_for_coloc <- qtls_for_coloc[!sapply(qtls_for_coloc, is.null)]
   
@@ -177,16 +209,7 @@ get_gwas_coloc_cluster <- function(eqtl, pcqtl, cluster_id, tissue_id, chr_id, s
   qtl_susies <- vector("list", length(qtls_for_coloc))
   if (length(qtls_for_coloc) != 0){
     cat(paste('running susie on', length(qtls_for_coloc), 'qtls \n'))
-    for(i in seq_along(qtls_for_coloc)) {
-      qtl_susie <- tryCatch({
-        runsusie(qtls_for_coloc[[i]])  # Call runsusie function for each QTL
-      }, error = function(e) {
-        cat("An error occurred for QTL \n")
-        cat("Error Message:", conditionMessage(e), "\n")  # Print the error message
-        NULL  # Return NULL if an error occurs
-      })
-      qtl_susies[[i]] <- qtl_susie  # Store the result or NULL in the qtl_susies list
-    }
+    qtl_susies <- lapply(qtls_for_coloc, runsusie_errorcatch)
     qtls_for_coloc <- qtls_for_coloc[!sapply(qtl_susies, is.null)]
     qtl_susies <- qtl_susies[!sapply(qtl_susies, is.null)]
     
@@ -196,33 +219,33 @@ get_gwas_coloc_cluster <- function(eqtl, pcqtl, cluster_id, tissue_id, chr_id, s
     qtl_coloc_path <- paste(snp_path_head, cluster_id, '.qtl_coloc.txt', sep="")
     write.table(qtl_coloc_results, file=qtl_coloc_path, quote=FALSE, row.names=FALSE, sep='\t')
     
+    cat("working on gwas colocs\n")
     if (length(qtl_susies) != 0){
       for (i in 1:nrow(gwas_meta)){
         # check if I've already done this gwas
         gwas_id <- gwas_meta[i]$Tag
           gwas_for_coloc <- gwas_from_path(gwas_folder, gwas_meta[i], snp_list, ld_missing_snps, cleaned_ld_matrix)
           if (!is.null(gwas_for_coloc)){
-            gwas_susie <- tryCatch({
-            runsusie(gwas_for_coloc)  # Call runsusie function for each QTL
-          }, error = function(e) {
-            cat("An error occurred for gwas:", gwas_id, "\n")
-            cat("Error Message:", conditionMessage(e), "\n")  # Print the error message
-            NULL  # Return NULL if an error occurs
-          })
+            gwas_susie <- runsusie_errorcatch(gwas_for_coloc)
           if (!is.null(gwas_susie)){
+          cat(paste("\t\tcoloc for", gwas_id, "\n"))
           # coloc this gwas with each qtl
             for (i in seq_along(qtl_susies)) {
               this_qtl_susie <- qtl_susies[[i]]
               this_qtl_id <- qtls_for_coloc[[i]]$phenotype_id
-              cat(paste("coloc for", gwas_id, "and", this_qtl_id, "\n"))
+              cat(paste("\t\t\tcoloc for", gwas_id, "and", this_qtl_id, "\n"))
               this_coloc <- run_coloc(gwas_susie,this_qtl_susie)
+              cat(dim(this_coloc)) # debugging
+              cat("\n")
               this_coloc$gwas_id <- gwas_id
               this_coloc$qtl_id <- this_qtl_id
               gwas_coloc_results <- rbind(gwas_coloc_results, this_coloc)
-              cat(paste(dim(gwas_coloc_results), " total colocalizations run so far\n"))
             }
           }
         }
+      cat(paste("finished gwas", gwas_id, "\n"))
+      cat(paste(nrows(gwas_coloc_results), " colocalizations run so far\n"))
+
       }
     }
   }
@@ -260,28 +283,28 @@ get_qtl_pairwise_coloc <- function(qtls_for_coloc, qtl_susies){
                                   idx1 = numeric(),
                                   idx1 = numeric(),
                                   stringsAsFactors = FALSE)
-  
-  qtl_pair_idxs <- combn(seq_along(qtl_susies), 2, simplty=TRUE)
-  
-  for (i in 1:ncol(qtl_pair_idxs)) {
-    qtl1 <- qtls_for_coloc[[qtl_pair_idxs[1, i]]]
-    qtl2 <- qtls_for_coloc[[qtl_pair_idxs[2, i]]]
-    susie1 <- qtl_susies[[qtl_pair_idxs[1, i]]]
-    susie2 <- qtl_susies[[qtl_pair_idxs[2, i]]]
-    cat(paste("coloc for", qtl1$phenotype_id , "-", qtl2$phenotype_id), "\n")
-    this_coloc <- run_coloc(susie1,susie2)
-    if (!is.null(this_coloc)){
-      this_coloc$qtl1_id <- qtl1$phenotype_id
-      this_coloc$qtl2_id <- qtl2$phenotype_id
-      qtl_coloc_results <- tryCatch({
-          rbind(qtl_coloc_results, this_coloc)  
-        }, error = function(e) {
-          cat("An error occurred for QTL \n")
-          cat("Error Message:", conditionMessage(e), "\n")  # Print the error message
-          print(qtl_coloc_results)
-          print(this_coloc)
-          NULL  # Return NULL if an error occurs
-      })
+  if(length(qtl_susies)>1){
+    qtl_pair_idxs <- combn(seq_along(qtl_susies), 2, simplty=TRUE)
+    for (i in 1:ncol(qtl_pair_idxs)) {
+      qtl1 <- qtls_for_coloc[[qtl_pair_idxs[1, i]]]
+      qtl2 <- qtls_for_coloc[[qtl_pair_idxs[2, i]]]
+      susie1 <- qtl_susies[[qtl_pair_idxs[1, i]]]
+      susie2 <- qtl_susies[[qtl_pair_idxs[2, i]]]
+      cat(paste("coloc for", qtl1$phenotype_id , "-", qtl2$phenotype_id), "\n")
+      this_coloc <- run_coloc(susie1,susie2)
+      if (!is.null(this_coloc)){
+        this_coloc$qtl1_id <- qtl1$phenotype_id
+        this_coloc$qtl2_id <- qtl2$phenotype_id
+        qtl_coloc_results <- tryCatch({
+            rbind(qtl_coloc_results, this_coloc)  
+          }, error = function(e) {
+            cat("An error occurred for QTL \n")
+            cat("Error Message:", conditionMessage(e), "\n")  # Print the error message
+            print(qtl_coloc_results)
+            print(this_coloc)
+            NULL  # Return NULL if an error occurs
+        })
+      }
     }
   }
   return(qtl_coloc_results)
@@ -304,7 +327,7 @@ parser$add_argument("--gwas_folder", help="Folder path for GWAS data")
 parser$add_argument("--output_path", help="Output file path for coloc results")
 
 
-
+start <- Sys.time()
 
 # Parse the Arguments
 args <- parser$parse_args()
@@ -349,6 +372,7 @@ pcqtl <- read_parquet(pcqtl_path)
 
 # get a list of clusters
 eqtl$cluster_id <- sapply(eqtl$phenotype_id, function(x) unlist(strsplit(as.character(x), '_e_'))[1])
+pcqtl$cluster_id <- sapply(pcqtl$phenotype_id, function(x) unlist(strsplit(as.character(x), '_pc'))[1])
 unique_cluster_ids <- unique(eqtl$cluster_id)
 
 # subset for debug
@@ -371,7 +395,10 @@ gwas_all_cluster_coloc_results <- get_empty_gwas_coloc()
 
 # run coloc for each cluster
 for (cluster_id in unique_cluster_ids){
-  cat("running on cluster")
+  cat("\n\n\n")
+  cat( Sys.time() - start )
+  cat("\n")
+  cat("running on cluster ")
   cat(cluster_id)
   cat("\n")
   snp_path <- paste(snp_path_head, cluster_id, '.snp_list.txt', sep="")
@@ -389,25 +416,36 @@ for (cluster_id in unique_cluster_ids){
   if (file.exists(ld_path_full)) {
     cat("ld matrix already exists\n")
   } else {
-    plink_command <- sprintf("plink --bfile %s --extract %s --r2 square --out %s", genotype_stem, snp_path, ld_path)
+    plink_command <- sprintf("plink --bfile %s --extract %s --r square --out %s", genotype_stem, snp_path, ld_path)
     system(plink_command, intern=TRUE)
     cat("generated ld matrix\n")
   }
-  
+  cat( Sys.time() - start )
+  cat("\n")
+
+
   cluster_coloc_path <-  paste(snp_path_head, cluster_id, '.gwas_coloc.txt', sep="")
   # Check if the file exists
   if (file.exists(cluster_coloc_path)) {
     cat("this cluster already colocalized\n")
     this_cluster_coloc <- read.table(cluster_coloc_path, sep='\t', header=T)
   } else {
-    this_cluster_coloc <- get_gwas_coloc_cluster(eqtl, pcqtl, cluster_id, tissue_id, chr_id, snp_path_head, gwas_folder, gwas_meta, num_gtex_samples)
+    cat("generating cluster colocalization\n")
+    cat( Sys.time() - start )
+    cat("\n")
+    cluster_eqtl <- subset(eqtl, cluster_id == cluster_id)
+    cluster_pcqtl <- subset(pcqtl, cluster_id == cluster_id)
+    this_cluster_coloc <- get_gwas_coloc_cluster(cluster_eqtl, cluster_pcqtl, cluster_id, tissue_id, chr_id, snp_path_head, gwas_folder, gwas_meta, num_gtex_samples)
+    cat( Sys.time() - start )
+    cat("\n")
+    cat(paste(nrow(this_cluster_coloc), " total colocalizations run for", cluster_id, "\n"))
+    write.table(this_cluster_coloc, file=cluster_coloc_path, quote=FALSE, row.names=FALSE, sep='\t')
   }
-  
-  this_cluster_coloc <- get_gwas_coloc_cluster(eqtl, pcqtl, cluster_id, tissue_id, chr_id, snp_path_head, gwas_folder, gwas_meta, num_gtex_samples)
-  cat(paste(dim(this_cluster_coloc), " total colocalizations run for", cluster_id, "\n"))
   gwas_all_cluster_coloc_results <- rbind(gwas_all_cluster_coloc_results, this_cluster_coloc) 
 }
-
+cat("final writeout \n")
+cat( Sys.time() - start )
+cat("\n")
 write.table(gwas_all_cluster_coloc_results, file=output_path, quote=FALSE, row.names=FALSE, sep='\t')
 
 

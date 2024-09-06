@@ -7,6 +7,8 @@ library(arrow)
 library(tidyverse)
 library(data.table)
 library(Rfast)
+library(susieR)
+
 
 ####### funtions #########
 
@@ -134,8 +136,8 @@ eqtl <- read_parquet(eqtl_path)
 pcqtl <- read_parquet(pcqtl_path)
 
 
-gwas_coloc_results <- '/home/klawren/oak/pcqtls/output/proteincoding_main/gwas_coloc/Lung/temp/ENSG00000275464.4_ENSG00000280071.3_ENSG00000280433.1.coloc_qtl.txt'
-this_cluster_coloc <- read.table(gwas_coloc_results, sep='\t', header=T)
+qtl_coloc_results <- '/home/klawren/oak/pcqtls/output/proteincoding_main/gwas_coloc/Lung/temp/ENSG00000275464.4_ENSG00000280071.3_ENSG00000280433.1.coloc_qtl.txt'
+this_cluster_coloc <- read.table(qtl_coloc_results, sep='\t', header=T)
 
 
 
@@ -167,39 +169,38 @@ qtls_for_coloc <- c(eqtls_for_coloc, pcqtls_for_coloc)
 qtls_for_coloc <- qtls_for_coloc[!sapply(qtls_for_coloc, is.null)]
 
 
-###new
-
-get_qtl_pairwise_coloc <- function(qtls_for_coloc, qtl_susies){
-  qtl_coloc_results <- data.frame(qtl1_id = character(), 
-                                  qtl2_id = character(), 
-                                  nsnps = numeric(),
-                                  hit1 = character(),
-                                  hit2 = character(),
-                                  PP.H0.abf = numeric(),
-                                  PP.H1.abf = numeric(),
-                                  PP.H2.abf = numeric(),
-                                  PP.H3.abf = numeric(),
-                                  PP.H4.abf = numeric(),
-                                  idx1 = numeric(),
-                                  idx1 = numeric(),
-                                  stringsAsFactors = FALSE)
-  
-  qtl_pair_idxs <- combn(seq_along(qtls_for_coloc), 2, simplty=TRUE)
-
-  for (i in 1:ncol(qtl_pair_idxs)) {
-    qtl1 <- qtls_for_coloc[[qtl_pair_idxs[1, i]]]
-    qtl2 <- qtls_for_coloc[[qtl_pair_idxs[2, i]]]
-    susie1 <- qtl_susies[[qtl_pair_idxs[1, i]]]
-    susie2 <- qtl_susies[[qtl_pair_idxs[2, i]]]
-    cat(paste("coloc for", qtl1$phenotype_id , "-", qtl2$phenotype_id), "\n")
-    this_coloc <- run_coloc(susie1,susie2)
-    this_coloc$qtl1_id <- qtl1$phenotype_id
-    this_coloc$qtl2_id <- qtl2$phenotype_id
-    qtl_coloc_results <- rbind(qtl_coloc_results, this_coloc)
-  }
-  return(qtl_coloc_results)
+# figure out list adding
+get_empty_gwas_coloc <- function(){
+  gwas_coloc_results <- data.frame(gwas_id = character(), 
+                                   qtl_id = character(), 
+                                   nsnps = numeric(),
+                                   hit_gwas = character(),
+                                   hit_qtl = character(),
+                                   PP.H0.abf = numeric(),
+                                   PP.H1.abf = numeric(),
+                                   PP.H2.abf = numeric(),
+                                   PP.H3.abf = numeric(),
+                                   PP.H4.abf = numeric(),
+                                   idx1 = numeric(),
+                                   idx1 = numeric(),
+                                   stringsAsFactors = FALSE)
+  return(gwas_coloc_results)
 }
+gwas_all_cluster_coloc_results <- get_empty_gwas_coloc()
 
+
+
+
+# susie timing
+start <- Sys.time()
+runsusie(qtls_for_coloc[[1]])
+print(start-Sys.time())
+
+library(susieR)
+# susie timing
+start <- Sys.time()
+runsusie(qtls_for_coloc[[1]])
+print(start-Sys.time())
 
 qtl_susies <- lapply(qtls_for_coloc, runsusie)
 

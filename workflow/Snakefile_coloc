@@ -21,6 +21,25 @@ pc_output_dir = config['pc_output_dir']
 overlap_output_dir = config['overlap_output_dir']
 annotations_output_dir = config['annotations_output_dir']
 
+# cluster params
+max_cluster_size = 50
+min_cluster_size = 2
+min_corr_cutoff = config['min_corr_cutoff']
+percent_corr_cutoff = float(config['percent_corr_cutoff'])
+cutoff_type = config['cutoff_type']
+
+
+# annotation paths
+gencode_path = config['gencode_path']
+full_abc_path = config['full_abc_path']
+abc_match_path = config['abc_match_path']
+ctcf_match_path = config['ctcf_match_path']
+ctcf_dir = config['ctcf_dir'] 
+paralog_path = config['paralog_path']
+go_path = config['go_path']
+cross_map_path = config['cross_map_path']
+tad_path = config['tad_path']
+
 
 # coloc paths
 coloc_output_dir = config['coloc_output_dir']
@@ -37,54 +56,22 @@ print('Running on tissues:{}'.format(tissue_ids))
 df = pd.read_csv(chr_list_path, header=0)
 chr_list = list(df['chr_id'])
 
-def get_clusters(TISSUE, CHROM):
-    outpath = f'{coloc_output_dir}/{TISSUE}/temp/{TISSUE}.{CHROM}.cluster_list.txt'.replace(' ', '')
-    return open(outpath).read().strip().split("\n")
-
-def get_all_ld_paths(tissue_ids, chr_list):
-    ld_paths=[]
-    for tissue in tissue_ids:
-        for chrom in chr_list:
-            clusters = get_clusters(tissue,chrom)
-            ld_paths.extend([f'{coloc_output_dir}{tissue}/temp/{tissue}.{chrom}.cluster_{cluster}.ld'.strip() for cluster in clusters])
-
-    return ld_paths
-
-
-
-#chr_list = ['chr21']
+# there are no chr 20 clusters, so this gives and error. For now just don't even try it
+chr_list.remove('chr20')
+#chr_list = ['chr22']
 tissue_ids = ['Skin_Not_Sun_Exposed_Suprapubic']
 
-# clusters = []
-# chr_zipped = []
-# tissue_zipped = []
 
-# for tissue_id in tissue_ids:
-#     for chrom in chr_list:
-#         this_chr_clusters = get_clusters(tissue_id, chrom)
-#         print(f'{len(this_chr_clusters)} on {tissue_id}, {chrom}')
-#         clusters.extend(this_chr_clusters)
-#         chr_zipped.extend([chrom] * len(this_chr_clusters))
-#         tissue_zipped.extend([tissue_id] * len(this_chr_clusters))
-
-# clusters = np.asarray(clusters)
-# chr_zipped = np.asarray(chr_zipped)
-# tissue_zipped = np.asarray(tissue_zipped)
-
-# paramspace = Paramspace(pd.DataFrame({'CLUSTER':clusters, 'CHROM':chr_zipped, 'TISSUE':tissue_zipped}))
 
 
 include: 'rules/pcqtl.smk'
 include: 'rules/eqtl.smk'
-# include: 'rules/annotate.smk'
+include: 'rules/clusters.smk'
 include: 'rules/coloc.smk'
 
 
 
 rule all:
     input:
-        #snp_list = expand(coloc_output_dir + '{TISSUE}/temp/{TISSUE}.{CHROM}.made_snp_list.txt', TISSUE=tissue_ids, CHROM=chr_list),
-        colocs = expand(coloc_output_dir + '{TISSUE}/{TISSUE}.v8.{CHROM}.gwas_coloc.txt', TISSUE=tissue_ids, CHROM=chr_list)
-        #ld_matrix = get_all_ld_paths(tissue_ids, chr_list)
-
-       #gwas_coloc = expand(coloc_output_dir + '{TISSUE}/temp/colocs/{TISSUE}.v8.{CHROM}.gwas_coloc.txt', TISSUE=tissue_ids, CHROM=chr_list)
+        colocs = expand(coloc_output_dir + '{TISSUE}/{TISSUE}.v8.{CHROM}.gwas_coloc.txt', TISSUE=tissue_ids, CHROM=chr_list),
+        clusters = expand(clusters_dir + '{TISSUE}_clusters_all_chr.csv', TISSUE = tissue_ids),

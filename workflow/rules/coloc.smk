@@ -69,9 +69,8 @@ rule run_coloc_chr:
         genotypes = genotype_stem + '.fam'
 
     resources:
-        mem = "30G", 
-        time = "10:00:00" ,
-        threads=10
+        mem = "50G", 
+        time = "20:00:00" ,
     params:
         gwas_folder = gwas_folder,
         snp_path_head = coloc_output_dir + '{TISSUE}/temp/',
