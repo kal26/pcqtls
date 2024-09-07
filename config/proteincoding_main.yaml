@@ -33,6 +33,6 @@ tad_path: "data/references/TAD_annotations/TADs_hg38/converted_HiC_IMR90_DI_10kb
 
 # for coloc
 coloc_output_dir: "output/proteincoding_main/gwas_coloc/"
-gwas_meta: "/home/klawren/oak/pcqtls/data/references/gwas_metadata.txt"
+gwas_meta: "/home/klawren/oak/pcqtls/data/references/gwas_metadata_test.txt"
 gtex_meta: "/home/klawren/oak/pcqtls/data/references/gtex_sample_sizes.csv"
 gwas_folder: "/oak/stanford/groups/smontgom/shared/gwas_summary_stats/barbeira_gtex_imputed/imputed_gwas_hg38_1.1"

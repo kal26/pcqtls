@@ -51,17 +51,18 @@ gwas_folder = config['gwas_folder']
 # load in all the wildcards
 df = pd.read_csv(tissue_id_path, header=0)
 tissue_ids = list(df['Tissue'])
-print('Running on tissues:{}'.format(tissue_ids))
 
 df = pd.read_csv(chr_list_path, header=0)
 chr_list = list(df['chr_id'])
 
 # there are no chr 20 clusters, so this gives and error. For now just don't even try it
-chr_list.remove('chr20')
+# need to define a zipped function os chrs and tissues
+#chr_list.remove('chr20')
 #chr_list = ['chr22']
 tissue_ids = ['Skin_Not_Sun_Exposed_Suprapubic']
 
 
+print('Running on tissues:{}'.format(tissue_ids))
 
 
 include: 'rules/pcqtl.smk'

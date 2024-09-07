@@ -50,8 +50,9 @@ clean_gwas <- function(gwas_filtered, cleaned_ld_matrix, gwas_type, num_gwas_sam
   cat(length(gwas_missing_snps$panel_variant_id))
   cat("\n")
   cleaned_gwas <- gwas_filtered[!gwas_filtered$panel_variant_id %in% gwas_missing_snps$panel_variant_id, ]
-  gwas_cleaned_ld_matrix <- cleaned_ld_matrix[!rownames(cleaned_ld_matrix) %in% gwas_missing_snps$panel_variant_id, !colnames(cleaned_ld_matrix) %in% gwas_missing_snps$panel_variant_id]
-  cleaned_gwas_list <- list(MAF = cleaned_gwas$frequency, 
+  if(min(cleaned_gwas$pvalue) < 1e-6){
+    gwas_cleaned_ld_matrix <- cleaned_ld_matrix[!rownames(cleaned_ld_matrix) %in% gwas_missing_snps$panel_variant_id, !colnames(cleaned_ld_matrix) %in% gwas_missing_snps$panel_variant_id]
+    cleaned_gwas_list <- list(MAF = cleaned_gwas$frequency, 
                             snp = cleaned_gwas$panel_variant_id, 
                             position = cleaned_gwas$position, 
                             type = gwas_type, 
@@ -60,9 +61,6 @@ clean_gwas <- function(gwas_filtered, cleaned_ld_matrix, gwas_type, num_gwas_sam
                             LD = as.matrix(gwas_cleaned_ld_matrix), 
                             beta = cleaned_gwas$effect_size,
                             varbeta = cleaned_gwas$standard_error**2)
-  #print(check_dataset(cleaned_gwas_list,req="LD"))
-  # if there isn't a signal, further analysis should not be run
-  if (min(cleaned_gwas_list$pvalues) < 1e-6){
     cat('\t signal found \n')
     return(cleaned_gwas_list)
   } else {
@@ -76,33 +74,37 @@ run_coloc <- function(susie1, susie2) {
   return(coloc$summary)
 }
 
-filter_gwas <- function(gwas, snp_list, ld_missing_snps){
-  gwas_filtered <- subset(gwas, panel_variant_id %in% snp_list$variant_id & !(panel_variant_id %in% ld_missing_snps))
+filter_gwas <- function(gwas, snp_list, ld_snp_set){
+  gwas_filtered <- gwas[gwas$variant_id %in% snp_list$variant_id, ]
+  gwas_filtered <- gwas_filtered[gwas_filtered$variant_id %in% ld_snp_set, ]
   return(gwas_filtered)
 }
 
 # filter eqtl data
-filter_qtl <- function(qtl, snp_list, ld_missing_snps){
-  qtl_filtered <- subset(qtl, variant_id %in% snp_list$variant_id & !(variant_id %in% ld_missing_snps))
+filter_qtl <- function(qtl, ld_snp_set){
+  qtl_filtered <- qtl[qtl$variant_id %in% ld_snp_set, ]
   return(qtl_filtered)
 }
 
-split_qtl <- function(qtl, snp_list, ld_missing_snps, cleaned_ld_matrix, num_gtex_samples){
-  qtl_filtered <- filter_qtl(qtl, snp_list, ld_missing_snps)
+split_qtl <- function(qtl, ld_snp_set, cleaned_ld_matrix, num_gtex_samples){
+  qtl_filtered <- filter_qtl(qtl, ld_snp_set)
   # split eqtl to each of the egenes and clean up
-  split_qtls <- split(qtl_filtered, qtl_filtered$phenotype_id)
+  phenotype_ids = unique(qtl_filtered$phenotype_id)
   qtls_for_coloc <- list()
-  for(i in seq_along(split_qtls)) {
-    cat(paste("looking for signals in", split_qtls[[i]]$phenotype_id))
-    this_qtl_for_coloc <- clean_qtl(split_qtls[[i]], cleaned_ld_matrix, num_gtex_samples)
-    qtls_for_coloc[[i]] <- this_qtl_for_coloc
+  for (i in 1:length(phenotype_ids)){
+    phenotype_qtl <- qtl_filtered[qtl_filtered$phenotype_id == phenotype_ids[i], ]
+    cat(paste("\t\tlooking for signals in",phenotype_ids[i]), "\n")
+    cat(paste("\t\tqtl filtered to :", nrow(phenotype_qtl), "snps\n"))
+
+
+    phenotype_qtl_for_coloc <- clean_qtl(phenotype_qtl, cleaned_ld_matrix, num_gtex_samples)
+    qtls_for_coloc[[i]] <- phenotype_qtl_for_coloc
   }
   return(qtls_for_coloc)
 }
 
-gwas_from_path <- function(gwas_folder, gwas_meta, snp_list, ld_missing_snps, cleaned_ld_matrix){
+gwas_from_path <- function(gwas_folder, gwas_meta, snp_list, ld_snp_set, cleaned_ld_matrix){
   gwas_id <- gwas_meta$Tag
-  cat(paste("working on gwas ", gwas_id, "\n"))
   num_gwas_samples <- gwas_meta$Sample_Size
   if (gwas_meta$Binary == 0) {
     gwas_type <- 'quant'
@@ -110,10 +112,12 @@ gwas_from_path <- function(gwas_folder, gwas_meta, snp_list, ld_missing_snps, cl
     gwas_type <- 'cc'
   }
   gwas_path <- paste(gwas_folder, '/imputed_', gwas_id, '.txt.gz', sep = '')
+  cat(paste("\t\treading gwas:", Sys.time()-start))
   gwas <- fread(gwas_path)
-  
+  cat(paste("\t\tfinished reading gwas:", Sys.time()-start))
+
   # filter gwas and clean gwas data
-  gwas_filtered <- filter_gwas(gwas, snp_list, ld_missing_snps)
+  gwas_filtered <- filter_gwas(gwas, snp_list, ld_snp_set)
   gwas_for_coloc <- clean_gwas(gwas_filtered, cleaned_ld_matrix, gwas_type, num_gwas_samples)
   return(gwas_for_coloc)
 }
@@ -167,7 +171,8 @@ runsusie_errorcatch <- function(dataset){
 
 
 get_gwas_coloc_cluster <- function(eqtl, pcqtl, cluster_id, tissue_id, chr_id, snp_path_head, gwas_folder, gwas_meta, num_gtex_samples){
-  
+  write_out_qtl=FALSE
+
   # get snp list path from cluster id
   snp_list_path <-paste(snp_path_head, cluster_id, '.snp_list.txt', sep="")
   # load in snp list
@@ -176,7 +181,11 @@ get_gwas_coloc_cluster <- function(eqtl, pcqtl, cluster_id, tissue_id, chr_id, s
   cat(length(snp_list$variant_id))
   cat("\n")
   
+  cat("loading ld martix\n")
   ld_matrix_path <- paste(snp_path_head, cluster_id, '.ld', sep="")
+  cat(Sys.time()-start)
+  cat("\n")
+
   # load in ld matrix
   # can't use fread here,  not sure why
   ld_matrix <- read.table(ld_matrix_path)
@@ -190,11 +199,14 @@ get_gwas_coloc_cluster <- function(eqtl, pcqtl, cluster_id, tissue_id, chr_id, s
   cat(length(ld_missing_snps))
   cat("\n")
   cleaned_ld_matrix <- ld_matrix[!rownames(ld_matrix) %in% ld_missing_snps, !colnames(ld_matrix) %in% ld_missing_snps]
-  
+  ld_snp_set <- rownames(cleaned_ld_matrix)
+  cat("total working snps: ")
+  cat(nrow(cleaned_ld_matrix))
+  cat("\n")
   
   # filter eqtls and pcqtls
-  eqtls_for_coloc <- split_qtl(eqtl, snp_list, ld_missing_snps, cleaned_ld_matrix, num_gtex_samples)
-  pcqtls_for_coloc <- split_qtl(pcqtl, snp_list, ld_missing_snps, cleaned_ld_matrix, num_gtex_samples)
+  eqtls_for_coloc <- split_qtl(eqtl, ld_snp_set, cleaned_ld_matrix, num_gtex_samples)
+  pcqtls_for_coloc <- split_qtl(pcqtl, ld_snp_set, cleaned_ld_matrix, num_gtex_samples)
   # conmbine them into one list
   qtls_for_coloc <- c(eqtls_for_coloc, pcqtls_for_coloc)
   cat(length(qtls_for_coloc))
@@ -206,55 +218,72 @@ get_gwas_coloc_cluster <- function(eqtl, pcqtl, cluster_id, tissue_id, chr_id, s
   # initialize a null
   gwas_coloc_results <- get_empty_gwas_coloc()
   
-  qtl_susies <- vector("list", length(qtls_for_coloc))
-  if (length(qtls_for_coloc) != 0){
-    cat(paste('running susie on', length(qtls_for_coloc), 'qtls \n'))
-    qtl_susies <- lapply(qtls_for_coloc, runsusie_errorcatch)
-    qtls_for_coloc <- qtls_for_coloc[!sapply(qtl_susies, is.null)]
-    qtl_susies <- qtl_susies[!sapply(qtl_susies, is.null)]
-    
-    cat(paste('\t\t sucessful susie on', length(qtl_susies), 'qtls \n'))
-    # write out the pairwise qtl colocs (we get these for free basically after running susie)
-    qtl_coloc_results <- get_qtl_pairwise_coloc(qtls_for_coloc, qtl_susies)
-    qtl_coloc_path <- paste(snp_path_head, cluster_id, '.qtl_coloc.txt', sep="")
-    write.table(qtl_coloc_results, file=qtl_coloc_path, quote=FALSE, row.names=FALSE, sep='\t')
-    
-    cat("working on gwas colocs\n")
-    if (length(qtl_susies) != 0){
-      for (i in 1:nrow(gwas_meta)){
-        # check if I've already done this gwas
-        gwas_id <- gwas_meta[i]$Tag
-          gwas_for_coloc <- gwas_from_path(gwas_folder, gwas_meta[i], snp_list, ld_missing_snps, cleaned_ld_matrix)
-          if (!is.null(gwas_for_coloc)){
-            gwas_susie <- runsusie_errorcatch(gwas_for_coloc)
-          if (!is.null(gwas_susie)){
-          cat(paste("\t\tcoloc for", gwas_id, "\n"))
-          # coloc this gwas with each qtl
-            for (i in seq_along(qtl_susies)) {
-              this_qtl_susie <- qtl_susies[[i]]
-              this_qtl_id <- qtls_for_coloc[[i]]$phenotype_id
-              cat(paste("\t\t\tcoloc for", gwas_id, "and", this_qtl_id, "\n"))
-              this_coloc <- run_coloc(gwas_susie,this_qtl_susie)
-              cat(dim(this_coloc)) # debugging
-              cat("\n")
-              this_coloc$gwas_id <- gwas_id
-              this_coloc$qtl_id <- this_qtl_id
-              gwas_coloc_results <- rbind(gwas_coloc_results, this_coloc)
-            }
-          }
-        }
-      cat(paste("finished gwas", gwas_id, "\n"))
-      cat(paste(nrows(gwas_coloc_results), " colocalizations run so far\n"))
-
-      }
+  qtl_susies <- NULL
+  # if we want to write out qtl-qtl colocs, we need to finemap now
+  if (write_out_qtl){
+    if (length(qtls_for_coloc) != 0){
+      cat(Sys.time()-start)
+      cat("\n")
+      cat(paste('running susie on', length(qtls_for_coloc), 'qtls \n'))
+      qtl_susies <- lapply(qtls_for_coloc, runsusie_errorcatch)
+      qtls_for_coloc <- qtls_for_coloc[!sapply(qtl_susies, is.null)]
+      qtl_susies <- qtl_susies[!sapply(qtl_susies, is.null)]
+      
+      cat(paste('\t\t sucessful susie on', length(qtl_susies), 'qtls \n'))
+      cat(Sys.time()-start)
+      cat("\n")
+      # write out the pairwise qtl colocs (we get these for free basically after running susie)
+      qtl_coloc_results <- get_qtl_pairwise_coloc(qtls_for_coloc, qtl_susies)
+      qtl_coloc_path <- paste(snp_path_head, cluster_id, '.qtl_coloc.txt', sep="")
+      write.table(qtl_coloc_results, file=qtl_coloc_path, quote=FALSE, row.names=FALSE, sep='\t')
     }
   }
-  # rename and return results   
-  gwas_coloc_results$gwas_cs_is <- gwas_coloc_results$idx1 
-  gwas_coloc_results$qtl_cs_is <- gwas_coloc_results$idx2
-  # write out this cluster coloc
-  # this allows me to save my work a bit
-  return(gwas_coloc_results)
+  # should we bother to colocalize?
+  cat('should we coloc?')
+  cat((((is.null(qtl_susies))&&(length(qtls_for_coloc) != 0))||(length(qtl_susies) != 0)))
+  cat("\n")
+  if (((is.null(qtl_susies))&&(length(qtls_for_coloc) != 0))||(length(qtl_susies) != 0)){
+    for (i in 1:nrow(gwas_meta)){
+      # check if I've already done this gwas?
+      gwas_id <- gwas_meta[i]$Tag
+      cat(paste("started gwas", gwas_id, ': ', Sys.time()-start, "\n"))
+      gwas_for_coloc <- gwas_from_path(gwas_folder, gwas_meta[i], snp_list, ld_snp_set, cleaned_ld_matrix)
+      if (!is.null(gwas_for_coloc)){
+          gwas_susie <- runsusie_errorcatch(gwas_for_coloc)
+        if (!is.null(gwas_susie)){
+        cat(paste("\t\tcoloc for", gwas_id, "\n"))
+        # coloc this gwas with each qtl
+          # calculate qtl_susies if I haven't yet
+          if(is.null(qtl_susies)){
+            qtl_susies <- lapply(qtls_for_coloc, runsusie_errorcatch)
+            qtls_for_coloc <- qtls_for_coloc[!sapply(qtl_susies, is.null)]
+            qtl_susies <- qtl_susies[!sapply(qtl_susies, is.null)]
+            cat(paste('\t\t sucessful susie on', length(qtl_susies), 'qtls \n'))
+          }
+          for (i in seq_along(qtl_susies)) {
+            this_qtl_susie <- qtl_susies[[i]]
+            this_qtl_id <- qtls_for_coloc[[i]]$phenotype_id
+            cat(paste("\t\t\tcoloc for", gwas_id, "and", this_qtl_id, "\n"))
+            this_coloc <- run_coloc(gwas_susie,this_qtl_susie)
+            cat(dim(this_coloc)) # debugging
+            cat("\n")
+            this_coloc$gwas_id <- gwas_id
+            this_coloc$qtl_id <- this_qtl_id
+            gwas_coloc_results <- rbind(gwas_coloc_results, this_coloc)
+          }
+        }
+      }
+    cat(paste("finished gwas", gwas_id, ': ', Sys.time()-start, "\n"))
+    cat(paste(nrow(gwas_coloc_results), " colocalizations run so far\n"))
+
+    }
+  }
+# rename and return results   
+gwas_coloc_results$gwas_cs_is <- gwas_coloc_results$idx1 
+gwas_coloc_results$qtl_cs_is <- gwas_coloc_results$idx2
+# write out this cluster coloc
+# this allows me to save my work a bit
+return(gwas_coloc_results)
 }
 
 
@@ -433,8 +462,9 @@ for (cluster_id in unique_cluster_ids){
     cat("generating cluster colocalization\n")
     cat( Sys.time() - start )
     cat("\n")
-    cluster_eqtl <- subset(eqtl, cluster_id == cluster_id)
-    cluster_pcqtl <- subset(pcqtl, cluster_id == cluster_id)
+    cluster_eqtl <-eqtl[eqtl$cluster_id == cluster_id, ]
+    cluster_pcqtl <- pcqtl[pcqtl$cluster_id == cluster_id, ]
+    cat(unique(cluster_eqtl$cluster_id))
     this_cluster_coloc <- get_gwas_coloc_cluster(cluster_eqtl, cluster_pcqtl, cluster_id, tissue_id, chr_id, snp_path_head, gwas_folder, gwas_meta, num_gtex_samples)
     cat( Sys.time() - start )
     cat("\n")
