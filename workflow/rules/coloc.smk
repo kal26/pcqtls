@@ -62,38 +62,44 @@
 # per cluster colocalization with gwas
 rule run_coloc_chr:
     input:
-        eqtl_pairs = eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet',
-        pcqtl_pairs = pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet',
+        eqtl_pairs = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, allow_missing=True),
+        pcqtl_pairs = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, allow_missing=True),
         gwas_meta = gwas_meta,
         gtex_meta = gtex_meta, 
-        genotypes = genotype_stem + '.fam'
+        genotypes = genotype_stem + '.fam',
+        gwas_nominal = gwas_folder + '/imputed_{GWAS}.txt.gz',
+        annotated_clusters = annotations_output_dir + '{TISSUE}_clusters_annotated.csv'
 
     resources:
         mem = "50G", 
         time = "20:00:00" ,
     params:
-        gwas_folder = gwas_folder,
+        eqtl_dir_path = eqtl_output_dir + '{TISSUE}',
+        pcqtl_dir_path =  pcqtl_output_dir + '{TISSUE}',
         snp_path_head = coloc_output_dir + '{TISSUE}/temp/',
         genotype_stem = genotype_stem,
+        use_susie = '{USE_SUSIE}'
 
     output:
-        coloc_cluster = coloc_output_dir + '{TISSUE}/{TISSUE}.v8.{CHROM}.gwas_coloc.txt',
+        coloc_gwas = coloc_output_dir + '{TISSUE}/{TISSUE}.v8.{GWAS}.susie_{USE_SUSIE}.gwas_coloc.txt'
     shell:
         """
         module load r/4.2.2
         module load plink
 
-        Rscript workflow/scripts/run_coloc.R \
-            --eqtl_path {input.eqtl_pairs} \
-            --pcqtl_path {input.pcqtl_pairs} \
+        Rscript workflow/scripts/draft_coloc.R \
+            --eqtl_dir_path {params.eqtl_dir_path} \
+            --pcqtl_dir_path {params.pcqtl_dir_path} \
             --gwas_meta {input.gwas_meta} \
             --gtex_meta {input.gtex_meta} \
-            --chr_id {wildcards.CHROM} \
-            --tissue {wildcards.TISSUE} \
+            --tissue_id {wildcards.TISSUE} \
             --snp_path_head {params.snp_path_head} \
             --genotype_stem {params.genotype_stem} \
-            --gwas_folder {params.gwas_folder} \
-            --output_path {output.coloc_cluster} \
+            --gwas_path {input.gwas_nominal} \
+            --gwas_id {wildcards.GWAS} \
+            --annotated_cluster_path {input.annotated_clusters} \
+            --output_path {output.coloc_gwas} \
+            --use_susie {params.use_susie} \
         """
 
 

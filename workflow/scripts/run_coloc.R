@@ -50,9 +50,9 @@ clean_gwas <- function(gwas_filtered, cleaned_ld_matrix, gwas_type, num_gwas_sam
   cat(length(gwas_missing_snps$panel_variant_id))
   cat("\n")
   cleaned_gwas <- gwas_filtered[!gwas_filtered$panel_variant_id %in% gwas_missing_snps$panel_variant_id, ]
-  if(min(cleaned_gwas$pvalue) < 1e-6){
-    gwas_cleaned_ld_matrix <- cleaned_ld_matrix[!rownames(cleaned_ld_matrix) %in% gwas_missing_snps$panel_variant_id, !colnames(cleaned_ld_matrix) %in% gwas_missing_snps$panel_variant_id]
-    cleaned_gwas_list <- list(MAF = cleaned_gwas$frequency, 
+  #if(min(cleaned_gwas$pvalue) < 1e-6){
+  gwas_cleaned_ld_matrix <- cleaned_ld_matrix[!rownames(cleaned_ld_matrix) %in% gwas_missing_snps$panel_variant_id, !colnames(cleaned_ld_matrix) %in% gwas_missing_snps$panel_variant_id]
+  cleaned_gwas_list <- list(MAF = cleaned_gwas$frequency, 
                             snp = cleaned_gwas$panel_variant_id, 
                             position = cleaned_gwas$position, 
                             type = gwas_type, 
@@ -61,11 +61,11 @@ clean_gwas <- function(gwas_filtered, cleaned_ld_matrix, gwas_type, num_gwas_sam
                             LD = as.matrix(gwas_cleaned_ld_matrix), 
                             beta = cleaned_gwas$effect_size,
                             varbeta = cleaned_gwas$standard_error**2)
-    cat('\t signal found \n')
-    return(cleaned_gwas_list)
-  } else {
-    cat('\t no signal found \n')
-  }
+    #cat('\t signal found \n')
+  return(cleaned_gwas_list)
+  #} else {
+  #  cat('\t no signal found \n')
+  #}
 }
 
 run_coloc <- function(susie1, susie2) {
@@ -77,6 +77,9 @@ run_coloc <- function(susie1, susie2) {
 filter_gwas <- function(gwas, snp_list, ld_snp_set){
   gwas_filtered <- gwas[gwas$variant_id %in% snp_list$variant_id, ]
   gwas_filtered <- gwas_filtered[gwas_filtered$variant_id %in% ld_snp_set, ]
+  cat("snps in gwas")
+  cat(nrow(gwas_filtered))
+  cat('\n')
   return(gwas_filtered)
 }
 
@@ -157,11 +160,12 @@ get_empty_qtl_coloc <- function(){
 }
 
 runsusie_errorcatch <- function(dataset){
+  cat("running susie\n")
   start <- Sys.time()
   susie <- tryCatch({
     runsusie(dataset)  # Call runsusie function for each QTL
   }, error = function(e) {
-    cat("An error occurred for QTL \n")
+    cat("An error occurred for QTL susie\n")
     cat("Error Message:", conditionMessage(e), "\n")  # Print the error message
     NULL  # Return NULL if an error occurs
   })
@@ -260,7 +264,7 @@ get_gwas_coloc_cluster <- function(eqtl, pcqtl, cluster_id, tissue_id, chr_id, s
             qtl_susies <- qtl_susies[!sapply(qtl_susies, is.null)]
             cat(paste('\t\t sucessful susie on', length(qtl_susies), 'qtls \n'))
           }
-          for (i in seq_along(qtl_susies)) {
+          for (i in 1:length(qtl_susies)) {
             this_qtl_susie <- qtl_susies[[i]]
             this_qtl_id <- qtls_for_coloc[[i]]$phenotype_id
             cat(paste("\t\t\tcoloc for", gwas_id, "and", this_qtl_id, "\n"))
@@ -327,10 +331,10 @@ get_qtl_pairwise_coloc <- function(qtls_for_coloc, qtl_susies){
         qtl_coloc_results <- tryCatch({
             rbind(qtl_coloc_results, this_coloc)  
           }, error = function(e) {
-            cat("An error occurred for QTL \n")
+            cat("An error occurred for QTL-qtl coloc\n")
             cat("Error Message:", conditionMessage(e), "\n")  # Print the error message
-            print(qtl_coloc_results)
-            print(this_coloc)
+            cat(qtl_coloc_results)
+            cat(this_coloc)
             NULL  # Return NULL if an error occurs
         })
       }

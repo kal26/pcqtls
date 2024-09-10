@@ -62,7 +62,7 @@ rule all:
     input:
         # clusters = expand(clusters_dir + '{TISSUE}_clusters_all_chr.csv', TISSUE = tissue_ids),
         annotated_clusters = expand(annotations_output_dir + '{TISSUE}_clusters_annotated.csv', TISSUE = tissue_ids),
-        annotated_nulls =  expand(annotations_output_dir + '{TISSUE}_null_{CLUSTER_SIZE}genes_annotated.csv', TISSUE = tissue_ids, CLUSTER_SIZE = null_sizes),
+        #annotated_nulls =  expand(annotations_output_dir + '{TISSUE}_null_{CLUSTER_SIZE}genes_annotated.csv', TISSUE = tissue_ids, CLUSTER_SIZE = null_sizes),
         # vep = expand(annotations_output_dir + '{TISSUE}.v8.leadvars.vep.vcf', TISSUE = tissue_ids),
         # overlap = expand(overlap_output_dir + '{TISSUE}.v8.overlap.txt', TISSUE = tissue_ids),
         # pcqtl_susie = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.susie.txt', TISSUE = tissue_ids),

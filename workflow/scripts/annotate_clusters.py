@@ -487,6 +487,10 @@ def main():
     cluster_df_annotated = run_annotate_from_paths(args.tissue, args.cluster_path, args.expression_path, args.covariates_path,
                                                    args.gencode_path, args.full_abc_path, args.abc_match_path, args.ctcf_match_path,
                                                    args.ctcf_dir, args.paralog_path, args.go_path, args.cross_map_path, args.tad_path)
+    # add cluster id
+    for idx, row in cluster_df_annotated.iterrows():
+        cluster_df_annotated.loc[idx, 'cluster_id']  = '_'.join([*sorted(row['Transcripts'].split(','))])
+
     cluster_df_annotated.to_csv(args.out_path)
 
 if __name__ == "__main__":

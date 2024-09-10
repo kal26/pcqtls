@@ -59,7 +59,10 @@ chr_list = list(df['chr_id'])
 # need to define a zipped function os chrs and tissues
 #chr_list.remove('chr20')
 #chr_list = ['chr22']
-tissue_ids = ['Skin_Not_Sun_Exposed_Suprapubic']
+#tissue_ids = ['Skin_Not_Sun_Exposed_Suprapubic']
+
+gwas_meta_df = pd.read_csv(gwas_meta, sep='\t', header=0)
+gwas_ids = list(gwas_meta_df['Tag'])
 
 
 print('Running on tissues:{}'.format(tissue_ids))
@@ -74,5 +77,4 @@ include: 'rules/coloc.smk'
 
 rule all:
     input:
-        colocs = expand(coloc_output_dir + '{TISSUE}/{TISSUE}.v8.{CHROM}.gwas_coloc.txt', TISSUE=tissue_ids, CHROM=chr_list),
-        clusters = expand(clusters_dir + '{TISSUE}_clusters_all_chr.csv', TISSUE = tissue_ids),
+        colocs = expand(coloc_output_dir + '{TISSUE}/{TISSUE}.v8.{GWAS}.susie_{USE_SUSIE}.gwas_coloc.txt', TISSUE=tissue_ids, GWAS=gwas_ids, USE_SUSIE=["FALSE"]),
