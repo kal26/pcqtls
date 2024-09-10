@@ -477,6 +477,9 @@ for (chr_id in 1:22){
       gwas_all_cluster_coloc_results <- rbind(gwas_all_cluster_coloc_results, gwas_cluster_coloc) 
     }
   }
+  # finished with a chr, write out temp results
+  chr_coloc_path <- paste(snp_path_head, tissue_id, ".v8.", gwas_id, '.susie_', use_susie,'.gwas_coloc.txt', sep="")
+  write.table(gwas_all_cluster_coloc_results, file=chr_coloc_path, quote=FALSE, row.names=FALSE, sep='\t')
 }
 
 # write out (tissue_id.gwas_id)
