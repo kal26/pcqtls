@@ -13,18 +13,18 @@ library(susieR)
 
 
 # test args for debugging
-eqtl_dir_path <- 'output/proteincoding_main/control_eqtl/Thyroid'
-pcqtl_dir_path <- 'output/proteincoding_main/pcqtl/Thyroid'
-gwas_meta_path <- '/home/klawren/oak/pcqtls/data/references/gwas_metadata.txt'
-gtex_meta_path <- '/home/klawren/oak/pcqtls/data/references/gtex_sample_sizes.csv'
-tissue_id <- 'Thyroid'
-snp_path_head <- 'output/proteincoding_main/gwas_coloc/Thyroid/temp/'
-genotype_stem <- "data/processed/genotypes/GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.SHAPEIT2_phased.MAF01"
-gwas_path <- '/oak/stanford/groups/smontgom/shared/gwas_summary_stats/barbeira_gtex_imputed/imputed_gwas_hg38_1.1/imputed_UKB_20016_Fluid_intelligence_score.txt.gz'
-output_path <- 'output/temp/test_coloc.txt'
-gwas_id <- 'UKB_20016_Fluid_intelligence_score'
-annotated_cluster_path <- 'output/proteincoding_main/annotations/Thyroid_clusters_annotated.csv'
-cluster_id <-'ENSG00000161016.17_ENSG00000196378.11'
+#eqtl_dir_path <- 'output/proteincoding_main/control_eqtl/Muscle_Skeletal'
+#pcqtl_dir_path <- 'output/proteincoding_main/pcqtl/Muscle_Skeletal'
+#gwas_meta_path <- '/home/klawren/oak/pcqtls/data/references/gwas_metadata.txt'
+#gtex_meta_path <- '/home/klawren/oak/pcqtls/data/references/gtex_sample_sizes.csv'
+#tissue_id <- 'Muscle_Skeletal'
+#snp_path_head <- 'output/proteincoding_main/gwas_coloc/Muscle_Skeletal/temp/'
+#genotype_stem <- "data/processed/genotypes/GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.SHAPEIT2_phased.MAF01"
+#gwas_path <- '/oak/stanford/groups/smontgom/shared/gwas_summary_stats/barbeira_gtex_imputed/imputed_gwas_hg38_1.1/imputed_UKB_20002_1461_self_reported_inflammatory_bowel_disease.txt.gz'
+#output_path <- 'output/temp/test_coloc.txt'
+#gwas_id <- 'UKB_20002_1461_self_reported_inflammatory_bowel_disease'
+#annotated_cluster_path <- 'output/proteincoding_main/annotations/Muscle_Skeletal_clusters_annotated.csv'
+#cluster_id <-'ENSG00000025708.13_ENSG00000177989.13'
 
 ####### funtions #########
 
@@ -91,7 +91,7 @@ filter_gwas <- function(gwas_data, snp_list, ld_snp_set){
 
 clean_gwas <- function(gwas_filtered, cleaned_ld_matrix, gwas_type, num_gwas_samples){
   # susie needs effect sizes, so we must also drop the snps with na for gwas effect
-  gwas_missing_snps <- gwas_filtered[is.na(gwas_filtered$effect_size) | is.na(gwas_filtered$effect_size), 'panel_variant_id']
+  gwas_missing_snps <- gwas_filtered[is.na(gwas_filtered$effect_size) | is.na(gwas_filtered$standard_error), 'panel_variant_id']
   cat("\t Number snps with ld or gwas missing: ", length(gwas_missing_snps$panel_variant_id), "\n")
   cleaned_gwas <- gwas_filtered[!gwas_filtered$panel_variant_id %in% gwas_missing_snps$panel_variant_id, ]
   if(min(cleaned_gwas$pvalue) < 1e-6){
@@ -206,6 +206,12 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
   gwas_for_coloc <- get_gwas_for_coloc(gwas_with_meta, ld_snp_set, snp_list, cleaned_ld_matrix)
   # make the gwas susie
   
+  # in rare cases, the snps with <1e-6 singal are not in the qtl snp_list or are nans in the ld matrix
+  if(is.null(gwas_for_coloc)){
+    cat("signifigant gwas signal filtered out\n")
+    return(NULL)
+  }
+  
   if(use_susie){
     # run susie on each qtl phenotype
     qtl_susies <- lapply(qtls_for_coloc, runsusie_errorcatch)
@@ -260,6 +266,9 @@ check_gwas_cluster <- function(gwas_chr, this_cluster){
 }
 
 get_ld <- function(snp_path_head, cluster_id, snp_list, genotype_stem){
+  if (nchar(cluster_id) > 150){
+    cluster_id <- get_short_cluster_id(cluster_id)
+  }
   # check if ld already exists
   ld_matrix_path <- paste(snp_path_head, cluster_id, '.ld', sep="")
   if (file.exists(ld_matrix_path)) {
@@ -296,7 +305,21 @@ get_ld_missing_snps <- function(ld_matrix){
   return(ld_missing_snps)
 }
 
+get_short_cluster_id <- function(long_cluster_id){
+  # filenames can only be 260 characters
+  # this leads to erros for large clusters
+  # I just take the first 5 of the cluster and call that good. 
+  # There shouldn't be any overlap in transcripts anyway
+  long_cluster_id_split <- strsplit(long_cluster_id, "_")[[1]]
+  # Take all text before the 5th '_'
+  short_cluster_id <- paste(long_cluster_id_split[1:5], collapse = "_")
+  return(short_cluster_id)
+}
+
 get_snp_list <- function(cluster_eqtl, snp_path_head, cluster_id){
+  if (nchar(cluster_id) > 150){
+    cluster_id <- get_short_cluster_id(cluster_id)
+  }
   snp_path <- paste(snp_path_head, cluster_id, '.snp_list.txt', sep="")
   # make snp list if not
   if (file.exists(snp_path)) {
@@ -424,21 +447,22 @@ cluster_df <- fread(annotated_cluster_path)
 
 # for each chromosome
 for (chr_id in 1:22){
-  #chr_id <- 8#debug
+  #chr_id <- 22#debug
   cat("working on chr ", chr_id, "\n")
   cluster_df_chr <- cluster_df[cluster_df$Chromosome == chr_id]
   gwas_chr <- gwas_with_meta$gwas_data[gwas_with_meta$gwas_data$chromosome == paste('chr', chr_id, sep="")] 
   pcqtl_chr <- NULL
   eqtl_chr <- NULL
   # for each cluster, check if the gwas has a signal
-  for (i in nrow(cluster_df_chr)){
-    #i <- 34 #debug
+  for (i in 1:nrow(cluster_df_chr)){
+    #i <- 28 #debug
     this_cluster <- cluster_df_chr[i]
     cluster_id <- this_cluster$cluster_id
+    cat("running on ", cluster_id, "\n")
     # if it does, load in eqtl and pcqtl and colocalize 
     if (check_gwas_cluster(gwas_chr, this_cluster)){
       num_colocs <- num_colocs + 1
-      cat("possible coloc for", this_cluster$cluster_id, "\n")
+      cat("\tpossible coloc for", this_cluster$cluster_id, "\n")
       cat(num_colocs, " colocs so far \n")
       # load in eqtl if I haven't already
       if(is.null(eqtl_chr)){
