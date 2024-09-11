@@ -13,18 +13,21 @@ library(susieR)
 
 
 # test args for debugging
-#eqtl_dir_path <- 'output/proteincoding_main/control_eqtl/Muscle_Skeletal'
-#pcqtl_dir_path <- 'output/proteincoding_main/pcqtl/Muscle_Skeletal'
+#eqtl_dir_path <- 'output/proteincoding_main/control_eqtl/Thyroid'
+#pcqtl_dir_path <- 'output/proteincoding_main/pcqtl/Thyroid'
 #gwas_meta_path <- '/home/klawren/oak/pcqtls/data/references/gwas_metadata.txt'
 #gtex_meta_path <- '/home/klawren/oak/pcqtls/data/references/gtex_sample_sizes.csv'
-#tissue_id <- 'Muscle_Skeletal'
-#snp_path_head <- 'output/proteincoding_main/gwas_coloc/Muscle_Skeletal/temp/'
+#tissue_id <- 'Thyroid'
+#snp_path_head <- 'output/proteincoding_main/gwas_coloc/Thyroid/temp/'
 #genotype_stem <- "data/processed/genotypes/GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.SHAPEIT2_phased.MAF01"
-#gwas_path <- '/oak/stanford/groups/smontgom/shared/gwas_summary_stats/barbeira_gtex_imputed/imputed_gwas_hg38_1.1/imputed_UKB_20002_1461_self_reported_inflammatory_bowel_disease.txt.gz'
+#gwas_path <- '/oak/stanford/groups/smontgom/shared/gwas_summary_stats/barbeira_gtex_imputed/imputed_gwas_hg38_1.1/imputed_GIANT_WHR_Combined_EUR.txt.gz'
 #output_path <- 'output/temp/test_coloc.txt'
-#gwas_id <- 'UKB_20002_1461_self_reported_inflammatory_bowel_disease'
-#annotated_cluster_path <- 'output/proteincoding_main/annotations/Muscle_Skeletal_clusters_annotated.csv'
-#cluster_id <-'ENSG00000025708.13_ENSG00000177989.13'
+#gwas_id <- 'GIANT_WHR_Combined_EUR'
+#annotated_cluster_path <- 'output/proteincoding_main/annotations/Thyroid_clusters_annotated.csv'
+#cluster_id <-'ENSG00000129151.8_ENSG00000176971.3'
+#use_susie <- FALSE
+#i <- 52
+#chr_id <- 11
 
 ####### funtions #########
 
@@ -50,22 +53,26 @@ filter_qtl <- function(qtl, ld_snp_set){
 }
 
 clean_qtl <- function(qtl_filtered, cleaned_ld_matrix, num_gtex_samples){
+  # some slope_se are na
+  qtl_missing_snps <- qtl_filtered[is.na(qtl_filtered$slope) | is.na(qtl_filtered$slope_se) | (cleaned_qtl$af == 0), 'variant_id']
+  cat("\t Number snps with  qtl missing: ", length(qtl_missing_snps$variant_id), "\n")
+  cleaned_qtl <- qtl_filtered[!qtl_filtered$variant_id %in% qtl_missing_snps$variant_id, ]
   # if there isn't a signal, further analysis should not be run
-  if (min(qtl_filtered$pval_nominal) < 1e-6){
+  if (min(cleaned_qtl$pval_nominal) < 1e-6){
     cat('\t signal found \n')
     # make some columns to play well with coloc
-    qtl_filtered <- qtl_filtered %>%
+    cleaned_qtl <- cleaned_qtl %>%
       mutate(position = as.integer(str_split(variant_id, "_") %>% sapply(pluck, 2)))
-    cleaned_qtl_list <- list(beta = qtl_filtered$slope, 
-                             varbeta = qtl_filtered$slope_se**2, 
-                             snp = qtl_filtered$variant_id, 
-                             position = qtl_filtered$position, 
-                             pvalues = qtl_filtered$pval_nominal,
+    cleaned_qtl_list <- list(beta = cleaned_qtl$slope, 
+                             varbeta = cleaned_qtl$slope_se**2, 
+                             snp = cleaned_qtl$variant_id, 
+                             position = cleaned_qtl$position, 
+                             pvalues = cleaned_qtl$pval_nominal,
                              type = "quant", 
                              N = num_gtex_samples, 
-                             MAF = qtl_filtered$af,
+                             MAF = cleaned_qtl$af,
                              sdY = 1,
-                             phenotype_id = qtl_filtered$phenotype_id[1],
+                             phenotype_id = cleaned_qtl$phenotype_id[1],
                              LD = as.matrix(cleaned_ld_matrix))
     return(cleaned_qtl_list)
   } else{
@@ -91,7 +98,7 @@ filter_gwas <- function(gwas_data, snp_list, ld_snp_set){
 
 clean_gwas <- function(gwas_filtered, cleaned_ld_matrix, gwas_type, num_gwas_samples){
   # susie needs effect sizes, so we must also drop the snps with na for gwas effect
-  gwas_missing_snps <- gwas_filtered[is.na(gwas_filtered$effect_size) | is.na(gwas_filtered$standard_error**2), 'panel_variant_id']
+  gwas_missing_snps <- gwas_filtered[is.na(gwas_filtered$effect_size) | is.na(gwas_filtered$standard_error) | (gwas_filtered$frequency==0), 'panel_variant_id']
   cat("\t Number snps with ld or gwas missing: ", length(gwas_missing_snps$panel_variant_id), "\n")
   cleaned_gwas <- gwas_filtered[!gwas_filtered$panel_variant_id %in% gwas_missing_snps$panel_variant_id, ]
   if(min(cleaned_gwas$pvalue) < 1e-6){

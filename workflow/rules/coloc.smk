@@ -58,22 +58,12 @@
 #     return [f'{coloc_output_dir}{wildcards.TISSUE}/temp/{wildcards.TISSUE}.{wildcards.CHROM}.cluster_{cluster}.snp_list.txt'.strip() for cluster in clusters]
 
 
-def get_matched_chr_ids_eqtl_pairs(wildcards):
-    # need to pull out the part of the matched tissue/chr_id df that corresponds to this tissue
-    matched_chr_ids =  matched_chr_tissue_ids[matched_chr_tissue_ids['tissue_id'] == wildcards.TISSUE]['chr_id'].values
-    return [eqtl_output_dir + f'{wildcards.TISSUE}/{wildcards.TISSUE}.v8.cluster_genes.cis_qtl_pairs.{chr_id}.parquet'.strip() for chr_id in matched_chr_ids]
-
-def get_matched_chr_ids_pcqtl_pairs(wildcards):
-    # need to pull out the part of the matched tissue/chr_id df that corresponds to this tissue
-    matched_chr_ids =  matched_chr_tissue_ids[matched_chr_tissue_ids['tissue_id'] == wildcards.TISSUE]['chr_id'].values
-    return [pcqtl_output_dir + f'{wildcards.TISSUE}/{wildcards.TISSUE}.v8.pcs.cis_qtl_pairs.{chr_id}.parquet'.strip()  for chr_id in matched_chr_ids]
-
 
 # per cluster colocalization with gwas
 rule run_coloc_chr:
     input:
-        eqtl_pairs = get_matched_chr_ids_eqtl_pairs,
-        pcqtl_pairs = get_matched_chr_ids_pcqtl_pairs,
+        eqtl_pairs = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, allow_missing=True),
+        pcqtl_pairs = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, allow_missing=True),
         gwas_meta = gwas_meta,
         gtex_meta = gtex_meta, 
         genotypes = genotype_stem + '.fam',
