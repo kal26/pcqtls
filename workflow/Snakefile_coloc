@@ -92,4 +92,4 @@ include: 'rules/coloc.smk'
 
 rule all:
     input:
-        colocs = expand(coloc_output_dir + '{TISSUE}/{TISSUE}.v8.{GWAS}.susie_{USE_SUSIE}.gwas_coloc.txt', TISSUE=tissue_ids, GWAS=gwas_ids, USE_SUSIE=["FALSE"]),
+        colocs = expand(coloc_output_dir + '{TISSUE}/{TISSUE}.v8.{GWAS}.susie_{USE_SUSIE}.gwas_coloc.txt', TISSUE=tissue_ids, GWAS=gwas_ids, USE_SUSIE=["FALSE"])

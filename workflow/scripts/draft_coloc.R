@@ -54,7 +54,7 @@ filter_qtl <- function(qtl, ld_snp_set){
 
 clean_qtl <- function(qtl_filtered, cleaned_ld_matrix, num_gtex_samples){
   # some slope_se are na
-  qtl_missing_snps <- qtl_filtered[is.na(qtl_filtered$slope) | is.na(qtl_filtered$slope_se) | (cleaned_qtl$af == 0), 'variant_id']
+  qtl_missing_snps <- qtl_filtered[is.na(qtl_filtered$slope) | is.na(qtl_filtered$slope_se) | (qtl_filtered$af==0), 'variant_id']
   cat("\t Number snps with  qtl missing: ", length(qtl_missing_snps$variant_id), "\n")
   cleaned_qtl <- qtl_filtered[!qtl_filtered$variant_id %in% qtl_missing_snps$variant_id, ]
   # if there isn't a signal, further analysis should not be run
@@ -98,7 +98,7 @@ filter_gwas <- function(gwas_data, snp_list, ld_snp_set){
 
 clean_gwas <- function(gwas_filtered, cleaned_ld_matrix, gwas_type, num_gwas_samples){
   # susie needs effect sizes, so we must also drop the snps with na for gwas effect
-  gwas_missing_snps <- gwas_filtered[is.na(gwas_filtered$effect_size) | is.na(gwas_filtered$standard_error) | (gwas_filtered$frequency==0), 'panel_variant_id']
+  gwas_missing_snps <- gwas_filtered[is.na(gwas_filtered$effect_size) | is.na(gwas_filtered$standard_error) | (gwas_filtered$frequency<= 0) | (gwas_filtered$frequency >= 1), 'panel_variant_id']
   cat("\t Number snps with ld or gwas missing: ", length(gwas_missing_snps$panel_variant_id), "\n")
   cleaned_gwas <- gwas_filtered[!gwas_filtered$panel_variant_id %in% gwas_missing_snps$panel_variant_id, ]
   if(min(cleaned_gwas$pvalue) < 1e-6){
@@ -206,7 +206,6 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
   
   #DEBUG (trying to work out saving susie)
   #gwas_susie[[1]]
-  #saveRDS(gwas_susie, file = "output/temp/gwas_susie_data.rds")
   # end debug
   
   # clean the gwas data into the right format for susie
@@ -221,14 +220,39 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
   
   if(use_susie){
     # run susie on each qtl phenotype
-    qtl_susies <- lapply(qtls_for_coloc, runsusie_errorcatch)
+    # check if the susie dataset alread exists 
+    qtl_susies <- list()
+
+    for (i in 1:length(qtls_for_coloc)){
+      this_qtl_id <- qtls_for_coloc[[i]]$phenotype_id
+      susie_path <- paste(snp_path_head, this_qtl_id, '.susie.txt', sep="")
+        if (file.exists(susie_path)) {
+          cat("susie for " this_qtl_id, "already exists\n")
+          qtl_susies[[i]] <-  readRDS(file = susie_path)
+        } else {
+          qtl_susies[[i]] <- runsusie_errorcatch(qtls_for_coloc[[i]])
+          cat("finemapped " this_qtl_id, "\n")
+          saveRDS(qtl_susies[[i]], file = susie_path)
+        } 
+    }
+    # some susies are null, remove those from consideration
     qtls_for_coloc <- qtls_for_coloc[!sapply(qtl_susies, is.null)]
     qtl_susies <- qtl_susies[!sapply(qtl_susies, is.null)]
     if (length(qtl_susies)==0){
       cat("no qtl signals finemapped in this cluster\n")
       return(NULL)
+    } else {
+      cat(length(qtl_susies), "found in this cluster\n")
     }
-    gwas_susie <- runsusie_errorcatch(gwas_for_coloc)
+    # get the gwas susie (this is specific to this cluster and gwas, but maybe still write it out?)
+    gwas_susie_path <- paste(snp_path_head, cluster_id, '.', gwas_with_meta$gwas_id, '.susie.txt', sep="")
+    if (file.exists(gwas_susie_path)) {
+      gwas_susie <- readRDS(file = gwas_susie_path)
+    } else {
+      gwas_susie <- runsusie_errorcatch(gwas_for_coloc)
+      saveRDS(gwas_susie, file = gwas_susie_path)
+    }
+
   }
   # colocalize each qtl susie to the gwas susie
   gwas_coloc_results <- get_empty_gwas_coloc(use_susie)
@@ -238,7 +262,7 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
     if(use_susie){
       cat("\t\t using susie to coloc \n")
       this_qtl_susie <- qtl_susies[[i]]
-      this_coloc <- run_coloc(gwas_susie,this_qtl_susie)
+      this_coloc <- coloc.susie(gwas_susie,this_qtl_susie)$summary
       if(!is.null(this_coloc)){
         this_coloc$gwas_id <- gwas_id
         this_coloc$qtl_id <- this_qtl_id
@@ -255,13 +279,6 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
   gwas_coloc_results$gwas_cs_is <- gwas_coloc_results$idx1 
   gwas_coloc_results$qtl_cs_is <- gwas_coloc_results$idx2
   return(gwas_coloc_results)
-}
-
-
-run_coloc <- function(susie1, susie2) {
-  # run susie finemapping on both datasets
-  coloc <- coloc.susie(susie1,susie2)
-  return(coloc$summary)
 }
 
 
