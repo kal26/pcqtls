@@ -59,14 +59,29 @@ chr_list = list(df['chr_id'])
 # need to define a zipped function os chrs and tissues
 #chr_list.remove('chr20')
 #chr_list = ['chr22']
-#tissue_ids = ['Skin_Not_Sun_Exposed_Suprapubic']
+tissue_ids = ['Thyroid']
+
+# load in list of tissues and chr ids that were found in that tissue
+def get_tissue_chr_id_pairs(directory):
+    chr_ids = []
+    tissue_ids = []
+    for root, directories, files in os.walk(directory):
+        for file in files:
+            if file.endswith(".parquet"):
+                tissue_ids.append(file.split('.')[0])
+                chr_ids.append(file.split('.')[-2])
+    return pd.DataFrame({'chr_id':chr_ids, 'tissue_id':tissue_ids})
+
+matched_chr_tissue_ids = get_tissue_chr_id_pairs(config['eqtl_output_dir'])
+
+
+
 
 gwas_meta_df = pd.read_csv(gwas_meta, sep='\t', header=0)
 gwas_ids = list(gwas_meta_df['Tag'])
 
 
 print('Running on tissues:{}'.format(tissue_ids))
-
 
 include: 'rules/pcqtl.smk'
 include: 'rules/eqtl.smk'

@@ -58,12 +58,15 @@
 #     return [f'{coloc_output_dir}{wildcards.TISSUE}/temp/{wildcards.TISSUE}.{wildcards.CHROM}.cluster_{cluster}.snp_list.txt'.strip() for cluster in clusters]
 
 
+def get_matched_chr_ids(wildcards):
+    # need to pull out the part of the matched tissue/chr_id df that corresponds to this tissue
+    return matched_chr_tissue_ids[matched_chr_tissue_ids['tissue_id'] == wildcards.TISSUE]['chr_id'].values
 
 # per cluster colocalization with gwas
 rule run_coloc_chr:
     input:
-        eqtl_pairs = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, allow_missing=True),
-        pcqtl_pairs = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, allow_missing=True),
+        eqtl_pairs = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', CHROM=get_matched_chr_ids, allow_missing=True),
+        pcqtl_pairs = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet', CHROM=get_matched_chr_ids, allow_missing=True),
         gwas_meta = gwas_meta,
         gtex_meta = gtex_meta, 
         genotypes = genotype_stem + '.fam',
@@ -71,7 +74,7 @@ rule run_coloc_chr:
         annotated_clusters = annotations_output_dir + '{TISSUE}_clusters_annotated.csv'
 
     resources:
-        mem = "50G", 
+        mem = "100G", 
         time = "20:00:00" ,
     params:
         eqtl_dir_path = eqtl_output_dir + '{TISSUE}',

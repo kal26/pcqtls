@@ -91,7 +91,7 @@ filter_gwas <- function(gwas_data, snp_list, ld_snp_set){
 
 clean_gwas <- function(gwas_filtered, cleaned_ld_matrix, gwas_type, num_gwas_samples){
   # susie needs effect sizes, so we must also drop the snps with na for gwas effect
-  gwas_missing_snps <- gwas_filtered[is.na(gwas_filtered$effect_size) | is.na(gwas_filtered$standard_error), 'panel_variant_id']
+  gwas_missing_snps <- gwas_filtered[is.na(gwas_filtered$effect_size) | is.na(gwas_filtered$standard_error**2), 'panel_variant_id']
   cat("\t Number snps with ld or gwas missing: ", length(gwas_missing_snps$panel_variant_id), "\n")
   cleaned_gwas <- gwas_filtered[!gwas_filtered$panel_variant_id %in% gwas_missing_snps$panel_variant_id, ]
   if(min(cleaned_gwas$pvalue) < 1e-6){
@@ -447,39 +447,44 @@ cluster_df <- fread(annotated_cluster_path)
 
 # for each chromosome
 for (chr_id in 1:22){
-  #chr_id <- 22#debug
-  cat("working on chr ", chr_id, "\n")
-  cluster_df_chr <- cluster_df[cluster_df$Chromosome == chr_id]
-  gwas_chr <- gwas_with_meta$gwas_data[gwas_with_meta$gwas_data$chromosome == paste('chr', chr_id, sep="")] 
-  pcqtl_chr <- NULL
-  eqtl_chr <- NULL
-  # for each cluster, check if the gwas has a signal
-  for (i in 1:nrow(cluster_df_chr)){
-    #i <- 28 #debug
-    this_cluster <- cluster_df_chr[i]
-    cluster_id <- this_cluster$cluster_id
-    cat("running on ", cluster_id, "\n")
-    # if it does, load in eqtl and pcqtl and colocalize 
-    if (check_gwas_cluster(gwas_chr, this_cluster)){
-      num_colocs <- num_colocs + 1
-      cat("\tpossible coloc for", this_cluster$cluster_id, "\n")
-      cat(num_colocs, " colocs so far \n")
-      # load in eqtl if I haven't already
-      if(is.null(eqtl_chr)){
-        eqtl_chr <- get_eqtl_chr(eqtl_dir_path, chr_id, tissue_id)
+  chr_coloc_path <- paste(snp_path_head, tissue_id, ".v8.", gwas_id, '.susie_', use_susie,'chr_', chr_id, '.gwas_coloc.txt', sep="")
+  # check if partial results exist
+  if (file.exists(chr_coloc_path)) {
+    cat("coloc results already exist up to chr", chr_id, "\n")
+    gwas_all_cluster_coloc_results <- read.table(chr_coloc_path, header=TRUE, sep='\t')
+  } else {
+    cat("working on chr ", chr_id, "\n")
+    cluster_df_chr <- cluster_df[cluster_df$Chromosome == chr_id]
+    gwas_chr <- gwas_with_meta$gwas_data[gwas_with_meta$gwas_data$chromosome == paste('chr', chr_id, sep="")] 
+    pcqtl_chr <- NULL
+    eqtl_chr <- NULL
+    # for each cluster, check if the gwas has a signal
+    for (i in 1:nrow(cluster_df_chr)){
+      this_cluster <- cluster_df_chr[i]
+      cluster_id <- this_cluster$cluster_id
+      cat("running on ", cluster_id, "\n")
+      # if it does, load in eqtl and pcqtl and colocalize 
+      if (check_gwas_cluster(gwas_chr, this_cluster)){
+        num_colocs <- num_colocs + 1
+        cat("\tpossible coloc for", this_cluster$cluster_id, "\n")
+        cat(num_colocs, " colocs so far \n")
+        # load in eqtl if I haven't already
+        if(is.null(eqtl_chr)){
+          eqtl_chr <- get_eqtl_chr(eqtl_dir_path, chr_id, tissue_id)
+        }
+        # load in pcqtl if I haven't already
+        if(is.null(pcqtl_chr)){
+          pcqtl_chr <- get_pcqtl_chr(pcqtl_dir_path, chr_id, tissue_id)
+        }
+        gwas_cluster_coloc <- coloc_gwas_cluster(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, snp_path_head, genotype_stem, num_gtex_samples, use_susie=use_susie)
+        # add to results list 
+        gwas_all_cluster_coloc_results <- rbind(gwas_all_cluster_coloc_results, gwas_cluster_coloc) 
       }
-      # load in pcqtl if I haven't already
-      if(is.null(pcqtl_chr)){
-        pcqtl_chr <- get_pcqtl_chr(pcqtl_dir_path, chr_id, tissue_id)
-      }
-      gwas_cluster_coloc <- coloc_gwas_cluster(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, snp_path_head, genotype_stem, num_gtex_samples, use_susie=use_susie)
-      # add to results list 
-      gwas_all_cluster_coloc_results <- rbind(gwas_all_cluster_coloc_results, gwas_cluster_coloc) 
     }
+    # finished with a chr, write out temp results
+    write.table(gwas_all_cluster_coloc_results, file=chr_coloc_path, quote=FALSE, row.names=FALSE, sep='\t')
+    cat("wrote out partial results, up to chr", chr_id, "\n")
   }
-  # finished with a chr, write out temp results
-  chr_coloc_path <- paste(snp_path_head, tissue_id, ".v8.", gwas_id, '.susie_', use_susie,'.gwas_coloc.txt', sep="")
-  write.table(gwas_all_cluster_coloc_results, file=chr_coloc_path, quote=FALSE, row.names=FALSE, sep='\t')
 }
 
 # write out (tissue_id.gwas_id)
