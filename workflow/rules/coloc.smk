@@ -76,7 +76,8 @@ rule run_coloc_chr:
     params:
         eqtl_dir_path = eqtl_output_dir + '{TISSUE}',
         pcqtl_dir_path =  pcqtl_output_dir + '{TISSUE}',
-        snp_path_head = coloc_output_dir + '{TISSUE}/temp/',
+        ld_path_head = coloc_output_dir + 'temp/',
+        gwas_temp_path_head = coloc_output_dir + '{TISSUE}/temp/',
         genotype_stem = genotype_stem,
         use_susie = '{USE_SUSIE}'
 
@@ -93,7 +94,8 @@ rule run_coloc_chr:
             --gwas_meta {input.gwas_meta} \
             --gtex_meta {input.gtex_meta} \
             --tissue_id {wildcards.TISSUE} \
-            --snp_path_head {params.snp_path_head} \
+            --ld_path_head {params.ld_path_head} \
+            --gwas_temp_path_head {params.gwas_temp_path_head} \
             --genotype_stem {params.genotype_stem} \
             --gwas_path {input.gwas_nominal} \
             --gwas_id {wildcards.GWAS} \

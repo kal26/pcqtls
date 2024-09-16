@@ -54,6 +54,10 @@ def pc_bed(cluster_path, expression_path, covariates_path, pc_out_path, verb=0):
         pca = PCA()
         pc_values = pca.fit_transform(X)
 
+        # only take those with eigenvalue > .1
+        # as in wang et al 2022
+        pc_values = pc_values[:,pca.explained_variance_ > .1]
+
         # get an id for each pc
         gene_ids = []
         for pc_num in range(pc_values.shape[1]):
@@ -80,7 +84,7 @@ def pc_bed(cluster_path, expression_path, covariates_path, pc_out_path, verb=0):
     cluster_pcs_df = pd.concat(cluster_pcs_dfs)
     cluster_pcs_df = cluster_pcs_df.sort_values(['#chr', 'start', 'end'])
 
-    # occasionally we get inf for all teh values in a row.
+    # occasionally we get inf for all the values in a row.
     # Drop these as they cause susie to error
     cluster_pcs_df.replace([np.inf, -np.inf], np.nan, inplace=True)
     print('Dropped {} rows due to inf'.format(sum(cluster_pcs_df.isna().sum(axis=1) > 0)))

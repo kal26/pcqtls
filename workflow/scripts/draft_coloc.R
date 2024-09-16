@@ -38,7 +38,7 @@ split_qtl_for_coloc <- function(cluster_qtl, ld_snp_set, cleaned_ld_matrix, num_
   qtls_for_coloc <- list()
   for (i in 1:length(phenotype_ids)){
     phenotype_qtl <- qtl_filtered[qtl_filtered$phenotype_id == phenotype_ids[i], ]
-    cat(paste("\t\tlooking for signals in",phenotype_ids[i]), "\n")
+    cat(paste("\tlooking for signals in",phenotype_ids[i]), "\n")
     cat(paste("\t\tqtl filtered to :", nrow(phenotype_qtl), "snps\n"))
     phenotype_qtl_for_coloc <- clean_qtl(phenotype_qtl, cleaned_ld_matrix, num_gtex_samples)
     qtls_for_coloc[[i]] <- phenotype_qtl_for_coloc
@@ -55,11 +55,11 @@ filter_qtl <- function(qtl, ld_snp_set){
 clean_qtl <- function(qtl_filtered, cleaned_ld_matrix, num_gtex_samples){
   # some slope_se are na
   qtl_missing_snps <- qtl_filtered[is.na(qtl_filtered$slope) | is.na(qtl_filtered$slope_se) | (qtl_filtered$af==0), 'variant_id']
-  cat("\t Number snps with  qtl missing: ", length(qtl_missing_snps$variant_id), "\n")
+  cat("\t\tNumber snps with  qtl missing: ", length(qtl_missing_snps$variant_id), "\n")
   cleaned_qtl <- qtl_filtered[!qtl_filtered$variant_id %in% qtl_missing_snps$variant_id, ]
   # if there isn't a signal, further analysis should not be run
   if (min(cleaned_qtl$pval_nominal) < 1e-6){
-    cat('\t signal found \n')
+    cat('\t\tsignal found \n')
     # make some columns to play well with coloc
     cleaned_qtl <- cleaned_qtl %>%
       mutate(position = as.integer(str_split(variant_id, "_") %>% sapply(pluck, 2)))
@@ -181,13 +181,13 @@ runsusie_errorcatch <- function(dataset){
   return(susie)  # Store the result or NULL in the qtl_susies list
 }
 
-coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, snp_path_head, genotype_stem, num_gtex_samples, use_susie = FALSE){
+coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, ld_path_head, gwas_temp_path_head, genotype_stem, num_gtex_samples, use_susie = FALSE){
   # subset eqtl and pcqtl to this cluster
   cluster_eqtl <-eqtl_chr[eqtl_chr$cluster_id == cluster_id, ]
   cluster_pcqtl <- pcqtl_chr[pcqtl_chr$cluster_id == cluster_id, ]
   # get snp list and ld matrix
-  snp_list <- get_snp_list(cluster_eqtl, snp_path_head, cluster_id)
-  cleaned_ld_matrix <- get_ld(snp_path_head, cluster_id, snp_list, genotype_stem)
+  snp_list <- get_snp_list(cluster_eqtl, ld_path_head, cluster_id)
+  cleaned_ld_matrix <- get_ld(ld_path_head, cluster_id, snp_list, genotype_stem)
   ld_snp_set <- rownames(cleaned_ld_matrix)
   
   # clean the eqtl and pcqtl data into the right format for susie
@@ -225,14 +225,15 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
 
     for (i in 1:length(qtls_for_coloc)){
       this_qtl_id <- qtls_for_coloc[[i]]$phenotype_id
-      susie_path <- paste(snp_path_head, this_qtl_id, '.susie.txt', sep="")
+      susie_path <- paste(gwas_temp_path_head, this_qtl_id, '.susie.rds', sep="")
         if (file.exists(susie_path)) {
-          cat("susie for " this_qtl_id, "already exists\n")
+          cat("susie for ", this_qtl_id, "already exists\n")
           qtl_susies[[i]] <-  readRDS(file = susie_path)
         } else {
-          qtl_susies[[i]] <- runsusie_errorcatch(qtls_for_coloc[[i]])
-          cat("finemapped " this_qtl_id, "\n")
-          saveRDS(qtl_susies[[i]], file = susie_path)
+          this_qtl_susie <- runsusie_errorcatch(qtls_for_coloc[[i]])
+          qtl_susies[[i]] <- this_qtl_susie
+          cat("finemapped ", this_qtl_id, "\n")
+          saveRDS(this_qtl_susie, file = susie_path)
         } 
     }
     # some susies are null, remove those from consideration
@@ -245,7 +246,7 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
       cat(length(qtl_susies), "found in this cluster\n")
     }
     # get the gwas susie (this is specific to this cluster and gwas, but maybe still write it out?)
-    gwas_susie_path <- paste(snp_path_head, cluster_id, '.', gwas_with_meta$gwas_id, '.susie.txt', sep="")
+    gwas_susie_path <- paste(gwas_temp_path_head, cluster_id, '.', gwas_with_meta$gwas_id, '.susie.rds', sep="")
     if (file.exists(gwas_susie_path)) {
       gwas_susie <- readRDS(file = gwas_susie_path)
     } else {
@@ -256,7 +257,7 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
   }
   # colocalize each qtl susie to the gwas susie
   gwas_coloc_results <- get_empty_gwas_coloc(use_susie)
-  for (i in 1:length(qtls_for_coloc)){
+  for (i in 1:length(qtl_susies)){
     this_qtl_id <- qtls_for_coloc[[i]]$phenotype_id
     cat(paste("\t\t\tcoloc for", gwas_with_meta$gwas_id, "and", this_qtl_id, "\n"))
     if(use_susie){
@@ -289,19 +290,19 @@ check_gwas_cluster <- function(gwas_chr, this_cluster){
   return(sum(gwas_cluster$pvalue < 1e-6)>0)
 }
 
-get_ld <- function(snp_path_head, cluster_id, snp_list, genotype_stem){
+get_ld <- function(ld_path_head, cluster_id, snp_list, genotype_stem){
   if (nchar(cluster_id) > 150){
     cluster_id <- get_short_cluster_id(cluster_id)
   }
   # check if ld already exists
-  ld_matrix_path <- paste(snp_path_head, cluster_id, '.ld', sep="")
+  ld_matrix_path <- paste(ld_path_head, cluster_id, '.ld', sep="")
   if (file.exists(ld_matrix_path)) {
     cat("ld matrix already exists\n")
   } else {    
     cat("ld matrix does not already exist\n")
     # get ld if not
-    ld_plink_path <- paste(snp_path_head, cluster_id, sep="")
-    snp_path <- paste(snp_path_head, cluster_id, '.snp_list.txt', sep="")
+    ld_plink_path <- paste(ld_path_head, cluster_id, sep="")
+    snp_path <- paste(ld_path_head, cluster_id, '.snp_list.txt', sep="")
     plink_command <- sprintf("plink --bfile %s --extract %s --r square --out %s", genotype_stem, snp_path, ld_plink_path)
     cat(plink_command) 
     system(plink_command, intern=TRUE)
@@ -340,11 +341,11 @@ get_short_cluster_id <- function(long_cluster_id){
   return(short_cluster_id)
 }
 
-get_snp_list <- function(cluster_eqtl, snp_path_head, cluster_id){
+get_snp_list <- function(cluster_eqtl, ld_path_head, cluster_id){
   if (nchar(cluster_id) > 150){
     cluster_id <- get_short_cluster_id(cluster_id)
   }
-  snp_path <- paste(snp_path_head, cluster_id, '.snp_list.txt', sep="")
+  snp_path <- paste(ld_path_head, cluster_id, '.snp_list.txt', sep="")
   # make snp list if not
   if (file.exists(snp_path)) {
     cat("snp list already exists\n")
@@ -400,7 +401,8 @@ parser$add_argument("--pcqtl_dir_path", help="folder for PCQTL pairs")
 parser$add_argument("--gwas_meta", help="Input file path for GWAS metadata, with sample size and quant vs cc")
 parser$add_argument("--gtex_meta", help="Input file path for GTEX metadata with sample size")
 parser$add_argument("--tissue_id", help="tissue id")
-parser$add_argument("--snp_path_head", help="directory file path for snp list and ld")
+parser$add_argument("--ld_path_head", help="directory file path for snp list and ld")
+parser$add_argument("--gwas_temp_path_head", help="tissue specific directory file path for susie and per chrom gwas")
 parser$add_argument("--genotype_stem", help="path to genotype_stem")
 parser$add_argument("--gwas_path", help="path to GWAS data")
 parser$add_argument("--gwas_id", help="GWAS id")
@@ -419,7 +421,8 @@ pcqtl_dir_path <- args$pcqtl_dir_path
 gwas_meta_path <- args$gwas_meta
 gtex_meta_path <- args$gtex_meta
 tissue_id <- args$tissue_id
-snp_path_head <- args$snp_path_head
+ld_path_head <- args$ld_path_head
+gwas_temp_path_head <- args$gwas_temp_path_head
 genotype_stem <- args$genotype_stem
 gwas_path <- args$gwas_path
 output_path <- args$output_path
@@ -432,7 +435,7 @@ cat("eQTL folder:", eqtl_dir_path, "\n")
 cat("PCQTL folder:", pcqtl_dir_path, "\n")
 cat("GWAS Metadata:", gwas_meta_path, "\n")
 cat("GTEX Metadata:", gtex_meta_path, "\n")
-cat("LD and snplist dir:", snp_path_head, "\n")
+cat("LD and snplist dir:", ld_path_head, "\n")
 cat("Tissue ID:", tissue_id, "\n")
 cat("GWAS path:", gwas_path, "\n")
 cat("Output Path:", output_path, "\n")
@@ -458,12 +461,21 @@ num_colocs <- 0
 
 
 # Check if the directory exists
-if (!file.exists(snp_path_head)) {
+if (!file.exists(ld_path_head)) {
   # If the directory does not exist, create it
-  dir.create(snp_path_head, recursive = TRUE)
-  cat("Directory created: ", snp_path_head, "\n")
+  dir.create(ld_path_head, recursive = TRUE)
+  cat("Directory created: ", ld_path_head, "\n")
 } else {
-  cat("Directory already exists: ", snp_path_head, "\n")
+  cat("Directory already exists: ", ld_path_head, "\n")
+}
+
+# Check if the directory exists
+if (!file.exists(gwas_temp_path_head)) {
+  # If the directory does not exist, create it
+  dir.create(gwas_temp_path_head, recursive = TRUE)
+  cat("Directory created: ", gwas_temp_path_head, "\n")
+} else {
+  cat("Directory already exists: ", gwas_temp_path_head, "\n")
 }
 
 # load in clusters
@@ -471,7 +483,7 @@ cluster_df <- fread(annotated_cluster_path)
 
 # for each chromosome
 for (chr_id in 1:22){
-  chr_coloc_path <- paste(snp_path_head, tissue_id, ".v8.", gwas_id, '.susie_', use_susie,'chr_', chr_id, '.gwas_coloc.txt', sep="")
+  chr_coloc_path <- paste(gwas_temp_path_head, tissue_id, ".v8.", gwas_id, '.susie_', use_susie,'chr_', chr_id, '.gwas_coloc.txt', sep="")
   # check if partial results exist
   if (file.exists(chr_coloc_path)) {
     cat("coloc results already exist up to chr", chr_id, "\n")
@@ -500,7 +512,7 @@ for (chr_id in 1:22){
         if(is.null(pcqtl_chr)){
           pcqtl_chr <- get_pcqtl_chr(pcqtl_dir_path, chr_id, tissue_id)
         }
-        gwas_cluster_coloc <- coloc_gwas_cluster(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, snp_path_head, genotype_stem, num_gtex_samples, use_susie=use_susie)
+        gwas_cluster_coloc <- coloc_gwas_cluster(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, ld_path_head, gwas_temp_path_head, genotype_stem, num_gtex_samples, use_susie=use_susie)
         # add to results list 
         gwas_all_cluster_coloc_results <- rbind(gwas_all_cluster_coloc_results, gwas_cluster_coloc) 
       }
