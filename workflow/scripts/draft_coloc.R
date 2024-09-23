@@ -261,7 +261,7 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
     this_qtl_id <- qtls_for_coloc[[i]]$phenotype_id
     cat(paste("\t\t\tcoloc for", gwas_with_meta$gwas_id, "and", this_qtl_id, "\n"))
     if(use_susie){
-      cat("\t\t using susie to coloc \n")
+      cat("\t\t using susie to coloc ", i, " out of ", length(qtl_susies), " total\n")
       this_qtl_susie <- qtl_susies[[i]]
       this_coloc <- coloc.susie(gwas_susie,this_qtl_susie)$summary
       if(!is.null(this_coloc)){

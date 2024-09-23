@@ -54,9 +54,10 @@ def pc_bed(cluster_path, expression_path, covariates_path, pc_out_path, verb=0):
         pca = PCA()
         pc_values = pca.fit_transform(X)
 
-        # only take those with eigenvalue > .1
+        # only take those with eigenvalue > .1? 
+        # this leaves nothing - lower threshold? or do this post hoc?
         # as in wang et al 2022
-        pc_values = pc_values[:,pca.explained_variance_ > .1]
+        #pc_values = pc_values[:,pca.explained_variance_ > .1]
 
         # get an id for each pc
         gene_ids = []

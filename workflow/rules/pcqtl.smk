@@ -26,7 +26,8 @@ rule run_pcqtl_cis_nominal:
         covariates = covariates_dir + '{TISSUE}.v8.covariates.txt'
     params:
         genotype_stem = genotype_stem,
-        pcqtl_output_dir = pcqtl_output_dir
+        pcqtl_output_dir = pcqtl_output_dir,
+        tissue='{TISSUE}'
     resources:
         mem = "30G",
         time = "4:00:00"
@@ -34,15 +35,9 @@ rule run_pcqtl_cis_nominal:
     conda:
         'tensorqtl_r'
     output:
-        expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, allow_missing=True)
-    shell:"""
-        python -m tensorqtl {params.genotype_stem} \
-            {input.pcs} \
-            {params.pcqtl_output_dir}{wildcards.TISSUE}/{wildcards.TISSUE}.v8.pcs \
-            --covariates {input.covariates} \
-            --mode cis_nominal \
-            --maf_threshold .01
-        """
+        expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list,  allow_missing=True)
+    script:
+        '../scripts/run_pcqtl_nominal.py'
 
 # cis eQTL mapping: permutations (i.e. top variant per phenotype group)
 rule run_pcqtl_cis:

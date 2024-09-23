@@ -51,6 +51,44 @@ print('Running on tissues:{}'.format(tissue_ids))
 df = pd.read_csv(chr_list_path, header=0)
 chr_list = list(df['chr_id'])
 
+# load in list of tissues and chr ids that were found in that tissue
+def get_eqtl_nominal_paths(wildcards):
+    paths = []
+    for tissue_id in tissue_ids:
+        cluster_path = f'{clusters_dir}{tissue_id}_clusters_all_chr.csv'.replace(" ", "")
+        cluster_df = pd.read_csv(cluster_path)
+        for chr_id in cluster_df['Chromosome'].unique():
+            paths.append(f'{eqtl_output_dir}{tissue_id}/{tissue_id}.v8.cluster_genes.cis_qtl_pairs.chr{chr_id}.parquet'.replace(" ", ""))
+    return paths
+
+def get_pcqtl_nominal_paths(wildcards):
+    paths = []
+    for tissue_id in tissue_ids:
+        cluster_path =  f'{clusters_dir}{tissue_id}_clusters_all_chr.csv'.replace(" ", "")
+        cluster_df = pd.read_csv(cluster_path)
+        for chr_id in cluster_df['Chromosome'].unique():
+            paths.append(f'{pcqtl_output_dir}{tissue_id}/{tissue_id}.v8.pcs.cis_qtl_pairs.chr{chr_id}.parquet'.replace(" ", ""))
+    return paths
+
+
+def get_tissue_eqtl_nominal_paths(wildcards):
+    paths = []
+    tissue_id = wildcards.TISSUE
+    cluster_path = f'{clusters_dir}{tissue_id}_clusters_all_chr.csv'.replace(" ", "")
+    cluster_df = pd.read_csv(cluster_path)
+    for chr_id in cluster_df['Chromosome'].unique():
+        paths.append(f'{eqtl_output_dir}{tissue_id}/{tissue_id}.v8.cluster_genes.cis_qtl_pairs.chr{chr_id}.parquet'.replace(" ", ""))
+    return paths
+
+def get_tissue_pcqtl_nominal_paths(wildcards):
+    paths = []
+    tissue_id = wildcards.TISSUE
+    cluster_path =  f'{clusters_dir}{tissue_id}_clusters_all_chr.csv'.replace(" ", "")
+    cluster_df = pd.read_csv(cluster_path)
+    for chr_id in cluster_df['Chromosome'].unique():
+        paths.append(f'{pcqtl_output_dir}{tissue_id}/{tissue_id}.v8.pcs.cis_qtl_pairs.chr{chr_id}.parquet'.replace(" ", ""))
+    return paths
+
 
 include: 'rules/pcqtl.smk'
 include: 'rules/eqtl.smk'
@@ -61,16 +99,16 @@ include: 'rules/clusters.smk'
 rule all:
     input:
         # clusters = expand(clusters_dir + '{TISSUE}_clusters_all_chr.csv', TISSUE = tissue_ids),
-        annotated_clusters = expand(annotations_output_dir + '{TISSUE}_clusters_annotated.csv', TISSUE = tissue_ids),
-        annotated_nulls =  expand(annotations_output_dir + '{TISSUE}_null_{CLUSTER_SIZE}genes_annotated.csv', TISSUE = tissue_ids, CLUSTER_SIZE = null_sizes),
+        #annotated_clusters = expand(annotations_output_dir + '{TISSUE}_clusters_annotated.csv', TISSUE = tissue_ids),
+        #annotated_nulls =  expand(annotations_output_dir + '{TISSUE}_null_{CLUSTER_SIZE}genes_annotated.csv', TISSUE = tissue_ids, CLUSTER_SIZE = null_sizes),
         # vep = expand(annotations_output_dir + '{TISSUE}.v8.leadvars.vep.vcf', TISSUE = tissue_ids),
         # overlap = expand(overlap_output_dir + '{TISSUE}.v8.overlap.txt', TISSUE = tissue_ids),
         # pcqtl_susie = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.susie.txt', TISSUE = tissue_ids),
         # pc_permutation = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_independent_qtl.txt.gz', TISSUE = tissue_ids),
-        # pcqtl_nominal = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE = tissue_ids),
+        pcqtl_nominal = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE=tissue_ids),
         # eqtl_susie = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie.txt', TISSUE = tissue_ids),
         # eqtl_permutation = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_independent_qtl.txt.gz', TISSUE=tissue_ids),
-        # eqtl_nominal = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE=tissue_ids),
+        eqtl_nominal = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE=tissue_ids),
         # controls that are all genes, not just cluster genes
         #chr22_susie = expand('output/chr22_eqtl/{TISSUE}/{TISSUE}.v8.chr22_genes.susie.txt', TISSUE = tissue_ids),
         #control_vep = expand('output/chr22_eqtl_annotations/{TISSUE}.v8.chr22_genes.leadvars.vep.vcf', TISSUE = tissue_ids)

@@ -21,7 +21,8 @@ rule run_eqtl_cis_nominal:
         covariates = covariates_dir + '{TISSUE}.v8.covariates.txt'
     params:
         genotype_stem = genotype_stem,
-        eqtl_output_dir = eqtl_output_dir
+        eqtl_output_dir = eqtl_output_dir,
+        tissue = '{TISSUE}'
     resources:
         mem = "30G", 
         time = "4:00:00"
@@ -30,14 +31,8 @@ rule run_eqtl_cis_nominal:
         'tensorqtl_r'
     output:
         expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, allow_missing=True)
-    shell:"""
-        python -m tensorqtl {params.genotype_stem} \
-            {input.expression} \
-            {params.eqtl_output_dir}{wildcards.TISSUE}/{wildcards.TISSUE}.v8.cluster_genes \
-            --covariates {input.covariates} \
-            --mode cis_nominal \
-            --maf_threshold .01
-        """
+    script:
+        '../scripts/run_eqtl_nominal.py'
 
 # cis eQTL mapping: permutations (i.e. top variant per phenotype group)
 rule run_eqtl_cis:
