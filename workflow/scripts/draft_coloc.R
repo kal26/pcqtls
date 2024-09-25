@@ -243,7 +243,7 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
       cat("no qtl signals finemapped in this cluster\n")
       return(NULL)
     } else {
-      cat(length(qtl_susies), "found in this cluster\n")
+      cat(length(qtl_susies), "susies found in this cluster\n")
     }
     # get the gwas susie (this is specific to this cluster and gwas, but maybe still write it out?)
     gwas_susie_path <- paste(gwas_temp_path_head, cluster_id, '.', gwas_with_meta$gwas_id, '.susie.rds', sep="")
@@ -255,26 +255,34 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
     }
 
   }
-  # colocalize each qtl susie to the gwas susie
+  cat(length(qtls_for_coloc), "colocs found in this cluster\n")
   gwas_coloc_results <- get_empty_gwas_coloc(use_susie)
-  for (i in 1:length(qtl_susies)){
-    this_qtl_id <- qtls_for_coloc[[i]]$phenotype_id
-    cat(paste("\t\t\tcoloc for", gwas_with_meta$gwas_id, "and", this_qtl_id, "\n"))
-    if(use_susie){
-      cat("\t\t using susie to coloc ", i, " out of ", length(qtl_susies), " total\n")
+
+  if(use_susie){
+    for (i in 1:length(qtl_susies)){
+      this_qtl_id <- qtls_for_coloc[[i]]$phenotype_id
+      cat(paste("\t\t\tcoloc for", gwas_with_meta$gwas_id, "and", this_qtl_id, "\n"))
+      cat("\t\t\t\t using susie to coloc ", i, " out of ", length(qtl_susies), " total\n")
       this_qtl_susie <- qtl_susies[[i]]
       this_coloc <- coloc.susie(gwas_susie,this_qtl_susie)$summary
       if(!is.null(this_coloc)){
         this_coloc$gwas_id <- gwas_id
         this_coloc$qtl_id <- this_qtl_id
       }
-    } else{
-      cat("\t\t not using susie to coloc \n")
-      this_coloc <- coloc.abf(gwas_for_coloc, qtls_for_coloc[[i]])$summary
-      this_coloc$gwas_id <- gwas_id
-      this_coloc$qtl_id <- this_qtl_id
+      gwas_coloc_results <- rbind(gwas_coloc_results, this_coloc)
     }
-    gwas_coloc_results <- rbind(gwas_coloc_results, this_coloc)
+  } else {
+    for (i in 1:length(qtls_for_coloc)){
+      this_qtl_id <- qtls_for_coloc[[i]]$phenotype_id
+      cat(paste("\t\t\tcoloc for", gwas_with_meta$gwas_id, "and", this_qtl_id, "\n"))
+      cat("\t\t\t\t abf to coloc ", i, " out of ", length(qtls_for_coloc), " total\n")
+      this_coloc <- coloc.abf(gwas_for_coloc, qtls_for_coloc[[i]])$summary
+      if(!is.null(this_coloc)){
+        this_coloc$gwas_id <- gwas_id
+        this_coloc$qtl_id <- this_qtl_id
+      }
+      gwas_coloc_results <- rbind(gwas_coloc_results, this_coloc)
+    }
   }
   # return the results
   gwas_coloc_results$gwas_cs_is <- gwas_coloc_results$idx1 

@@ -32,7 +32,7 @@ base_filename = f'{eqtl_output_dir}{tissue_id}/{tissue_id}.v8.cluster_genes.cis_
 
 # Check for existing files and create missing ones
 for chr_id in chr_range:
-    parquet_filename = f"{base_filename}{i}.parquet"
+    parquet_filename = f"{base_filename}{chr_id}.parquet"
     # Check if the output file exists
     if not os.path.exists(parquet_filename):
         # Create a blank DataFrame with the specified columns

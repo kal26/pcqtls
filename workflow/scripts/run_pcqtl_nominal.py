@@ -14,7 +14,7 @@ covariates = snakemake.input[2]
 
 
 # run the shell command
-nominal_comand = f"python -m tensorqtl {genotype_stem} {expression} {pcqtl_output_dir}{tissue_id}/{tissue_id}.v8.cluster_genes --covariates {covariates} --mode cis_nominal --maf_threshold .01"
+nominal_comand = f"python -m tensorqtl {genotype_stem} {expression} {pcqtl_output_dir}{tissue_id}/{tissue_id}.v8.pcs --covariates {covariates} --mode cis_nominal --maf_threshold .01"
 try:
     # Run the command
     result = subprocess.run(nominal_comand, shell=True, check=True, text=True, capture_output=True)
@@ -32,7 +32,7 @@ base_filename = f'{pcqtl_output_dir}{tissue_id}/{tissue_id}.v8.pcs.cis_qtl_pairs
 
 # Check for existing files and create missing ones
 for chr_id in chr_range:
-    parquet_filename = f"{base_filename}{i}.parquet"
+    parquet_filename = f"{base_filename}{chr_id}.parquet"
     # Check if the output file exists
     if not os.path.exists(parquet_filename):
         # Create a blank DataFrame with the specified columns
