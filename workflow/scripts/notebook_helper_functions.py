@@ -1,5 +1,6 @@
 # functions to load the requested file types given a config pointing the right directories
 import pandas as pd
+import numpy as np
 
 # working directory prefix
 prefix = '/home/klawren/oak/pcqtls'
@@ -23,6 +24,7 @@ def load_overlap(config, tissue_id):
     overlap_df['pc_order'] = 'middle'
     overlap_df.loc[overlap_df['pc_num'] == overlap_df['cluster_size'],'pc_order'] = 'last'
     overlap_df.loc[overlap_df['pc_num'] == 1,'pc_order'] = 'first'
+    overlap_df.loc[overlap_df['orig_cs_dataset'] == 'control_eqtl','pc_order'] = 'eqtl'
     return overlap_df
 
 def load_clusters_annotated(config, tissue_id):
@@ -154,4 +156,7 @@ def add_num_vars_cs(susie_df):
     num_vars = num_vars.rename(columns={'variant_id':'num_vars'})
     susie_df = susie_df.merge(num_vars, how='left', left_on='cs_id', right_index=True)
     return susie_df
+
+
+
 
