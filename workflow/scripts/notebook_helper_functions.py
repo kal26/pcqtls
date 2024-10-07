@@ -138,7 +138,22 @@ def load_pc_nominal_all_chr(config, tissue_id):
 
 def load_expression(config, tissue_id):
     expression_path = '/{}/{}/{}.v8.normalized_expression.bed'.format(prefix, config['expression_dir'], tissue_id)
-    return pd.read_csv(expression_path, sep='\t')
+    expression_df = pd.read_csv(expression_path, sep='\t')
+    return expression_df
+
+def load_cluster_expression(config, tissue_id):
+    expression_path = '/{}/{}/{}.v8.normalized_residualized_expression.cluster_genes.bed'.format(prefix, config['filtered_expression_output_dir'], tissue_id)
+    expression_df = pd.read_csv(expression_path, sep='\t')
+    expression_df['cluster_id'] = expression_df['gene_id'].str.split('_e_').str[0]
+    expression_df['egene_id'] = expression_df['gene_id'].str.split('_e_').str[1]
+    return expression_df
+
+def load_pc(config, tissue_id):
+    pc_df = pd.read_csv('{}/{}/{}.pcs.bed'.format(prefix, config['pc_output_dir'], tissue_id), sep='\t')
+    pc_df['cluster_id'] = pc_df['gene_id'].str.split('_pc').str[0]
+    pc_df['pc_id'] = pc_df['gene_id'].str.split('_pc').str[1].astype('float')
+    pc_df['cluster_size'] = pc_df['cluster_id'].str.split('_').apply(len)
+    return pc_df
 
 
 # functions to help with annotating loaded data
@@ -157,6 +172,11 @@ def add_num_vars_cs(susie_df):
     susie_df = susie_df.merge(num_vars, how='left', left_on='cs_id', right_index=True)
     return susie_df
 
-
+def load_across_tissues(config, load_func):
+    tissue_ids = load_tissue_ids(config)
+    combined = [load_func(config, tissue_id) for tissue_id in tissue_ids]
+    combined = pd.concat([df.assign(tissue_id=n) for df, n in zip(combined, tissue_ids)])
+    combined.reset_index(inplace=True, drop=True)
+    return combined
 
 

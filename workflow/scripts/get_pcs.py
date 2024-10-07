@@ -19,7 +19,7 @@ def make_bed_order(df):
     df = df.loc[:, cols]
     return df
 
-def pc_bed(cluster_path, expression_path, covariates_path, pc_out_path, verb=0):
+def pc_bed_from_paths(cluster_path, expression_path, covariates_path, pc_out_path, verb=0):
    
     # load in data
     if verb:
@@ -29,9 +29,17 @@ def pc_bed(cluster_path, expression_path, covariates_path, pc_out_path, verb=0):
     expression_df = pd.read_csv(expression_path, sep='\t')
     covariates_df = pd.read_csv(covariates_path, sep='\t', index_col=0).T
 
+    cluster_pcs_df = get_pc_bed(cluster_df,expression_df, covariates_df)
+
+    # write out bed pc file
+    if verb:
+        print('Writing out to {}'.format(pc_out_path))
+    cluster_pcs_df.to_csv(pc_out_path, sep='\t', index=False)
+
+
+def get_pc_bed(cluster_df,expression_df, covariates_df):
     # pull out sample ids
     sample_ids = expression_df.columns[4:]
-
 
     # add .bed info to cluster
     expression_df['egene_id'] = expression_df['gene_id'].str.split('_e_').str[1]
@@ -91,10 +99,7 @@ def pc_bed(cluster_path, expression_path, covariates_path, pc_out_path, verb=0):
     print('Dropped {} rows due to inf'.format(sum(cluster_pcs_df.isna().sum(axis=1) > 0)))
     cluster_pcs_df.dropna(inplace=True)
 
-    # write out bed pc file
-    if verb:
-        print('Writing out to {}'.format(pc_out_path))
-    cluster_pcs_df.to_csv(pc_out_path, sep='\t', index=False)
+    return cluster_pcs_df
 
 def main():
     # Parse arguments from cmd
@@ -107,7 +112,7 @@ def main():
 
     args = parser.parse_args()
     # call the pc funciton
-    pc_bed(args.cluster_path, args.expression_path, args.covariates_path, args.pc_out_path, verb=args.verbosity)
+    pc_bed_from_paths(args.cluster_path, args.expression_path, args.covariates_path, args.pc_out_path, verb=args.verbosity)
 
 if __name__ == "__main__":
     main()
