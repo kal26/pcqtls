@@ -80,14 +80,12 @@ rule run_coloc_chr:
         gwas_temp_path_head = coloc_output_dir + '{TISSUE}/temp/',
         genotype_stem = genotype_stem,
         use_susie = '{USE_SUSIE}'
-
+    conda:
+        "/oak/stanford/groups/smontgom/klawren/pcqtls/oak/micromamba/envs/susie_r""
     output:
         coloc_gwas = coloc_output_dir + '{TISSUE}/{TISSUE}.v8.{GWAS}.susie_{USE_SUSIE}.gwas_coloc.txt'
     shell:
         """
-        module load r/4.2.2
-        module load plink
-
         Rscript workflow/scripts/draft_coloc.R \
             --eqtl_dir_path {params.eqtl_dir_path} \
             --pcqtl_dir_path {params.pcqtl_dir_path} \
