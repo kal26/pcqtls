@@ -71,7 +71,7 @@ rule run_coloc_chr:
         annotated_clusters = annotations_output_dir + '{TISSUE}_clusters_annotated.csv'
 
     resources:
-        mem = "100G", 
+        mem = "200G", 
         time = "20:00:00" ,
     params:
         eqtl_dir_path = eqtl_output_dir + '{TISSUE}',
@@ -80,12 +80,14 @@ rule run_coloc_chr:
         gwas_temp_path_head = coloc_output_dir + '{TISSUE}/temp/',
         genotype_stem = genotype_stem,
         use_susie = '{USE_SUSIE}'
-    conda:
-        "/oak/stanford/groups/smontgom/klawren/pcqtls/oak/micromamba/envs/susie_r""
+    #conda:
+    #    "/oak/stanford/groups/smontgom/klawren/pcqtls/oak/micromamba/envs/susie_r4.2"
     output:
         coloc_gwas = coloc_output_dir + '{TISSUE}/{TISSUE}.v8.{GWAS}.susie_{USE_SUSIE}.gwas_coloc.txt'
     shell:
         """
+        module load r/4.2.2
+        module load plink
         Rscript workflow/scripts/draft_coloc.R \
             --eqtl_dir_path {params.eqtl_dir_path} \
             --pcqtl_dir_path {params.pcqtl_dir_path} \
@@ -102,7 +104,8 @@ rule run_coloc_chr:
             --use_susie {params.use_susie} \
         """
 
-
+        # module load r/4.2.2
+        # module load plink
 # # Define the rule to aggregate coloc results into one file
 # rule aggregate_coloc_results_chr:
 #     input:

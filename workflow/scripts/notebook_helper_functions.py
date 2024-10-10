@@ -25,12 +25,17 @@ def load_overlap(config, tissue_id):
     overlap_df.loc[overlap_df['pc_num'] == overlap_df['cluster_size'],'pc_order'] = 'last'
     overlap_df.loc[overlap_df['pc_num'] == 1,'pc_order'] = 'first'
     overlap_df.loc[overlap_df['orig_cs_dataset'] == 'control_eqtl','pc_order'] = 'eqtl'
+    
     return overlap_df
 
 def load_clusters_annotated(config, tissue_id):
     annot_cluster = pd.read_csv('{}/{}/{}_clusters_annotated.csv'.format(prefix, config['annotations_output_dir'], tissue_id), index_col=0)
     for idx, row in annot_cluster.iterrows():
         annot_cluster.loc[idx, 'cluster_id']  = '_'.join([*sorted(row['Transcripts'].split(','))])
+    annot_cluster['abs_cor'] = np.where(annot_cluster['Mean_neg_cor'].isna(), annot_cluster['Mean_pos_cor'], - annot_cluster['Mean_neg_cor'])
+    annot_cluster['abs_cor'] = np.where(annot_cluster['abs_cor'] < annot_cluster['Mean_pos_cor'], annot_cluster['Mean_pos_cor'], annot_cluster['abs_cor'])
+    annot_cluster['max_pos_neg_cor'] = np.where(annot_cluster['Mean_neg_cor'].isna(), annot_cluster['Mean_pos_cor'], annot_cluster['Mean_neg_cor'])
+    annot_cluster['max_pos_neg_cor'] = np.where(abs(annot_cluster['max_pos_neg_cor']) < annot_cluster['Mean_pos_cor'], annot_cluster['Mean_pos_cor'], annot_cluster['max_pos_neg_cor'])
     return annot_cluster
 
 def load_null_clusters_annotated(config, tissue_id, num_genes=2):
@@ -72,8 +77,9 @@ def load_pc_nominal(config, tissue_id, chr_id=22, get_var_position=False):
     pc_nominal_df = pd.read_parquet(path)
     if get_var_position:
         pc_nominal_df['variant_pos'] = var_pos(pc_nominal_df)
-    pc_nominal_df['cluster_id'] = pc_nominal_df['phenotype_id'].str[:-4]
+    pc_nominal_df['cluster_id'] = pc_nominal_df['phenotype_id'].str.split('_pc').str[0]
     pc_nominal_df['var_cluster'] = pc_nominal_df['variant_id'] + '_' + pc_nominal_df['cluster_id']
+    pc_nominal_df['pc_num'] = pc_nominal_df['phenotype_id'].str.split('_pc').str[-1].astype(int)
     return pc_nominal_df
 
 def load_pc_susie(config, tissue_id):

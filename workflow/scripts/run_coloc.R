@@ -1,10 +1,10 @@
 
 library(argparse)
 library(coloc)
-library(arrow)
+library(nanoparquet) # alternative to arrow
 library(tidyverse)
 library(data.table)
-library(Rfast)
+library(Rfast) 
 library(susieR)
 
 
@@ -400,8 +400,8 @@ gwas_meta <- fread(gwas_meta_path)
 #gwas_meta <- gwas_meta[37:38]
 
 #load in eqtl data
-eqtl <- read_parquet(eqtl_path)
-pcqtl <- read_parquet(pcqtl_path)
+eqtl <-nanoparquet::read_parquet(eqtl_path)
+pcqtl <- nanoparquet::read_parquet(pcqtl_path)
 
 # get a list of clusters
 eqtl$cluster_id <- sapply(eqtl$phenotype_id, function(x) unlist(strsplit(as.character(x), '_e_'))[1])
