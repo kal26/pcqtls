@@ -3,7 +3,7 @@
 
 setwd('/home/klawren/oak/pcqtls/')
 library(coloc)
-library(arrow)
+library(nanoparquet)
 library(tidyverse)
 library(data.table)
 library(Rfast)
@@ -386,14 +386,14 @@ load_gwas_from_path <- function(gwas_path, gwas_meta_df, gwas_id){
 
 get_eqtl_chr <- function(eqtl_dir_path, chr_id, tissue_id){
   eqtl_path <- paste(eqtl_dir_path, "/", tissue_id, '.v8.cluster_genes.cis_qtl_pairs.chr', chr_id, '.parquet', sep="")
-  eqtl <- read_parquet(eqtl_path)
+  eqtl <- nanoparquet::read_parquet(eqtl_path)
   eqtl$cluster_id <- sapply(eqtl$phenotype_id, function(x) unlist(strsplit(as.character(x), '_e_'))[1])
   return(eqtl)
 }
 
 get_pcqtl_chr <- function(pcqtl_dir_path, chr_id, tissue_id){
   pcqtl_path <- paste(pcqtl_dir_path, "/", tissue_id, '.v8.pcs.cis_qtl_pairs.chr', chr_id, '.parquet', sep="")
-  pcqtl <- read_parquet(pcqtl_path)
+  pcqtl <- nanoparquet::read_parquet(pcqtl_path)
   pcqtl$cluster_id <- sapply(pcqtl$phenotype_id, function(x) unlist(strsplit(as.character(x), '_pc'))[1])
   return(pcqtl)
 }
