@@ -34,8 +34,8 @@ filter_qtl <- function(qtl, ld_snp_set){
 clean_qtl <- function(qtl_filtered, cleaned_ld_matrix, num_gtex_samples){
   # some slope_se are na
   qtl_missing_snps <- qtl_filtered[is.na(qtl_filtered$slope) | is.na(qtl_filtered$slope_se) | (qtl_filtered$af==0), 'variant_id']
-  cat("\t\tNumber snps with  qtl missing: ", length(qtl_missing_snps$variant_id), "\n")
-  cleaned_qtl <- qtl_filtered[!qtl_filtered$variant_id %in% qtl_missing_snps$variant_id, ]
+  cat("\t\tNumber snps with  qtl missing: ", length(qtl_missing_snps), "\n")
+  cleaned_qtl <- qtl_filtered[!qtl_filtered %in% qtl_missing_snps, ]
   # if there isn't a signal, further analysis should not be run
   if (min(cleaned_qtl$pval_nominal) < 1e-6){
     cat('\t\tsignal found \n')
@@ -81,7 +81,7 @@ clean_gwas <- function(gwas_filtered, cleaned_ld_matrix, gwas_type, num_gwas_sam
   cat("\t Number snps with ld or gwas missing: ", length(gwas_missing_snps$panel_variant_id), "\n")
   cleaned_gwas <- gwas_filtered[!gwas_filtered$panel_variant_id %in% gwas_missing_snps$panel_variant_id, ]
   if(min(cleaned_gwas$pvalue) < 1e-6){
-    gwas_cleaned_ld_matrix <- cleaned_ld_matrix[!rownames(cleaned_ld_matrix) %in% gwas_missing_snps$panel_variant_id, !colnames(cleaned_ld_matrix) %in% gwas_missing_snps$panel_variant_id]
+    gwas_cleaned_ld_matrix <- cleaned_ld_matrix[rownames(cleaned_ld_matrix) %in% cleaned_gwas$panel_variant_id, colnames(cleaned_ld_matrix) %in% cleaned_gwas$panel_variant_id]
     cleaned_gwas_list <- list(MAF = cleaned_gwas$frequency, 
                               snp = cleaned_gwas$panel_variant_id, 
                               position = cleaned_gwas$position, 
@@ -182,10 +182,6 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
   }
   
   cat(" qtl phenotypes\n")
-  
-  #DEBUG (trying to work out saving susie)
-  #gwas_susie[[1]]
-  # end debug
   
   # clean the gwas data into the right format for susie
   gwas_for_coloc <- get_gwas_for_coloc(gwas_with_meta, ld_snp_set, snp_list, cleaned_ld_matrix)
@@ -290,20 +286,20 @@ get_ld <- function(ld_path_head, cluster_id, snp_list, genotype_stem){
     # get ld if not
     ld_plink_path <- paste(ld_path_head, cluster_id, sep="")
     snp_path <- paste(ld_path_head, cluster_id, '.snp_list.txt', sep="")
-    plink_command <- sprintf("plink --bfile %s --extract %s --r square --out %s", genotype_stem, snp_path, ld_plink_path)
+    plink_command <- sprintf("plink --bfile %s --extract %s --r square --out %s --keep-allele-order", genotype_stem, snp_path, ld_plink_path)
     cat(plink_command) 
     system(plink_command, intern=TRUE)
     cat("generated ld matrix\n")
   }
   # load in ld and return 
-  ld_matrix <- read.table(ld_matrix_path)
-  length(snp_list$variant_id)
-  nrow(ld_matrix)
+  #ld_matrix <- read.table(ld_matrix_path)
+  ld_matrix <- fread(ld_matrix_path)
+  ld_matrix <- data.frame(ld_matrix)
   rownames(ld_matrix) <- snp_list$variant_id
   colnames(ld_matrix) <- snp_list$variant_id
   
   # drop snps with missing values from LD
-  ld_missing_snps = get_ld_missing_snps(ld_matrix)
+  ld_missing_snps <- get_ld_missing_snps(ld_matrix)
   cleaned_ld_matrix <- ld_matrix[!rownames(ld_matrix) %in% ld_missing_snps, !colnames(ld_matrix) %in% ld_missing_snps]
   cat("total working snps: ", nrow(cleaned_ld_matrix), "\n")
   return(cleaned_ld_matrix)
