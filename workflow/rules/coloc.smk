@@ -88,7 +88,7 @@ rule run_coloc_chr:
         """
         module load r/4.2.2
         module load plink
-        Rscript workflow/scripts/draft_coloc.R \
+        Rscript workflow/scripts/run_coloc.R \
             --eqtl_dir_path {params.eqtl_dir_path} \
             --pcqtl_dir_path {params.pcqtl_dir_path} \
             --gwas_meta {input.gwas_meta} \
