@@ -37,7 +37,7 @@ rule run_pcqtl_cis_nominal:
     output:
         expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list,  allow_missing=True)
     script:
-        '../scripts/run_pcqtl_nominal.py'
+        '../scripts/snakemake_run_pcqtl_nominal.py'
 
 # cis eQTL mapping: permutations (i.e. top variant per phenotype group)
 rule run_pcqtl_cis:
@@ -89,7 +89,7 @@ rule run_pcqtl_cis_independent:
     output:
         pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_independent_qtl.txt.gz'
     script:
-        '../scripts/run_qtl_permutations.py'
+        '../scripts/snakemake_run_qtl_permutations.py'
 
 
 rule run_pcqtl_cis_independent_pc1:
@@ -111,7 +111,7 @@ rule run_pcqtl_cis_independent_pc1:
     output:
         pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pc1_only.cis_independent_qtl.txt.gz'
     script:
-        '../scripts/run_qtl_permutations.py'
+        '../scripts/snakemake_run_qtl_permutations.py'
 
 
 

@@ -8,7 +8,7 @@ rule filter_expression_clusters:
     output:
         filtered_normed_expression = filtered_expression_output_dir + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed'
     script:
-        '../scripts/filter_expression_clusters.py'
+        '../scripts/snakemake_filter_expression_clusters.py'
 
 
 # control expression qtls
@@ -32,7 +32,7 @@ rule run_eqtl_cis_nominal:
     output:
         expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, allow_missing=True)
     script:
-        '../scripts/run_eqtl_nominal.py'
+        '../scripts/snakemake_run_eqtl_nominal.py'
 
 # cis eQTL mapping: permutations (i.e. top variant per phenotype group)
 rule run_eqtl_cis:
@@ -84,7 +84,7 @@ rule run_eqtl_cis_independent:
     output:
        eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_independent_qtl.txt.gz'
     script:
-        '../scripts/run_qtl_permutations.py'
+        '../scripts/snakemake_run_qtl_permutations.py'
 
 
 # cis-QTL mapping: susie credible set summary stats

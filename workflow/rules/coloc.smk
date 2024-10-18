@@ -68,7 +68,7 @@ rule run_coloc_chr:
         gtex_meta = gtex_meta, 
         genotypes = genotype_stem + '.fam',
         gwas_nominal = gwas_folder + '/imputed_{GWAS}.txt.gz',
-        annotated_clusters = annotations_output_dir + '{TISSUE}_clusters_annotated.csv'
+        annotated_clusters = annotations_output_dir + '{TISSUE}/{TISSUE}_clusters_annotated.csv'
 
     resources:
         mem = "200G", 
@@ -106,14 +106,5 @@ rule run_coloc_chr:
 
         # module load r/4.2.2
         # module load plink
-# # Define the rule to aggregate coloc results into one file
-# rule aggregate_coloc_results_chr:
-#     input:
-#         coloc_clusters = expand(coloc_output_dir + '{TISSUE}/temp/colocs/{TISSUE}.v8.{CHROM}.cluster_{CLUSTER}.gwas.coloc.txt', zip, CLUSTER=clusters, CHROM=chr_zipped, allow_missing=True)
-#     params:
-#         coloc_temp_dir = coloc_output_dir + '{TISSUE}/temp/colocs/'
-#     output:
-#         aggregate_results = coloc_output_dir + '{TISSUE}/{TISSUE}.coloc_results.txt'
-#     script:
-#         "../script/aggregate_coloc_results.py"
+
 

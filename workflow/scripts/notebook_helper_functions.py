@@ -51,6 +51,7 @@ def load_pc_cis(config, tissue_id):
     pc_cis_path = '{}/{}/{}/{}.v8.pcs.cis_qtl.txt.gz'.format(prefix, config['pcqtl_output_dir'], tissue_id, tissue_id)
     pc_cis_df = pd.read_csv(pc_cis_path, sep='\t', index_col=0)
     pc_cis_df['cluster_id'] = pc_cis_df.index.str.split('_pc').str[0]
+    annotate_pc_order(pc_cis_df)
     return pc_cis_df
 
 def load_e_cis(config, tissue_id):
@@ -85,14 +86,28 @@ def load_pc_nominal(config, tissue_id, chr_id=22, get_var_position=False):
 def load_pc_susie(config, tissue_id):
     pcqtl_output_dir = config['pcqtl_output_dir']
     pc_susie_df =  pd.read_csv(f'{prefix}/{pcqtl_output_dir}/{tissue_id}/{tissue_id}.v8.pcs.susie.txt', sep='\t', index_col=0)
-    pc_susie_df['var_cluster'] = pc_susie_df['variant_id'] + '_' + pc_susie_df['phenotype_id'].str.split('_pc1').str[0]
+    pc_susie_df['var_cluster'] = pc_susie_df['variant_id'] + '_' + pc_susie_df['phenotype_id'].str.split('_pc').str[0]
     pc_susie_df['cs_num'] = pc_susie_df['cs_id'] 
     pc_susie_df['cs_id'] = pc_susie_df['phenotype_id'] + '_' + pc_susie_df['cs_id'].astype(str)
     pc_susie_df['pc_num'] = pc_susie_df['phenotype_id'].str.split('_pc').str[-1].astype(int)
     pc_susie_df['cluster_id'] = pc_susie_df['phenotype_id'].str.split('_pc').str[0]
     pc_susie_df = add_lead_var(pc_susie_df)
     pc_susie_df = add_num_vars_cs(pc_susie_df)
+    pc_susie_df['cs_full_id'] = pc_susie_df['phenotype_id'].astype(str) + '_cs' + pc_susie_df['cs_id'].astype(str)
+
     return pc_susie_df
+
+def load_e_susie(config, tissue_id):
+    eqtl_output_dir = config['eqtl_output_dir']
+    e_susie_df =  pd.read_csv(f'{prefix}/{eqtl_output_dir}/{tissue_id}/{tissue_id}.v8.cluster_genes.susie.txt', sep='\t', index_col=0)
+    e_susie_df['var_cluster'] = e_susie_df['variant_id'] + '_' + e_susie_df['phenotype_id'].str.split('_e').str[0]
+    e_susie_df['cs_num'] = e_susie_df['cs_id'] 
+    e_susie_df['cs_id'] = e_susie_df['phenotype_id'] + '_' + e_susie_df['cs_id'].astype(str)
+    e_susie_df['cluster_id'] = e_susie_df['phenotype_id'].str.split('_e').str[0]
+    e_susie_df = add_lead_var(e_susie_df)
+    e_susie_df = add_num_vars_cs(e_susie_df)
+    e_susie_df['cs_full_id'] = e_susie_df['phenotype_id'].astype(str) + '_cs' + e_susie_df['cs_id'].astype(str)
+    return e_susie_df
 
 
 def load_tissue_ids(config):
@@ -185,4 +200,11 @@ def load_across_tissues(config, load_func):
     combined.reset_index(inplace=True, drop=True)
     return combined
 
-
+def annotate_pc_order(pc_df):
+    pc_df['pc_num'] = pc_df['phenotype_id'].str.split('_pc').str[-1].astype(int)
+    pc_df['cluster_id'] = pc_df['phenotype_id'].str.split('_pc').str[0]
+    pc_df['cluster_size'] = pc_df['cluster_id'].str.split('_').apply(len)
+    # split first, last, and middle pcs
+    pc_df['pc_order'] = 'middle'
+    pc_df.loc[pc_df['pc_num'] == pc_df['cluster_size'],'pc_order'] = 'last'
+    pc_df.loc[pc_df['pc_num'] == 1,'pc_order'] = 'first'

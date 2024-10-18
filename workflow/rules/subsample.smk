@@ -10,4 +10,4 @@ rule get_subsample:
         subsample_expression = subsample_dir + 'normalized_expression/{TISSUE}.v8.normalized_expression.bed',
         subsample_covarience = subsample_dir + 'covariates/{TISSUE}.v8.covariates.txt
     script:
-        '../scripts/make_subsamples.py'
+        '../scripts/snakemake_make_subsamples.py'

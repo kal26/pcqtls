@@ -63,10 +63,16 @@ def load_abc(my_tissue_id, full_gencode=None, full_abc_path= '/home/klawren/oak/
     # get just the enhancer-gene connections for the matched tissue
     abc_df = full_abc_pred_df[full_abc_pred_df['CellType'] == abc_gtex_match[abc_gtex_match['GTEX_tissue'] == my_tissue_id]['ABC_biosample_id'].iloc[0]]
     # add transcript ids to relevant abc enhancer-gene connection columns these and set as index
-    gene_enhancer_df = pd.merge(full_gencode[['transcript_id', 'gene_name']], abc_df[['TargetGene','name','class', 'ABC.Score']], left_on='gene_name', right_on='TargetGene', how='left')
+    gene_enhancer_df = pd.merge(full_gencode[['transcript_id', 'gene_name']], abc_df[['chr', 'start', 'end', 'TargetGene','name','class', 'ABC.Score']], left_on='gene_name', right_on='TargetGene', how='left')
     gene_enhancer_df.rename(columns={'name':'enhancer'}, inplace=True)
     gene_enhancer_df.set_index('transcript_id', inplace=True)
     gene_enhancer_df.dropna(inplace=True)
+
+    gene_enhancer_df['chr'] = gene_enhancer_df['chr'].str.split('chr').str[1]
+    gene_enhancer_df = gene_enhancer_df[gene_enhancer_df['chr'].isin(f'{i+1}' for i in range(22))]
+    gene_enhancer_df['chr'] = gene_enhancer_df['chr'].astype(int)
+    gene_enhancer_df['enhancer_start'] = gene_enhancer_df['enhancer'].str.split(':').str[1].str.split('-').str[0].astype(int)
+    gene_enhancer_df['enhancer_end'] = gene_enhancer_df['enhancer'].str.split(':').str[1].str.split('-').str[1].astype(int)
     return gene_enhancer_df
 
 
