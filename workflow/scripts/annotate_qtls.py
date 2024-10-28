@@ -32,16 +32,16 @@ def annotate_enhancers_qtl(qtls, gene_enhancer_df):
 
 def annotate_ctcf_tad_qtl(qtls, ctcf_df, tad_df, gid_gencode):
     # temp tss_min/tss_max for the ctcf annotation
-    qtls['tss_min'] = qtls['position']
-    qtls['tss_max'] = qtls['position']
+    qtls['tss_min'] = qtls['position'].astype(float)
+    qtls['tss_max'] = qtls['position'].astype(float) + 1
     qtls['Chromosome'] = qtls['chr']
     annotate_ctcf(qtls, ctcf_df)
     qtls['qtl_in_ctcf'] = qtls['has_ctcf_peak']
     # redo tss min and tss max
     annotate_positions(qtls, gid_gencode)
     # add tad annotations
-    qtls['qtl_inter'] = pd.arrays.IntervalArray.from_arrays(qtls['position'], qtls['position']+5000) # 10kb tad resolution
-    qtls['num_tads_qtl'] = qtls.progress_apply(count_tad_overlap, axis=1, args=(tad_df, 'qtl_inter'))
+    qtls['qtl_inter'] = pd.arrays.IntervalArray.from_arrays(qtls['position'].astype(float), qtls['position'].astype(float)+5000) # 10kb tad resolution
+    qtls['num_tads_qtl'] = qtls.apply(count_tad_overlap, axis=1, args=(tad_df, 'qtl_inter'))
     qtls['qtl_in_tad'] = qtls['num_tads_qtl'] > 1
     qtls['between_tss'] = ((qtls['tss_min'] < qtls['position']) & (qtls['tss_max'] > qtls['position']))
     qtls['qtl_in_tss_ctcf'] = qtls['between_tss'] & qtls['qtl_in_ctcf']
@@ -81,6 +81,7 @@ def add_annotations_qtl(qtls, gid_gencode, gene_enhancer_df, ctcf_df, tad_df, ti
     print('annotated tads and ctcf')
     annotate_bidirectional_qtl(qtls, gid_gencode)
     print('annotated bidirectional promoters')
+    annotate_distance(qtls, gid_gencode)
 
 
 def load_and_annotate(qtls, my_tissue_id,
@@ -131,3 +132,20 @@ def get_annotate_pcs(pc_df, expression_df):
     return annot_pc.explode(['egene_id', 'egene_r2', 'egene_slope']).drop(columns=['r2_list', 'slope_list'])
 
 
+def annotate_distance(qtls, gid_gencode):
+    qtls['position'] = qtls['variant_id'].str.split('_').str[1].astype(int)
+    qtls['cluster_min_distance'] = qtls.progress_apply(get_tss, axis=1, args=(gid_gencode,))
+
+
+# distance to whichever gene in the cluster is closest
+def get_tss(row, gid_gencode):
+    cluster_gene_df = gid_gencode.loc[row['cluster_id'].split('_')]
+    starts = cluster_gene_df['tss_start'].values
+    distances = row['position'] - starts
+    # return smallest absolute value distance
+    idx = np.argmin(abs(distances))
+    # make relative to gene orientation
+    if cluster_gene_df.iloc[idx]['strand'] == '-':
+        return -distances[idx]
+    else:
+        return distances[idx]

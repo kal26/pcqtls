@@ -213,9 +213,12 @@ def annotate_ctcf(cluster_df, ctcf_df):
         chr_ctcf_points[chr] = pd.arrays.IntervalArray.from_arrays(ctcf_chr['start'] + ctcf_chr['peak'], ctcf_chr['start'] + ctcf_chr['peak'] + 1)
     # annotate each cluster
     for idx, row in tqdm(cluster_df.iterrows(), total=len(cluster_df)):
-        num_ctcf_peak = sum(chr_ctcf_peaks[row['Chromosome']].overlaps(row['interval']))
-        num_ctcf_point = sum(chr_ctcf_points[row['Chromosome']].overlaps(row['interval']))
-
+        try:
+            num_ctcf_peak = sum(chr_ctcf_peaks[row['Chromosome']].overlaps(row['interval']))
+            num_ctcf_point = sum(chr_ctcf_points[row['Chromosome']].overlaps(row['interval']))
+        except KeyError:
+            num_ctcf_peak = 0
+            num_ctcf_point = 0
         cluster_df.loc[idx, 'num_ctcf_peak'] = num_ctcf_peak
         cluster_df.loc[idx, 'has_ctcf_peak'] = num_ctcf_peak > 0
         cluster_df.loc[idx, 'num_ctcf_point'] = num_ctcf_point
@@ -229,8 +232,12 @@ def count_tad_overlap(row, tad_df, inter_column):
     chr_tad_edges = pd.arrays.IntervalArray.from_arrays(pd.concat([tad_chr['start'], tad_chr['end']]), pd.concat([tad_chr['start']+1, tad_chr['end']+1]))
 
     # number of TADs and TAD edges overlapped
-    tad_overlaps = sum(chr_tad_intervals.overlaps(row[inter_column]))
-    tad_edge_overlaps = sum(chr_tad_edges.overlaps(row[inter_column]))
+    try:
+        tad_overlaps = sum(chr_tad_intervals.overlaps(row[inter_column]))
+        tad_edge_overlaps = sum(chr_tad_edges.overlaps(row[inter_column]))
+    except TypeError as e:
+        tad_overlaps = 0
+        tad_edge_overlaps = 0
     # 0: in no TADs
     if tad_edge_overlaps==0 and tad_overlaps==0:
         return 0
@@ -298,6 +305,7 @@ def annotate_correlation(cluster_df, residal_exp):
         cluster_expression = residal_exp.loc[transcript_list].T.corr('spearman').to_numpy()
         cluster_corr = cluster_expression[np.triu_indices(len(cluster_expression), k=1)]
         cluster_df.loc[idx, 'Mean_cor'] = cluster_corr.mean()
+        cluster_df.loc[idx, 'corr_list'] = str(cluster_corr)
         cluster_df.loc[idx, 'Mean_pos_cor'] = cluster_corr[cluster_corr>0].mean()
         cluster_df.loc[idx, 'Mean_neg_cor'] = cluster_corr[cluster_corr<0].mean()
 

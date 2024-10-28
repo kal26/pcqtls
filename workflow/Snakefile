@@ -57,8 +57,9 @@ chr_list = list(df['chr_id'])
 gwas_meta_df = pd.read_csv(gwas_meta, sep='\t', header=0)
 gwas_ids = list(gwas_meta_df['Tag'])
 
+# subsample to test
 tissue_ids = ['Thyroid']
-use_susie = "FALSE"
+use_susie = "True"
 
 include: 'rules/pcqtl.smk'
 include: 'rules/eqtl.smk'
@@ -74,8 +75,8 @@ print('Running on tissues:{}'.format(tissue_ids))
 rule all:
     input:
         #clusters = expand(clusters_dir + '{TISSUE}_clusters_all_chr.csv', TISSUE = tissue_ids),
-        #annotated_clusters = expand(annotations_output_dir + '{TISSUE}_clusters_annotated.csv', TISSUE = tissue_ids),
-        #annotated_nulls =  expand(annotations_output_dir + '{TISSUE}_null_{CLUSTER_SIZE}genes_annotated.csv', TISSUE = tissue_ids, CLUSTER_SIZE = null_sizes),
+        #annotated_clusters = expand(annotations_output_dir + '{TISSUE}/{TISSUE}_clusters_annotated.csv', TISSUE = tissue_ids),
+        #annotated_nulls =  expand(annotations_output_dir + '{TISSUE}/{TISSUE}_null_{CLUSTER_SIZE}genes_annotated.csv', TISSUE = tissue_ids, CLUSTER_SIZE = null_sizes),
         # pcqtl_susie = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.susie.txt', TISSUE = tissue_ids),
         #pc_permutation = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_independent_qtl.txt.gz', TISSUE = tissue_ids),
         #pcqtl_nominal = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE=tissue_ids),
@@ -83,7 +84,10 @@ rule all:
         #eqtl_permutation = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_independent_qtl.txt.gz', TISSUE=tissue_ids),
         #eqtl_nominal = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE=tissue_ids),
         #cluster_list = expand(coloc_output_dir + '{TISSUE}/temp/{TISSUE}.{CHROM}.cluster_list.txt', CHROM=chr_list, TISSUE=tissue_ids)
-        #colocs = expand(coloc_output_dir + '{TISSUE}/{TISSUE}.v8.{GWAS}.susie_{USE_SUSIE}.gwas_coloc.txt', TISSUE=tissue_ids, GWAS=gwas_ids, USE_SUSIE=use_susie)
-        susie_var_annot = expand(annotations_output_dir + '{TISSUE}/{TISSUE}.v8.susie_vars.annotated.csv', TISSUE = tissue_ids)
+        gwas_colocs = expand(coloc_output_dir + '{TISSUE}/{TISSUE}.v8.{GWAS}.susie_{USE_SUSIE}.gwas_coloc.txt', TISSUE=tissue_ids, GWAS=gwas_ids, USE_SUSIE=use_susie)
+        #coloc_pairs = expand(coloc_output_dir + 'pairs/{TISSUE}.v8.pairs_coloc.txt', TISSUE=tissue_ids), 
+        #pcqtl_susie_pairs = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.susie_R.txt', TISSUE=tissue_ids), 
+        #eqtl_susie_pairs = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie_R.txt', TISSUE=tissue_ids), 
+        #susie_var_annot = expand(annotations_output_dir + '{TISSUE}/{TISSUE}.v8.susie_vars.annotated.csv', TISSUE = tissue_ids)
         #pc_annotated = expand(annotations_output_dir + '{TISSUE}/{TISSUE}.v8.pcs_annotated.txt', TISSUE = tissue_ids)
     

@@ -1,6 +1,9 @@
 # functions to load the requested file types given a config pointing the right directories
 import pandas as pd
 import numpy as np
+import statsmodels.api as sm
+import matplotlib.pyplot as plt 
+import seaborn as sns 
 
 # working directory prefix
 prefix = '/home/klawren/oak/pcqtls'
@@ -9,6 +12,14 @@ def load_vep(config, tissue_id):
     sample_vep = pd.read_csv('{}/{}/{}.v8.leadvars.vep.vcf'.format(prefix, config['annotations_output_dir'], tissue_id), skiprows=4, sep='\t')
     overlap_df = load_overlap(config, tissue_id)
     return pd.merge(sample_vep, overlap_df, left_on='ID', right_on='lead_variant_id', how='outer')
+
+def load_susie_annotated(config, tissue_id):
+    qtl_path = '{}/{}/{}.v8.susie_vars.annotated.csv'.format(config['annotations_output_dir'], tissue_id, tissue_id)
+    susie_annotated = pd.read_csv(qtl_path, sep='\t')
+    susie_annotated['cs_num'] = susie_annotated['cs_id'] 
+    susie_annotated['cs_id'] = susie_annotated['phenotype_id'] + '_' + susie_annotated['cs_id'].astype(str)
+    susie_annotated = add_lead_var(susie_annotated)
+    return susie_annotated
 
 def load_overlap(config, tissue_id):
     overlap_df = pd.read_csv('{}/{}/{}.v8.overlap.txt'.format(prefix, config['overlap_output_dir'], tissue_id), sep='\t')
@@ -29,7 +40,7 @@ def load_overlap(config, tissue_id):
     return overlap_df
 
 def load_clusters_annotated(config, tissue_id):
-    annot_cluster = pd.read_csv('{}/{}/{}_clusters_annotated.csv'.format(prefix, config['annotations_output_dir'], tissue_id), index_col=0)
+    annot_cluster = pd.read_csv('{}/{}/{}/{}_clusters_annotated.csv'.format(prefix, config['annotations_output_dir'], tissue_id, tissue_id), index_col=0)
     for idx, row in annot_cluster.iterrows():
         annot_cluster.loc[idx, 'cluster_id']  = '_'.join([*sorted(row['Transcripts'].split(','))])
     annot_cluster['abs_cor'] = np.where(annot_cluster['Mean_neg_cor'].isna(), annot_cluster['Mean_pos_cor'], - annot_cluster['Mean_neg_cor'])
@@ -39,7 +50,7 @@ def load_clusters_annotated(config, tissue_id):
     return annot_cluster
 
 def load_null_clusters_annotated(config, tissue_id, num_genes=2):
-    return pd.read_csv('{}/{}/{}_null_{}genes_annotated.csv'.format(prefix, config['annotations_output_dir'], tissue_id, num_genes), index_col=0)
+    return pd.read_csv('{}/{}/{}/{}_null_{}genes_annotated.csv'.format(prefix, config['annotations_output_dir'], tissue_id, tissue_id, num_genes), index_col=0)
 
 def load_cluster(config, tissue_id):
     cluster_df =  pd.read_csv('{}/{}/{}_clusters_all_chr.csv'.format(prefix, config['clusters_dir'], tissue_id),index_col=0)
@@ -49,15 +60,15 @@ def load_cluster(config, tissue_id):
 
 def load_pc_cis(config, tissue_id):
     pc_cis_path = '{}/{}/{}/{}.v8.pcs.cis_qtl.txt.gz'.format(prefix, config['pcqtl_output_dir'], tissue_id, tissue_id)
-    pc_cis_df = pd.read_csv(pc_cis_path, sep='\t', index_col=0)
-    pc_cis_df['cluster_id'] = pc_cis_df.index.str.split('_pc').str[0]
+    pc_cis_df = pd.read_csv(pc_cis_path, sep='\t')
+    pc_cis_df['cluster_id'] = pc_cis_df['phenotype_id'].str.split('_pc').str[0]
     annotate_pc_order(pc_cis_df)
     return pc_cis_df
 
 def load_e_cis(config, tissue_id):
     e_cis_path = '{}/{}/{}/{}.v8.cluster_genes.cis_qtl.txt.gz'.format(prefix, config['eqtl_output_dir'], tissue_id, tissue_id)
-    e_cis_df = pd.read_csv(e_cis_path, sep='\t', index_col=0)
-    e_cis_df['cluster_id'] = e_cis_df.index.str.split('_e').str[0]
+    e_cis_df = pd.read_csv(e_cis_path, sep='\t')
+    e_cis_df['cluster_id'] = e_cis_df['phenotype_id'].str.split('_e').str[0]
     return e_cis_df
 
 # load in e nominal
@@ -193,8 +204,9 @@ def add_num_vars_cs(susie_df):
     susie_df = susie_df.merge(num_vars, how='left', left_on='cs_id', right_index=True)
     return susie_df
 
-def load_across_tissues(config, load_func):
-    tissue_ids = load_tissue_ids(config)
+def load_across_tissues(config, load_func, tissue_ids = None):
+    if tissue_ids == None:
+        tissue_ids = load_tissue_ids(config)
     combined = [load_func(config, tissue_id) for tissue_id in tissue_ids]
     combined = pd.concat([df.assign(tissue_id=n) for df, n in zip(combined, tissue_ids)])
     combined.reset_index(inplace=True, drop=True)
@@ -208,3 +220,102 @@ def annotate_pc_order(pc_df):
     pc_df['pc_order'] = 'middle'
     pc_df.loc[pc_df['pc_num'] == pc_df['cluster_size'],'pc_order'] = 'last'
     pc_df.loc[pc_df['pc_num'] == 1,'pc_order'] = 'first'
+
+
+
+
+
+# log odds stuff
+# fit a logit model
+
+def fit_logistic_model(joined_df, column, label_col, correct_on=False, filter_on_column=None, verb=True, correct_on_column='log_size'):
+    if verb:
+        print(column)
+    try:
+        final_joined_df = joined_df[joined_df[filter_on_column]]
+    except KeyError:
+        final_joined_df = joined_df
+
+    if correct_on:
+        x = final_joined_df[np.append(np.asarray(correct_on_column),column)].astype(float)
+    else:
+        x = final_joined_df[column].astype(float)
+
+    y = final_joined_df.reset_index()[label_col].values.astype(bool)
+    x_with_constant = sm.add_constant(x) # Add intercept term
+
+    logit_model = sm.Logit(y, x_with_constant)
+    try:
+        result = logit_model.fit()
+        
+    except np.linalg.LinAlgError:
+        # this can happen if all elements are the same
+        return pd.Series({'lower_cb':np.nan, 'upper_cb':np.nan, 'odds_ratio':np.nan, 'p_value':np.nan, 'col':column,'lower_cb_diff':np.nan , 'upper_cb_diff':np.nan}, name=column)
+    if verb:
+        print(result.summary())
+
+    coefficients = result.params
+    conf_int = result.conf_int()
+    odds_ratios = np.exp(coefficients)
+    odds_ratios_ci = np.exp(conf_int)
+
+    odds_ratios_ci.rename(columns={0:'lower_cb', 1:'upper_cb'}, inplace=True)
+    odds_ratios_ci['odds_ratio'] = odds_ratios
+    odds_ratios_ci['p_value'] = result.pvalues
+    odds_ratios_ci['col'] = column
+    odds_ratios_ci['lower_cb_diff'] = odds_ratios_ci['odds_ratio'] - odds_ratios_ci['lower_cb']
+    odds_ratios_ci['upper_cb_diff'] = odds_ratios_ci['upper_cb'] - odds_ratios_ci['odds_ratio']
+    
+    return odds_ratios_ci.loc[column]
+
+
+def get_odds_df(joined_df, label_col, verb=True, correct_on=False, correct_on_column='log_size', 
+                column_list = [], filter_list=[], filter_on_column = 'has_multiple_abc_genes'):
+    column_list = pd.Series(column_list)
+    odds_ratios_no_filter = pd.DataFrame([fit_logistic_model(joined_df, c, label_col, verb=verb, correct_on=correct_on, correct_on_column=correct_on_column) for c in column_list[~column_list.isin(filter_list)]]) 
+    if len(filter_list)>0:
+        odds_ratios_filtered = pd.DataFrame([fit_logistic_model(joined_df, c, label_col, filter_on_column=filter_on_column, verb=verb, correct_on=correct_on, correct_on_column=correct_on_column) for c in column_list[column_list.isin(filter_list)]]) 
+        return pd.concat([odds_ratios_no_filter, odds_ratios_filtered])
+    else: 
+        return odds_ratios_no_filter
+
+def make_log_odds_plot(log_odds_df, ax=None, add_annotations=True):
+    log_odds_df = log_odds_df.reset_index()
+    if ax==None:
+        fig, ax = plt.subplots(1, figsize=(9,9))
+
+    # log odds plot
+    ax.errorbar(y=log_odds_df['col'], x=log_odds_df['odds_ratio'], xerr=log_odds_df[['lower_cb_diff', 'upper_cb_diff']].values.transpose(), fmt="o", color='k')
+    ax.axvline(1, color='k', linestyle='--')
+    ax.set_xlabel('Log odds')
+    if add_annotations:
+        for idx,row in log_odds_df.iterrows():
+            ax.annotate('OR: {:.2f},\np: {:.1E}'.format(row['odds_ratio'], row['p_value']), (row['odds_ratio'], idx+.2))
+    ax.set_xscale(u'log')
+    return ax
+
+# log odds plot with multiple odds per category 
+def make_log_odds_plot_multiple(odds_ratios_list, ax=None, labels=None, add_annotations=True, offset = 0.2, colors = sns.color_palette()):
+    if ax==None:
+        fig, ax = plt.subplots(1, figsize=(9,9))
+    
+    for idx, odds_ratio_df in enumerate(odds_ratios_list):
+        odds_ratio_df = odds_ratio_df.reindex(odds_ratios_list[0].index).reset_index()
+        color = colors[idx % len(colors)]  # cycle through colors if more than available
+        ax.errorbar(y=odds_ratio_df.reset_index().index.values + idx*offset, x=odds_ratio_df['odds_ratio'], 
+                    xerr=odds_ratio_df[['lower_cb_diff', 'upper_cb_diff']].values.transpose(), fmt="o", 
+                    color=color, label=labels[idx] if labels else None, markersize=3)
+        ax.axvline(1, color='k', linestyle='--')
+
+        if add_annotations:
+            for row_idx, row in odds_ratio_df.iterrows():
+                ax.annotate('OR = {:.2f}, p={:.1E}'.format(row['odds_ratio'], row['p_value']), 
+                            (row['odds_ratio'], row_idx + idx*offset + 0.05), fontsize=6)
+            
+    if labels:
+        handles, labels = ax.get_legend_handles_labels()
+        ax.legend(reversed(handles), reversed(labels))
+
+    ax.set_xscale(u'log')
+    ax.set_yticks(ticks=odds_ratio_df.index.values + (len(odds_ratios_list)-1)*offset/2, labels=(odds_ratio_df['col']))
+    return ax

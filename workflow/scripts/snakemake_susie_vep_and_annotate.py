@@ -6,9 +6,12 @@ from annotate_qtls import *
 e_susie_path = snakemake.input[0]
 pc_susie_path = snakemake.input[1]
 vep_path = snakemake.input[2]
-e_nominal_path_list = snakemake.input[3]
-pc_nominal_path_list = snakemake.input[4]
-annot_pc_path = snakemake.input[5]
+annot_pc_path = snakemake.input[3]
+e_nominal_path_list = snakemake.input[4:26]
+pc_nominal_path_list = snakemake.input[26:]
+
+print(e_nominal_path_list)
+print(pc_nominal_path_list)
 
 tissue_id = snakemake.params[0]
 gencode_path=snakemake.params[1]
@@ -26,7 +29,7 @@ pc_susie_df = pd.read_csv(pc_susie_path, sep='\t', index_col=0)
 pc_susie_df['cluster_id'] = pc_susie_df['phenotype_id'].str.split('_pc').str[0]
 e_susie_df =  pd.read_csv(e_susie_path, sep='\t', index_col=0)
 e_susie_df['cluster_id'] = e_susie_df['phenotype_id'].str.split('_e').str[0]
-combined_susie = pd.concat([e_susie_df, pc_susie_df], names=['type', 'idx'], keys=['pcqtl', 'eqtl']).reset_index(drop=0).drop(columns=['idx'])
+combined_susie = pd.concat([e_susie_df, pc_susie_df], names=['type', 'idx'], keys=['eqtl', 'pcqtl']).reset_index(drop=0).drop(columns=['idx'])
 # we will get af again from the nominals
 combined_susie.drop(columns=['af'], inplace=True)
 
@@ -42,15 +45,15 @@ e_nominal_sub = e_nominal[e_nominal['variant_id'].isin(qtls_nominal_merged['vari
 e_nominal_sub['cluster_id'] = e_nominal_sub['phenotype_id'].str.split('_e').str[0]
 e_nominal_sub['egene_id'] = e_nominal_sub['phenotype_id'].str.split('_e_').str[1]
 e_nominal_sub['variance'] = e_nominal_sub['slope'].apply(np.square) * 100
-egene_nominal = e_nominal_sub.groupby(['cluster_id', 'variant_id']).agg({'variance':list, 'egene_id':list, 'slope':list})
-egene_nominal = egene_nominal.rename(columns={'variance':'egene_variance_list', 'egene_id':'egene_id_list', 'slope':'egene_qtl_slope'})
+egene_nominal = e_nominal_sub.groupby(['cluster_id', 'variant_id']).agg({'variance':list, 'egene_id':list, 'slope':list, 'slope_se':list})
+egene_nominal = egene_nominal.rename(columns={'variance':'egene_variance_list', 'egene_id':'egene_id_list', 'slope':'egene_qtl_slope', 'slope_se':'egene_qtl_slope_se'})
 qtls_nominal_merged = pd.merge(qtls_nominal_merged, egene_nominal, left_on=['cluster_id', 'variant_id'], right_index=True, how='left')
 
 # add in annoated pc info
 annotated_pcs = pd.read_csv(annot_pc_path, sep='\t')
 annotated_pcs = annotated_pcs.rename(columns={'egene_r2':'egene_pc_r2', 
                          'egene_slope':'egene_pc_slope'})
-qtl_annot_pc_merged = pd.merge(qtls_nominal_merged.explode(['egene_id_list', 'egene_qtl_slope', 'egene_variance_list']), 
+qtl_annot_pc_merged = pd.merge(qtls_nominal_merged.explode(['egene_id_list', 'egene_qtl_slope', 'egene_variance_list', 'egene_qtl_slope_se']), 
                                annotated_pcs[['pc_phenotype_id', 'egene_id', 'egene_pc_r2', 'egene_pc_slope']], 
                                right_on=['pc_phenotype_id', 'egene_id'], 
                                left_on=['phenotype_id', 'egene_id_list'], 
@@ -76,6 +79,7 @@ qtls_nominal_merged = qtl_annot_pc_merged.groupby(['phenotype_id', 'variant_id',
                                                                          'egene_variance_list':list,
                                                                          'egene_id_list':list,
                                                                          'egene_qtl_slope':list,
+                                                                         'egene_qtl_slope_se': list,
                                                                          'egene_pc_r2':list,
                                                                          'egene_pc_slope':list,
                                                                          'egene_qtl_slope_flipped':list}).reset_index()
@@ -103,6 +107,6 @@ qtls = load_and_annotate(qtls, tissue_id,
                       avg_expression_path=avg_expression_path, verbosity=1)
 
 # write out
-qtls.to_csv(out_path, header=None, index=False, sep='\t')
+qtls.to_csv(out_path, index=False, sep='\t')
 
 
