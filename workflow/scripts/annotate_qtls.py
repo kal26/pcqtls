@@ -134,7 +134,7 @@ def get_annotate_pcs(pc_df, expression_df):
 
 def annotate_distance(qtls, gid_gencode):
     qtls['position'] = qtls['variant_id'].str.split('_').str[1].astype(int)
-    qtls['cluster_min_distance'] = qtls.progress_apply(get_tss, axis=1, args=(gid_gencode,))
+    qtls['cluster_min_distance'] = qtls.apply(get_tss, axis=1, args=(gid_gencode,))
 
 
 # distance to whichever gene in the cluster is closest

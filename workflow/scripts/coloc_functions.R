@@ -103,7 +103,6 @@ clean_gwas <- function(gwas_filtered, cleaned_ld_matrix, gwas_type, num_gwas_sam
 
 
 runsusie_errorcatch <- function(dataset){
-  cat("running susie\n")
   start <- Sys.time()
   susie <- tryCatch({
     runsusie(dataset, repeat_until_convergence=TRUE) #DEBUG (should I run until convergence or not?) # Call runsusie function for each QTL
@@ -119,6 +118,7 @@ runsusie_errorcatch <- function(dataset){
 
 coloc_pairs_cluster <- function(eqtl_chr, pcqtl_chr, cluster_id, ld_path_head, genotype_stem, num_gtex_samples, coloc_temp_path_head){
   # subset eqtl and pcqtl to this cluster
+  start <- Sys.time()
   cluster_eqtl <-eqtl_chr[eqtl_chr$cluster_id == cluster_id, ]
   cluster_pcqtl <- pcqtl_chr[pcqtl_chr$cluster_id == cluster_id, ]
   # get snp list and ld matrix
@@ -134,6 +134,7 @@ coloc_pairs_cluster <- function(eqtl_chr, pcqtl_chr, cluster_id, ld_path_head, g
   qtls_for_coloc <- qtls_for_coloc[!sapply(qtls_for_coloc, is.null)]
   cat(length(qtls_for_coloc))
   cat(" qtl phenotypes\n")
+  cat(Sys.time() - start, "\n")
   if (length(qtls_for_coloc)==0){
     cat("no pairs of qtl signals in this cluster\n")
     return(NULL)
@@ -154,9 +155,12 @@ coloc_pairs_cluster <- function(eqtl_chr, pcqtl_chr, cluster_id, ld_path_head, g
       cat("susie for ", this_qtl_id, "already exists\n")
       qtl_susies[[i]] <-  readRDS(file = susie_path)
     } else {
+      cat("running susie for ", this_qtl_id,"\n")
+      cat(Sys.time() - start, "\n")
       this_qtl_susie <- runsusie_errorcatch(qtls_for_coloc[[i]])
       qtl_susies[[i]] <- this_qtl_susie
       cat("finemapped ", this_qtl_id, "\n")
+      cat(Sys.time() - start, "\n")
       saveRDS(this_qtl_susie, file = susie_path)
     } 
   }
@@ -183,19 +187,21 @@ get_qtl_pairwise_coloc <- function(qtls_for_coloc, qtl_susies){
       qtl2 <- qtls_for_coloc[[qtl_pair_idxs[2, i]]]
       susie1 <- qtl_susies[[qtl_pair_idxs[1, i]]]
       susie2 <- qtl_susies[[qtl_pair_idxs[2, i]]]
+      cat(Sys.time() - start, "\n")
       cat(paste("coloc for", qtl1$phenotype_id , "-", qtl2$phenotype_id), "\n")
       this_coloc <- coloc.susie(susie1,susie2)$summary
+      cat(Sys.time() - start, "\n")
       if (!is.null(this_coloc)){
         this_coloc$qtl1_id <- qtl1$phenotype_id
         this_coloc$qtl2_id <- qtl2$phenotype_id
+        qtl_coloc_results <- bind_rows(qtl_coloc_results, this_coloc)
       }
-      cat(ncol(qtl_coloc_results), " vs ", ncol(this_coloc), "\n")
       if(is.null(this_coloc)){
         cat("\tresult is null\n")
+        cat(ncol(qtl_coloc_results), " vs ", ncol(this_coloc), "\n")
         print(summary(susie1))
         print(summary(susie2))
       } else {
-        qtl_coloc_results <- bind_rows(qtl_coloc_results, this_coloc)
       }
     }
   }
@@ -205,6 +211,7 @@ get_qtl_pairwise_coloc <- function(qtls_for_coloc, qtl_susies){
 
 coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, ld_path_head, coloc_temp_path_head, genotype_stem, num_gtex_samples, use_susie = FALSE){
   # subset eqtl and pcqtl to this cluster
+  start <- Sys.time()
   cluster_eqtl <-eqtl_chr[eqtl_chr$cluster_id == cluster_id, ]
   cluster_pcqtl <- pcqtl_chr[pcqtl_chr$cluster_id == cluster_id, ]
   # get snp list and ld matrix
@@ -223,19 +230,15 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
     cat("no qtl signals in this cluster\n")
     return(NULL)
   }
-  
   cat(" qtl phenotypes\n")
   
   # clean the gwas data into the right format for susie
-  gwas_for_coloc <- get_gwas_for_coloc(gwas_with_meta, ld_snp_set, snp_list, cleaned_ld_matrix)
-  # make the gwas susie
-  
+  gwas_for_coloc <- get_gwas_for_coloc(gwas_with_meta, ld_snp_set, snp_list, cleaned_ld_matrix)  
   # in rare cases, the snps with <1e-6 singal are not in the qtl snp_list or are nans in the ld matrix
   if(is.null(gwas_for_coloc)){
     cat("signifigant gwas signal filtered out\n")
     return(NULL)
   }
-  
   if(use_susie){
     # run susie on each qtl phenotype
     # check if the susie dataset alread exists 
@@ -252,9 +255,12 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
         cat("susie for ", this_qtl_id, "already exists\n")
         qtl_susies[[i]] <-  readRDS(file = susie_path)
       } else {
+        cat(Sys.time() - start, "\n")
+        cat("susie for ", this_qtl_id, "\n")
         this_qtl_susie <- runsusie_errorcatch(qtls_for_coloc[[i]])
         qtl_susies[[i]] <- this_qtl_susie
         cat("finemapped ", this_qtl_id, "\n")
+        cat(Sys.time() - start, "\n")
         saveRDS(this_qtl_susie, file = susie_path)
       } 
     }
@@ -277,17 +283,23 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
     gwas_susie_path <- paste(coloc_temp_path_head, out_cluster_id, '.', gwas_with_meta$gwas_id, '.susie.rds', sep="")
     if (file.exists(gwas_susie_path)) {
       gwas_susie <- readRDS(file = gwas_susie_path)
+      cat("loaded previous gwas susie\n")
+      if (is.null(gwas_susie)){
+        cat("no gwas signals finemapped in this cluster\n")
+        return(NULL)
+      }
     } else {
+      cat(Sys.time() - start, "\n")
+      cat("running susie gwas\n")
       gwas_susie <- runsusie_errorcatch(gwas_for_coloc)
       if (is.null(gwas_susie)){
         cat("no gwas signals finemapped in this cluster\n")
         return(NULL)
       } else {
       cat("finemapped gwas\n")
-      }
       saveRDS(gwas_susie, file = gwas_susie_path)
+      }
     }
-
   }
   cat(length(qtls_for_coloc), "colocs found in this cluster\n")
   gwas_coloc_results <- data.frame()
@@ -295,6 +307,7 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
   if(use_susie){
     for (i in 1:length(qtl_susies)){
       this_qtl_id <- qtls_for_coloc[[i]]$phenotype_id
+      cat(Sys.time() - start, "\n")
       cat(paste("\t\t\tcoloc for", gwas_with_meta$gwas_id, "and", this_qtl_id, "\n"))
       cat("\t\t\t\t using susie to coloc ", i, " out of ", length(qtl_susies), " total\n")
       this_qtl_susie <- qtl_susies[[i]]
@@ -392,7 +405,7 @@ get_short_qtl_id <- function(long_qtl_id){
   # There shouldn't be any overlap in transcripts anyway
   long_qtl_id_split <- strsplit(long_qtl_id, "_")[[1]]
   # Take all text before the 5th '_'
-  short_qtl_id <- paste(long_qtl_id_split[-5:-1], collapse = "_")
+  short_qtl_id <- paste(tail(long_qtl_id_split, 5), collapse = "_")
   return(short_qtl_id)
 }
 

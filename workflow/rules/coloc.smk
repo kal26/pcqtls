@@ -72,18 +72,18 @@ rule run_coloc_gwas:
 
     resources:
         mem = "200G", 
-        time = "20:00:00" ,
+        time = "48:00:00" ,
     params:
         eqtl_dir_path = eqtl_output_dir + '{TISSUE}',
         pcqtl_dir_path =  pcqtl_output_dir + '{TISSUE}',
-        ld_path_head = coloc_output_dir + 'temp/',
-        coloc_temp_path_head = coloc_output_dir + '{TISSUE}/temp/',
+        ld_path_head = coloc_output_dir + 'temp/all_tissues/',
+        coloc_temp_path_head = coloc_output_dir + 'temp/{TISSUE}/',
         genotype_stem = genotype_stem,
         use_susie = '{USE_SUSIE}'
     conda:
         "/oak/stanford/groups/smontgom/klawren/micromamba/envs/susie_r"
     output:
-        coloc_gwas = coloc_output_dir + '{TISSUE}/{TISSUE}.v8.{GWAS}.susie_{USE_SUSIE}.gwas_coloc.txt'
+        coloc_gwas = coloc_output_dir + 'gwas/{TISSUE}/{TISSUE}.v8.{GWAS}.susie_{USE_SUSIE}.gwas_coloc.txt'
     shell:
         """
         Rscript workflow/scripts/coloc_run_gwas.R \
@@ -109,24 +109,24 @@ rule run_coloc_gwas:
 # per cluster colocalization with gwas
 rule run_coloc_pairs:
     input:
-        eqtl_pairs = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, allow_missing=True),
-        pcqtl_pairs = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, allow_missing=True),
+        eqtl_pairs = eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', 
+        pcqtl_pairs = pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet',
         gtex_meta = gtex_meta, 
         genotypes = genotype_stem + '.fam',
         annotated_clusters = annotations_output_dir + '{TISSUE}/{TISSUE}_clusters_annotated.csv'
     resources:
         mem = "200G", 
-        time = "4:00:00" ,
+        time = "10:00:00" ,
     params:
         eqtl_dir_path = eqtl_output_dir + '{TISSUE}',
         pcqtl_dir_path =  pcqtl_output_dir + '{TISSUE}',
-        ld_path_head = coloc_output_dir + 'temp/',
+        ld_path_head = coloc_output_dir + 'temp/all_tissues/',
         genotype_stem = genotype_stem,
-        coloc_temp_path_head = coloc_output_dir + '{TISSUE}/temp/',
+        coloc_temp_path_head = coloc_output_dir + 'temp/{TISSUE}/',
     conda:
         "/oak/stanford/groups/smontgom/klawren/micromamba/envs/susie_r"
     output:
-        coloc_pairs = coloc_output_dir + 'pairs/{TISSUE}.v8.pairs_coloc.txt'
+        coloc_pairs = coloc_output_dir + 'pairs/{TISSUE}.v8.pairs_coloc.{CHROM}.txt'
     shell:
         """
         Rscript workflow/scripts/coloc_run_pairs.R \
@@ -138,24 +138,22 @@ rule run_coloc_pairs:
             --genotype_stem {params.genotype_stem} \
             --annotated_cluster_path {input.annotated_clusters} \
             --output_path {output.coloc_pairs} \
+            --chr_id {wildcards.CHROM}
             --coloc_temp_path_head {params.coloc_temp_path_head}
         """
-
-        # module load r/4.2.2
-        # module load plink
 
 
 # combine eqtl results into a similar format to tensorqtl 
 rule gather_eqtl_susie:
     input:
         eqtl_pairs = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, allow_missing=True),
-        coloc_pairs = coloc_output_dir + 'pairs/{TISSUE}.v8.pairs_coloc.txt' # indicates all the susies have been run
+        coloc_pairs = expand(coloc_output_dir + 'pairs/{TISSUE}.v8.pairs_coloc.{CHROM}.txt', CHROM=chr_list, allow_missing=True) # indicates all the susies have been run
     resources:
         mem = "50G", 
         time = "4:00:00" ,
     params:
         eqtl_dir_path = eqtl_output_dir + '{TISSUE}',
-        coloc_temp_path_head = coloc_output_dir + '{TISSUE}/temp/'
+        coloc_temp_path_head = coloc_output_dir + 'temp/{TISSUE}/'
     conda:
         "/oak/stanford/groups/smontgom/klawren/micromamba/envs/susie_r"
     output:
@@ -175,13 +173,13 @@ rule gather_eqtl_susie:
 rule gather_pcqtl_susie:
     input:
         pcqtl_pairs = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, allow_missing=True),
-        coloc_pairs = coloc_output_dir + 'pairs/{TISSUE}.v8.pairs_coloc.txt' # indicates all the susies have been run
+        coloc_pairs = expand(coloc_output_dir + 'pairs/{TISSUE}.v8.pairs_coloc.{CHROM}.txt', CHROM=chr_list, allow_missing=True) # indicates all the susies have been run
     resources:
         mem = "50G", 
         time = "4:00:00" ,
     params:
         pcqtl_dir_path =  pcqtl_output_dir + '{TISSUE}',
-        coloc_temp_path_head = coloc_output_dir + '{TISSUE}/temp/'
+        coloc_temp_path_head = coloc_output_dir + 'temp/{TISSUE}/'
     conda:
         "/oak/stanford/groups/smontgom/klawren/micromamba/envs/susie_r"
     output:

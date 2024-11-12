@@ -130,6 +130,7 @@ for (chr_id in 1:22){
     cat("coloc results already exist up to chr", chr_id, "\n")
     gwas_all_cluster_coloc_results <- read.table(chr_coloc_path, header=TRUE, sep='\t')
   } else {
+    cat(Sys.time() - start, "\n")
     cat("working on chr ", chr_id, "\n")
     cluster_df_chr <- cluster_df[cluster_df$Chromosome == chr_id]
     gwas_chr <- gwas_with_meta$gwas_data[gwas_with_meta$gwas_data$chromosome == paste('chr', chr_id, sep="")] 
@@ -166,6 +167,7 @@ for (chr_id in 1:22){
     }
     # finished with a chr, write out temp results
     write.table(gwas_all_cluster_coloc_results, file=chr_coloc_path, quote=FALSE, row.names=FALSE, sep='\t')
+    cat(Sys.time() - start, "\n")
     cat("wrote out partial results, up to chr", chr_id, "\n")
   }
 }

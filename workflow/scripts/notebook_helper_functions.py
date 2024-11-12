@@ -4,6 +4,8 @@ import numpy as np
 import statsmodels.api as sm
 import matplotlib.pyplot as plt 
 import seaborn as sns 
+import networkx as nx
+
 
 # working directory prefix
 prefix = '/home/klawren/oak/pcqtls'
@@ -14,7 +16,7 @@ def load_vep(config, tissue_id):
     return pd.merge(sample_vep, overlap_df, left_on='ID', right_on='lead_variant_id', how='outer')
 
 def load_susie_annotated(config, tissue_id):
-    qtl_path = '{}/{}/{}.v8.susie_vars.annotated.csv'.format(config['annotations_output_dir'], tissue_id, tissue_id)
+    qtl_path = '{}/{}{}/{}.v8.susie_vars.annotated.csv'.format(prefix, config['annotations_output_dir'], tissue_id, tissue_id)
     susie_annotated = pd.read_csv(qtl_path, sep='\t')
     susie_annotated['cs_num'] = susie_annotated['cs_id'] 
     susie_annotated['cs_id'] = susie_annotated['phenotype_id'] + '_' + susie_annotated['cs_id'].astype(str)
@@ -94,32 +96,50 @@ def load_pc_nominal(config, tissue_id, chr_id=22, get_var_position=False):
     pc_nominal_df['pc_num'] = pc_nominal_df['phenotype_id'].str.split('_pc').str[-1].astype(int)
     return pc_nominal_df
 
-def load_pc_susie(config, tissue_id):
+def load_pc_susie_r(config, tissue_id):
+    return load_pc_susie(config, tissue_id, use_r=True)
+
+def load_pc_susie(config, tissue_id, use_r=False):
     pcqtl_output_dir = config['pcqtl_output_dir']
-    pc_susie_df =  pd.read_csv(f'{prefix}/{pcqtl_output_dir}/{tissue_id}/{tissue_id}.v8.pcs.susie.txt', sep='\t', index_col=0)
+    if use_r:
+        pc_susie_path = f'{prefix}/{pcqtl_output_dir}/{tissue_id}/{tissue_id}.v8.pcs.susie_R.txt'
+    else:
+        pc_susie_path = f'{prefix}/{pcqtl_output_dir}/{tissue_id}/{tissue_id}.v8.pcs.susie.txt'
+    pc_susie_df =  pd.read_csv(pc_susie_path, sep='\t', index_col=0).reset_index()
     pc_susie_df['var_cluster'] = pc_susie_df['variant_id'] + '_' + pc_susie_df['phenotype_id'].str.split('_pc').str[0]
     pc_susie_df['cs_num'] = pc_susie_df['cs_id'] 
-    pc_susie_df['cs_id'] = pc_susie_df['phenotype_id'] + '_' + pc_susie_df['cs_id'].astype(str)
+    pc_susie_df['cs_id'] = pc_susie_df['phenotype_id'] + '_cs_' + pc_susie_df['cs_id'].astype(str)
     pc_susie_df['pc_num'] = pc_susie_df['phenotype_id'].str.split('_pc').str[-1].astype(int)
     pc_susie_df['cluster_id'] = pc_susie_df['phenotype_id'].str.split('_pc').str[0]
     pc_susie_df = add_lead_var(pc_susie_df)
     pc_susie_df = add_num_vars_cs(pc_susie_df)
-    pc_susie_df['cs_full_id'] = pc_susie_df['phenotype_id'].astype(str) + '_cs' + pc_susie_df['cs_id'].astype(str)
-
     return pc_susie_df
 
-def load_e_susie(config, tissue_id):
+def load_e_susie_r(config, tissue_id):
+    return load_e_susie(config, tissue_id, use_r=True)
+
+def load_e_susie(config, tissue_id, use_r=False):
     eqtl_output_dir = config['eqtl_output_dir']
-    e_susie_df =  pd.read_csv(f'{prefix}/{eqtl_output_dir}/{tissue_id}/{tissue_id}.v8.cluster_genes.susie.txt', sep='\t', index_col=0)
+    if use_r:
+        e_susie_path = f'{prefix}/{eqtl_output_dir}/{tissue_id}/{tissue_id}.v8.cluster_genes.susie_R.txt'
+    else:
+        e_susie_path = f'{prefix}/{eqtl_output_dir}/{tissue_id}/{tissue_id}.v8.cluster_genes.susie.txt'
+    e_susie_df =  pd.read_csv(e_susie_path, sep='\t', index_col=0).reset_index()
     e_susie_df['var_cluster'] = e_susie_df['variant_id'] + '_' + e_susie_df['phenotype_id'].str.split('_e').str[0]
     e_susie_df['cs_num'] = e_susie_df['cs_id'] 
-    e_susie_df['cs_id'] = e_susie_df['phenotype_id'] + '_' + e_susie_df['cs_id'].astype(str)
+    e_susie_df['cs_id'] = e_susie_df['phenotype_id'] + '_cs_' + e_susie_df['cs_id'].astype(str)
     e_susie_df['cluster_id'] = e_susie_df['phenotype_id'].str.split('_e').str[0]
     e_susie_df = add_lead_var(e_susie_df)
     e_susie_df = add_num_vars_cs(e_susie_df)
-    e_susie_df['cs_full_id'] = e_susie_df['phenotype_id'].astype(str) + '_cs' + e_susie_df['cs_id'].astype(str)
     return e_susie_df
 
+
+def load_pairwise_coloc(config, tissue_id):
+    pair_coloc_path = "{}/{}/pairs/{}.v8.pairs_coloc.txt".format(prefix, config["coloc_output_dir"], tissue_id)
+    pair_coloc = pd.read_csv(pair_coloc_path, sep='\t')
+    pair_coloc['cs_id_1'] = pair_coloc['qtl1_id'] + '_cs_' + pair_coloc['idx1'].astype(str)
+    pair_coloc['cs_id_2'] = pair_coloc['qtl2_id'] + '_cs_' + pair_coloc['idx2'].astype(str)
+    return pair_coloc
 
 def load_tissue_ids(config):
     tissue_id_path = config['tissue_id_path']
@@ -319,3 +339,33 @@ def make_log_odds_plot_multiple(odds_ratios_list, ax=None, labels=None, add_anno
     ax.set_xscale(u'log')
     ax.set_yticks(ticks=odds_ratio_df.index.values + (len(odds_ratios_list)-1)*offset/2, labels=(odds_ratio_df['col']))
     return ax
+
+
+def get_signal_groups(pair_coloc, pc_susie_r, e_susie_r):
+    # Create an undirected graph
+    G = nx.Graph()
+
+    # Add edges to the graph from the DataFrame
+    for index, row in pair_coloc.iterrows():
+        G.add_edge(row['cs_id_1'], row['cs_id_2'])
+
+    # Get the connected components of the graph
+    connected_components = list(nx.connected_components(G))
+
+    # Generate underlying signal ids
+    underlying_signals = ['-'.join(sorted(component)) for component in connected_components]
+
+    # add in the unique ones
+    all_credible_set_ids = set(pc_susie_r['cs_id']).union(set(e_susie_r['cs_id']))
+
+    # Add standalone sets (those not in any connected component)
+    for credible_set_id in all_credible_set_ids:
+        if not any(credible_set_id in component for component in connected_components):
+            underlying_signals.append(credible_set_id)
+
+    underlying_signals = pd.DataFrame({'signal_id':underlying_signals})
+    underlying_signals['num_e_samelead'] = underlying_signals['signal_id'].astype(str).str.count('_e_')
+    underlying_signals['num_pc_samelead'] = underlying_signals['signal_id'].astype(str).str.count('_pc')
+    underlying_signals['multiple_e'] = underlying_signals['num_e_samelead'] > 1
+    underlying_signals['multiple_pc'] = underlying_signals['num_pc_samelead'] > 1
+    return underlying_signals

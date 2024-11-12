@@ -21,6 +21,7 @@ coloc_temp_path_head <- args$coloc_temp_path_head
 qtl_dir_path <- args$qtl_dir_path
 tissue_id <- args$tissue_id
 qtl_type <- args$qtl_type
+output_path <- args$output_path
 
 
 combined_results <- data.frame()  # To store combined results
@@ -55,5 +56,4 @@ for (chr_id in 1:22){
     }
 }
 
-write.csv(combined_results, file=output_path, quote=FALSE, row.names=FALSE, sep='\t')
-
+write.table(combined_results, file = output_path, sep = "\t", quote = FALSE, row.names = TRUE)
