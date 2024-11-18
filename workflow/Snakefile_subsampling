@@ -60,8 +60,8 @@ rule all:
         #pc1_permutation = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pc1_only.cis_independent_qtl.txt.gz', TISSUE=tissue_ids)
         pcqtl_nominal = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE=tissue_ids),
         eqtl_nominal = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE=tissue_ids),
-        pcqtl_susie_pairs = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.susie_R.txt', TISSUE=tissue_ids), 
-        eqtl_susie_pairs = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie_R.txt', TISSUE=tissue_ids), 
+        pcqtl_susie_r = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.susie_R.txt', TISSUE=tissue_ids), 
+        eqtl_susie_r = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie_R.txt', TISSUE=tissue_ids), 
 
 
 

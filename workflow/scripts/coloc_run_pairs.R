@@ -92,35 +92,35 @@ cluster_df <- fread(annotated_cluster_path)
 chr_id <- as.integer(sub("chr", "", chr_id))
 chr_coloc_path <- paste(coloc_temp_path_head, tissue_id, ".v8.", 'chr_', chr_id, '.pairs_coloc.txt', sep="")
 # check if partial results exist
-if (file.exists(chr_coloc_path)) {
-  cat("coloc results already exist up to chr", chr_id, "\n")
-  gwas_all_cluster_coloc_results <- read.table(chr_coloc_path, header=TRUE, sep='\t')
-} else {
-  cat("working on chr ", chr_id, "\n")
-  cluster_df_chr <- cluster_df[cluster_df$Chromosome == chr_id]
-  eqtl_chr <- get_eqtl_chr(eqtl_dir_path, chr_id, tissue_id)
-  pcqtl_chr <- get_pcqtl_chr(pcqtl_dir_path, chr_id, tissue_id)
-  # for each cluster, coloc the pc and eqtls
-  for (i in 1:nrow(cluster_df_chr)){
-    this_cluster <- cluster_df_chr[i]
-    cluster_id <- this_cluster$cluster_id
-    cat("running on ", cluster_id, "\n")
-    num_colocs <- num_colocs + 1
-    cluster_coloc <- coloc_pairs_cluster(eqtl_chr, pcqtl_chr, cluster_id, ld_path_head, genotype_stem, num_gtex_samples, coloc_temp_path_head)
-    # add to results list 
-    cat("adding to results list\n")
-    cat(ncol(all_cluster_coloc_results), " vs ", ncol(cluster_coloc), "\n")
-    if(is.null(cluster_coloc)){
-      cat("\tresult is null\n")
-    } else {
-      all_cluster_coloc_results <- bind_rows(all_cluster_coloc_results, cluster_coloc) 
-      cat(num_colocs, " colocs so far \n")
-    }
+# if (file.exists(chr_coloc_path)) {
+#   cat("coloc results already exist up to chr", chr_id, "\n")
+#   gwas_all_cluster_coloc_results <- read.table(chr_coloc_path, header=TRUE, sep='\t')
+# } else {
+cat("working on chr ", chr_id, "\n")
+cluster_df_chr <- cluster_df[cluster_df$Chromosome == chr_id]
+eqtl_chr <- get_eqtl_chr(eqtl_dir_path, chr_id, tissue_id)
+pcqtl_chr <- get_pcqtl_chr(pcqtl_dir_path, chr_id, tissue_id)
+# for each cluster, coloc the pc and eqtls
+for (i in 1:nrow(cluster_df_chr)){
+  this_cluster <- cluster_df_chr[i]
+  cluster_id <- this_cluster$cluster_id
+  cat("running on ", cluster_id, "\n")
+  num_colocs <- num_colocs + 1
+  cluster_coloc <- coloc_pairs_cluster(eqtl_chr, pcqtl_chr, cluster_id, ld_path_head, genotype_stem, num_gtex_samples, coloc_temp_path_head)
+  # add to results list 
+  cat("adding to results list\n")
+  cat(ncol(all_cluster_coloc_results), " vs ", ncol(cluster_coloc), "\n")
+  if(is.null(cluster_coloc)){
+    cat("\tresult is null\n")
+  } else {
+    all_cluster_coloc_results <- bind_rows(all_cluster_coloc_results, cluster_coloc) 
+    cat(num_colocs, " colocs so far \n")
   }
+}
   # # finished with a chr, write out temp results
   # write.table(all_cluster_coloc_results, file=chr_coloc_path, quote=FALSE, row.names=FALSE, sep='\t')
   # cat("wrote out partial results, up to chr", chr_id, "\n")
-}
+#}
 
 # write out (tissue_id.gwas_id)
 write.table(all_cluster_coloc_results, file=output_path, quote=FALSE, row.names=FALSE, sep='\t')

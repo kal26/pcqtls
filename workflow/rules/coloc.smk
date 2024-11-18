@@ -138,7 +138,7 @@ rule run_coloc_pairs:
             --genotype_stem {params.genotype_stem} \
             --annotated_cluster_path {input.annotated_clusters} \
             --output_path {output.coloc_pairs} \
-            --chr_id {wildcards.CHROM}
+            --chr_id {wildcards.CHROM} \
             --coloc_temp_path_head {params.coloc_temp_path_head}
         """
 

@@ -31,7 +31,10 @@ e_susie_df =  pd.read_csv(e_susie_path, sep='\t', index_col=0)
 e_susie_df['cluster_id'] = e_susie_df['phenotype_id'].str.split('_e').str[0]
 combined_susie = pd.concat([e_susie_df, pc_susie_df], names=['type', 'idx'], keys=['eqtl', 'pcqtl']).reset_index(drop=0).drop(columns=['idx'])
 # we will get af again from the nominals
-combined_susie.drop(columns=['af'], inplace=True)
+try:
+    combined_susie.drop(columns=['af'], inplace=True)
+except KeyError as e:
+    print('no af to drop (this happens with R susie version)') 
 
 # load in the nominal data
 e_nominal = pd.concat([pd.read_parquet(path) for path in e_nominal_path_list])

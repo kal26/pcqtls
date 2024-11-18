@@ -16,10 +16,10 @@ def load_vep(config, tissue_id):
     return pd.merge(sample_vep, overlap_df, left_on='ID', right_on='lead_variant_id', how='outer')
 
 def load_susie_annotated(config, tissue_id):
-    qtl_path = '{}/{}{}/{}.v8.susie_vars.annotated.csv'.format(prefix, config['annotations_output_dir'], tissue_id, tissue_id)
+    qtl_path = '{}/{}{}/{}.v8.susie_R_vars.annotated.csv'.format(prefix, config['annotations_output_dir'], tissue_id, tissue_id)
     susie_annotated = pd.read_csv(qtl_path, sep='\t')
     susie_annotated['cs_num'] = susie_annotated['cs_id'] 
-    susie_annotated['cs_id'] = susie_annotated['phenotype_id'] + '_' + susie_annotated['cs_id'].astype(str)
+    susie_annotated['cs_id'] = susie_annotated['phenotype_id'] + '_cs_' + susie_annotated['cs_id'].astype(str)
     susie_annotated = add_lead_var(susie_annotated)
     return susie_annotated
 
@@ -135,8 +135,11 @@ def load_e_susie(config, tissue_id, use_r=False):
 
 
 def load_pairwise_coloc(config, tissue_id):
-    pair_coloc_path = "{}/{}/pairs/{}.v8.pairs_coloc.txt".format(prefix, config["coloc_output_dir"], tissue_id)
-    pair_coloc = pd.read_csv(pair_coloc_path, sep='\t')
+    pair_coloc = []
+    for chr_id in range(1,23):
+        pair_coloc_path = "{}/{}/pairs/{}.v8.pairs_coloc.chr{}.txt".format(prefix, config["coloc_output_dir"], tissue_id, chr_id)
+        pair_coloc.append(pd.read_csv(pair_coloc_path, sep='\t'))
+    pair_coloc = pd.concat(pair_coloc)
     pair_coloc['cs_id_1'] = pair_coloc['qtl1_id'] + '_cs_' + pair_coloc['idx1'].astype(str)
     pair_coloc['cs_id_2'] = pair_coloc['qtl2_id'] + '_cs_' + pair_coloc['idx2'].astype(str)
     return pair_coloc
@@ -206,6 +209,15 @@ def load_pc(config, tissue_id):
     pc_df['pc_id'] = pc_df['gene_id'].str.split('_pc').str[1].astype('float')
     pc_df['cluster_size'] = pc_df['cluster_id'].str.split('_').apply(len)
     return pc_df
+
+
+def load_signal_groups(config, tissue_id):
+    pair_coloc = load_pairwise_coloc(config, tissue_id)
+    pc_susie_r = load_pc_susie_r(config, tissue_id)
+    e_susie_r = load_e_susie_r(config, tissue_id)
+    signal_groups = get_signal_groups_tissue(pair_coloc, pc_susie_r, e_susie_r)
+    signal_groups['tissue_id'] = tissue_id
+    return signal_groups
 
 
 # functions to help with annotating loaded data
@@ -341,7 +353,10 @@ def make_log_odds_plot_multiple(odds_ratios_list, ax=None, labels=None, add_anno
     return ax
 
 
-def get_signal_groups(pair_coloc, pc_susie_r, e_susie_r):
+def get_signal_groups_tissue(pair_coloc, pc_susie_r, e_susie_r, coloc_cutoff=.75):
+    # filter to coloc'd signals
+    pair_coloc = pair_coloc[pair_coloc['PP.H4.abf'] > coloc_cutoff]
+
     # Create an undirected graph
     G = nx.Graph()
 
@@ -369,3 +384,31 @@ def get_signal_groups(pair_coloc, pc_susie_r, e_susie_r):
     underlying_signals['multiple_e'] = underlying_signals['num_e_samelead'] > 1
     underlying_signals['multiple_pc'] = underlying_signals['num_pc_samelead'] > 1
     return underlying_signals
+
+def run_get_signal_groups(pair_coloc, pc_susie_r, e_susie_r, coloc_cutoff=.75):
+    # Ensure all inputs have 'tissue_id' column for grouping
+    if 'tissue_id' not in pair_coloc.columns or \
+       'tissue_id' not in pc_susie_r.columns or \
+       'tissue_id' not in e_susie_r.columns:
+        raise ValueError("All input DataFrames must have a 'tissue_id' column.")
+
+    # Group by tissue_id
+    results = []
+    tissue_groups = pair_coloc['tissue_id'].unique()
+
+    for tissue in tissue_groups:
+        # Filter the data for the current tissue_id
+        pair_coloc_group = pair_coloc[pair_coloc['tissue_id'] == tissue]
+        pc_susie_r_group = pc_susie_r[pc_susie_r['tissue_id'] == tissue]
+        e_susie_r_group = e_susie_r[e_susie_r['tissue_id'] == tissue]
+        
+        # Call get_signal_groups_tissue for the current group
+        tissue_results = get_signal_groups_tissue(pair_coloc_group, pc_susie_r_group, e_susie_r_group, coloc_cutoff=coloc_cutoff)
+        
+        # Add tissue_id to the results
+        tissue_results['tissue_id'] = tissue
+        results.append(tissue_results)
+
+    # Concatenate all results into a single DataFrame
+    final_results = pd.concat(results, ignore_index=True)
+    return final_results
