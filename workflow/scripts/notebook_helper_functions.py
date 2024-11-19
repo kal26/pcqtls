@@ -379,10 +379,10 @@ def get_signal_groups_tissue(pair_coloc, pc_susie_r, e_susie_r, coloc_cutoff=.75
             underlying_signals.append(credible_set_id)
 
     underlying_signals = pd.DataFrame({'signal_id':underlying_signals})
-    underlying_signals['num_e_samelead'] = underlying_signals['signal_id'].astype(str).str.count('_e_')
-    underlying_signals['num_pc_samelead'] = underlying_signals['signal_id'].astype(str).str.count('_pc')
-    underlying_signals['multiple_e'] = underlying_signals['num_e_samelead'] > 1
-    underlying_signals['multiple_pc'] = underlying_signals['num_pc_samelead'] > 1
+    underlying_signals['num_e_coloc'] = underlying_signals['signal_id'].astype(str).str.count('_e_')
+    underlying_signals['num_pc_coloc'] = underlying_signals['signal_id'].astype(str).str.count('_pc')
+    underlying_signals['multiple_e'] = underlying_signals['num_e_coloc'] > 1
+    underlying_signals['multiple_pc'] = underlying_signals['num_pc_coloc'] > 1
     return underlying_signals
 
 def run_get_signal_groups(pair_coloc, pc_susie_r, e_susie_r, coloc_cutoff=.75):
