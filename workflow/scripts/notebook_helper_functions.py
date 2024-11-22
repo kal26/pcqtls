@@ -138,7 +138,10 @@ def load_pairwise_coloc(config, tissue_id):
     pair_coloc = []
     for chr_id in range(1,23):
         pair_coloc_path = "{}/{}/pairs/{}.v8.pairs_coloc.chr{}.txt".format(prefix, config["coloc_output_dir"], tissue_id, chr_id)
-        pair_coloc.append(pd.read_csv(pair_coloc_path, sep='\t'))
+        try:
+            pair_coloc.append(pd.read_csv(pair_coloc_path, sep='\t'))
+        except pd.errors.EmptyDataError as e:
+            print(f'{pair_coloc_path} is empty')  
     pair_coloc = pd.concat(pair_coloc)
     pair_coloc['cs_id_1'] = pair_coloc['qtl1_id'] + '_cs_' + pair_coloc['idx1'].astype(str)
     pair_coloc['cs_id_2'] = pair_coloc['qtl2_id'] + '_cs_' + pair_coloc['idx2'].astype(str)
@@ -383,6 +386,8 @@ def get_signal_groups_tissue(pair_coloc, pc_susie_r, e_susie_r, coloc_cutoff=.75
     underlying_signals['num_pc_coloc'] = underlying_signals['signal_id'].astype(str).str.count('_pc')
     underlying_signals['multiple_e'] = underlying_signals['num_e_coloc'] > 1
     underlying_signals['multiple_pc'] = underlying_signals['num_pc_coloc'] > 1
+    underlying_signals['cluster_id'] = underlying_signals['signal_id'].str.split('_pc').str[0].str.split('_e').str[0]
+
     return underlying_signals
 
 def run_get_signal_groups(pair_coloc, pc_susie_r, e_susie_r, coloc_cutoff=.75):
