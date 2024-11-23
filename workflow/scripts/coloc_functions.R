@@ -368,8 +368,21 @@ get_ld <- function(ld_path_head, cluster_id, snp_list, genotype_stem){
     cat("generated ld matrix\n")
   }
   # load in ld and return 
-  #ld_matrix <- read.table(ld_matrix_path)
-  ld_matrix <- fread(ld_matrix_path)
+  # Define a function to read the file and handle errors
+  tryCatch({
+    ld_matrix <- fread(ld_matrix_path)
+  }, error = function(e) {
+    cat("Error in fread:", e$message, "\n")
+    cat("Regenerating the file...\n")
+    ld_plink_path <- paste(ld_path_head, cluster_id, sep="")
+    snp_path <- paste(ld_path_head, cluster_id, '.snp_list.txt', sep="")
+    plink_command <- sprintf("plink --bfile %s --extract %s --r square --out %s --keep-allele-order", genotype_stem, snp_path, ld_plink_path)
+    cat(plink_command) 
+    system(plink_command, intern=TRUE)
+    cat("generated ld matrix\n")
+    ld_matrix <- fread(ld_matrix_path)
+  })
+
   ld_matrix <- data.frame(ld_matrix)
   rownames(ld_matrix) <- snp_list$variant_id
   colnames(ld_matrix) <- snp_list$variant_id
