@@ -141,7 +141,9 @@ def load_pairwise_coloc(config, tissue_id):
         try:
             pair_coloc.append(pd.read_csv(pair_coloc_path, sep='\t'))
         except pd.errors.EmptyDataError as e:
-            print(f'{pair_coloc_path} is empty')  
+            print(f'{pair_coloc_path} is empty') 
+        except FileNotFoundError as e:
+            print(f'{pair_coloc_path} does not exist')  
     pair_coloc = pd.concat(pair_coloc)
     pair_coloc['cs_id_1'] = pair_coloc['qtl1_id'] + '_cs_' + pair_coloc['idx1'].astype(str)
     pair_coloc['cs_id_2'] = pair_coloc['qtl2_id'] + '_cs_' + pair_coloc['idx2'].astype(str)
