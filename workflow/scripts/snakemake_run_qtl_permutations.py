@@ -37,7 +37,7 @@ try:
     # run permutations
     indep_df = cis.map_independent(genotype_df, variant_df, cis_df,
                                 phenotype_df, phenotype_pos_df, 
-                                covariates_df, maf_threshold = .01)
+                                covariates_df)
 
     # write out 
     indep_df.to_csv(outpath, sep='\t', index=False, compression='gzip')

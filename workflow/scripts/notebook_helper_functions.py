@@ -388,6 +388,15 @@ def get_signal_groups_tissue(pair_coloc, pc_susie_r, e_susie_r, coloc_cutoff=.75
     underlying_signals['multiple_pc'] = underlying_signals['num_pc_coloc'] > 1
     underlying_signals['cluster_id'] = underlying_signals['signal_id'].str.split('_pc').str[0].str.split('_e').str[0]
 
+    # add the set of lead varaints for all signals in the group
+    def get_lead_var_set(row):
+        lead_var_ids = []
+        [lead_var_ids.append(lead_var) for lead_var in pc_susie_r[pc_susie_r['cs_id'].isin(row['signal_id'].split('-'))]['lead_variant_id'].values]
+        [lead_var_ids.append(lead_var) for lead_var in e_susie_r[e_susie_r['cs_id'].isin(row['signal_id'].split('-'))]['lead_variant_id'].values]
+        return list(set(lead_var_ids))
+
+    underlying_signals['lead_var_set'] = underlying_signals.apply(get_lead_var_set, axis=1)
+
     return underlying_signals
 
 def run_get_signal_groups(pair_coloc, pc_susie_r, e_susie_r, coloc_cutoff=.75):

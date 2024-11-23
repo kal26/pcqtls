@@ -57,8 +57,7 @@ rule run_eqtl_cis:
             {input.expression} \
             {params.eqtl_output_dir}{wildcards.TISSUE}/{wildcards.TISSUE}.v8.cluster_genes \
             --covariates {input.covariates} \
-            --mode cis \
-            --maf_threshold .01
+            --mode cis 
         """
 
 

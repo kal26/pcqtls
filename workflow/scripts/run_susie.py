@@ -32,8 +32,7 @@ def main():
     susie_df = susie.map(genotype_df, variant_df, 
                     phenotype_df, 
                     phenotype_pos_df, 
-                    covariates_df, 
-                    maf_threshold=0.01)
+                    covariates_df)
     # write out
     print('writing out')
     print(susie_df)

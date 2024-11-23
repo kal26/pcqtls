@@ -35,9 +35,11 @@ filter_qtl <- function(qtl, ld_snp_set){
 
 clean_qtl <- function(qtl_filtered, cleaned_ld_matrix, num_gtex_samples){
   # some slope_se are na
+  # I don't think I can remove these and still do qtl-qtl coloc
   qtl_missing_snps <- qtl_filtered[is.na(qtl_filtered$slope) | is.na(qtl_filtered$slope_se) | (qtl_filtered$af==0), 'variant_id']
-  cat("\t\tNumber snps with  qtl missing: ", length(qtl_missing_snps), "\n")
-  cleaned_qtl <- qtl_filtered[!qtl_filtered %in% qtl_missing_snps, ]
+  cat("\t\tNumber snps with  qtl missing (not curently removing these): ", length(qtl_missing_snps), "\n")
+  #cleaned_qtl <- qtl_filtered[!qtl_filtered %in% qtl_missing_snps, ]
+  cleaned_qtl <- qtl_filtered
   # if there isn't a signal, further analysis should not be run
   if (min(cleaned_qtl$pval_nominal) < 1e-6){
     cat('\t\tsignal found \n')
@@ -71,7 +73,7 @@ get_gwas_for_coloc <- function(gwas_with_meta, ld_snp_set, snp_list, cleaned_ld_
 filter_gwas <- function(gwas_data, snp_list, ld_snp_set){
   gwas_filtered <- gwas_data[gwas_data$panel_variant_id %in% snp_list$variant_id, ]
   gwas_filtered <- gwas_filtered[gwas_filtered$panel_variant_id %in% ld_snp_set, ]
-  cat("snps in gwas: ")
+  cat("snps in gwas (should match snps in qtl): ")
   cat(nrow(gwas_filtered))
   cat('\n')
   return(gwas_filtered)
@@ -79,9 +81,10 @@ filter_gwas <- function(gwas_data, snp_list, ld_snp_set){
 
 clean_gwas <- function(gwas_filtered, cleaned_ld_matrix, gwas_type, num_gwas_samples){
   # susie needs effect sizes, so we must also drop the snps with na for gwas effect
-  gwas_missing_snps <- gwas_filtered[is.na(gwas_filtered$effect_size) | is.na(gwas_filtered$standard_error) | (gwas_filtered$frequency<= 0) | (gwas_filtered$frequency >= 1), 'panel_variant_id']
-  cat("\t Number snps with ld or gwas missing: ", length(gwas_missing_snps$panel_variant_id), "\n")
-  cleaned_gwas <- gwas_filtered[!gwas_filtered$panel_variant_id %in% gwas_missing_snps$panel_variant_id, ]
+  #gwas_missing_snps <- gwas_filtered[is.na(gwas_filtered$effect_size) | is.na(gwas_filtered$standard_error) | (gwas_filtered$frequency<= 0) | (gwas_filtered$frequency >= 1), 'panel_variant_id']
+  cat("\t Number snps with ld or gwas missing (not curently removing these): ", length(gwas_missing_snps$panel_variant_id), "\n")
+  #cleaned_gwas <- gwas_filtered[!gwas_filtered$panel_variant_id %in% gwas_missing_snps$panel_variant_id, ]
+  cleaned_gwas <- gwas_filtered
   if(min(cleaned_gwas$pvalue) < 1e-6){
     gwas_cleaned_ld_matrix <- cleaned_ld_matrix[rownames(cleaned_ld_matrix) %in% cleaned_gwas$panel_variant_id, colnames(cleaned_ld_matrix) %in% cleaned_gwas$panel_variant_id]
     cleaned_gwas_list <- list(MAF = cleaned_gwas$frequency, 
@@ -161,6 +164,7 @@ coloc_pairs_cluster <- function(eqtl_chr, pcqtl_chr, cluster_id, ld_path_head, g
       qtl_susies[[i]] <- this_qtl_susie
       cat("finemapped ", this_qtl_id, "\n")
       cat(Sys.time() - start, "\n")
+      cat("saving susie to ", susie_path,"\n")
       saveRDS(this_qtl_susie, file = susie_path)
     } 
   }
@@ -198,9 +202,9 @@ get_qtl_pairwise_coloc <- function(qtls_for_coloc, qtl_susies){
       }
       if(is.null(this_coloc)){
         cat("\tresult is null\n")
-        cat(ncol(qtl_coloc_results), " vs ", ncol(this_coloc), "\n")
-        print(summary(susie1))
-        print(summary(susie2))
+        # cat(ncol(qtl_coloc_results), " vs ", ncol(this_coloc), "\n")
+        # print(summary(susie1))
+        # print(summary(susie2))
       } else {
       }
     }

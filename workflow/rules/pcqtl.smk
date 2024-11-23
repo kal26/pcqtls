@@ -61,8 +61,7 @@ rule run_pcqtl_cis:
             {input.pcs} \
             {params.pcqtl_output_dir}{wildcards.TISSUE}/{wildcards.TISSUE}.v8.pcs \
             --covariates {input.covariates} \
-            --mode cis \
-            --maf_threshold .01
+            --mode cis
         """
 
 # cis-QTL mapping: conditionally independent QTLs

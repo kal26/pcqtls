@@ -14,7 +14,7 @@ covariates = snakemake.input[2]
 
 
 # run the shell command
-nominal_comand = f"python -m tensorqtl {genotype_stem} {expression} {pcqtl_output_dir}{tissue_id}/{tissue_id}.v8.pcs --covariates {covariates} --mode cis_nominal --maf_threshold .01"
+nominal_comand = f"python -m tensorqtl {genotype_stem} {expression} {pcqtl_output_dir}{tissue_id}/{tissue_id}.v8.pcs --covariates {covariates} --mode cis_nominal"
 try:
     # Run the command
     result = subprocess.run(nominal_comand, shell=True, check=True, text=True, capture_output=True)
