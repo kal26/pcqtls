@@ -35,17 +35,24 @@ filter_qtl <- function(qtl, ld_snp_set){
 
 clean_qtl <- function(qtl_filtered, cleaned_ld_matrix, num_gtex_samples){
   # some slope_se are na
-  # I don't think I can remove these and still do qtl-qtl coloc
   qtl_missing_snps <- qtl_filtered[is.na(qtl_filtered$slope) | is.na(qtl_filtered$slope_se) | (qtl_filtered$af==0), 'variant_id']
-  cat("\t\tNumber snps with  qtl missing (not curently removing these): ", length(qtl_missing_snps), "\n")
-  #cleaned_qtl <- qtl_filtered[!qtl_filtered %in% qtl_missing_snps, ]
-  cleaned_qtl <- qtl_filtered
+  cat("\t\tNumber snps with  qtl missing (removing these): ", length(qtl_missing_snps), "\n")
+  cleaned_qtl <- qtl_filtered[!qtl_filtered$variant_id %in% qtl_missing_snps, ]
+  #cleaned_qtl <- qtl_filtered
   # if there isn't a signal, further analysis should not be run
-  if (min(cleaned_qtl$pval_nominal) < 1e-6){
+  if (min(cleaned_qtl$pval_nominal, na.rm = TRUE) < 1e-6){
     cat('\t\tsignal found \n')
     # make some columns to play well with coloc
     cleaned_qtl <- cleaned_qtl %>%
       mutate(position = as.integer(str_split(variant_id, "_") %>% sapply(pluck, 2)))
+    qtl_cleaned_ld_matrix <- cleaned_ld_matrix[rownames(cleaned_ld_matrix) %in% cleaned_qtl$variant_id, colnames(cleaned_ld_matrix) %in% cleaned_qtl$variant_id]
+    # filter na values
+    # cleaned_qtl$slope[is.na(cleaned_qtl$slope)] <- 0
+    # cleaned_qtl$slope_se[is.na(cleaned_qtl$slope_se)] <- 1
+    # cleaned_qtl$pval_nominal[is.na(cleaned_qtl$pval_nominal)] <- 1
+    # cleaned_qtl$af[(cleaned_qtl$af==0)] <- 0.00001
+
+    # get the dataset in the form required by coloc
     cleaned_qtl_list <- list(beta = cleaned_qtl$slope, 
                              varbeta = cleaned_qtl$slope_se**2, 
                              snp = cleaned_qtl$variant_id, 
@@ -56,7 +63,7 @@ clean_qtl <- function(qtl_filtered, cleaned_ld_matrix, num_gtex_samples){
                              MAF = cleaned_qtl$af,
                              sdY = 1,
                              phenotype_id = cleaned_qtl$phenotype_id[1],
-                             LD = as.matrix(cleaned_ld_matrix))
+                             LD = as.matrix(qtl_cleaned_ld_matrix))
     return(cleaned_qtl_list)
   } else{
     cat('\t no signal found \n')
@@ -81,12 +88,20 @@ filter_gwas <- function(gwas_data, snp_list, ld_snp_set){
 
 clean_gwas <- function(gwas_filtered, cleaned_ld_matrix, gwas_type, num_gwas_samples){
   # susie needs effect sizes, so we must also drop the snps with na for gwas effect
-  #gwas_missing_snps <- gwas_filtered[is.na(gwas_filtered$effect_size) | is.na(gwas_filtered$standard_error) | (gwas_filtered$frequency<= 0) | (gwas_filtered$frequency >= 1), 'panel_variant_id']
+  gwas_missing_snps <- gwas_filtered[is.na(gwas_filtered$effect_size) | is.na(gwas_filtered$standard_error) | (gwas_filtered$frequency<= 0) | (gwas_filtered$frequency >= 1), 'panel_variant_id']
   cat("\t Number snps with ld or gwas missing (not curently removing these): ", length(gwas_missing_snps$panel_variant_id), "\n")
-  #cleaned_gwas <- gwas_filtered[!gwas_filtered$panel_variant_id %in% gwas_missing_snps$panel_variant_id, ]
-  cleaned_gwas <- gwas_filtered
-  if(min(cleaned_gwas$pvalue) < 1e-6){
+  cleaned_gwas <- gwas_filtered[!gwas_filtered$panel_variant_id %in% gwas_missing_snps$panel_variant_id, ]
+  #cleaned_gwas <- gwas_filtered
+  if(min(cleaned_gwas$pvalue, na.rm = TRUE) < 1e-6){
     gwas_cleaned_ld_matrix <- cleaned_ld_matrix[rownames(cleaned_ld_matrix) %in% cleaned_gwas$panel_variant_id, colnames(cleaned_ld_matrix) %in% cleaned_gwas$panel_variant_id]
+    
+    # # filter na values
+    # cleaned_gwas$effect_size[is.na(cleaned_gwas$effect_size)] <- 0
+    # cleaned_gwas$standard_error[is.na(cleaned_gwas$standard_error)] <- 1
+    # cleaned_gwas$pvalue[is.na(cleaned_gwas$pvalue)] <- 1
+    # cleaned_gwas$frequency[(cleaned_gwas$frequency==0)] <- 0.00001
+
+    # get the dataset in the form required by coloc
     cleaned_gwas_list <- list(MAF = cleaned_gwas$frequency, 
                               snp = cleaned_gwas$panel_variant_id, 
                               position = cleaned_gwas$position, 
@@ -122,7 +137,7 @@ runsusie_errorcatch <- function(dataset){
 coloc_pairs_cluster <- function(eqtl_chr, pcqtl_chr, cluster_id, ld_path_head, genotype_stem, num_gtex_samples, coloc_temp_path_head){
   # subset eqtl and pcqtl to this cluster
   start <- Sys.time()
-  cluster_eqtl <-eqtl_chr[eqtl_chr$cluster_id == cluster_id, ]
+  cluster_eqtl <- eqtl_chr[eqtl_chr$cluster_id == cluster_id, ]
   cluster_pcqtl <- pcqtl_chr[pcqtl_chr$cluster_id == cluster_id, ]
   # get snp list and ld matrix
   snp_list <- get_snp_list(cluster_eqtl, ld_path_head, cluster_id)

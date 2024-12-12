@@ -216,11 +216,11 @@ def load_pc(config, tissue_id):
     return pc_df
 
 
-def load_signal_groups(config, tissue_id):
+def load_signal_groups(config, tissue_id, get_variants=True):
     pair_coloc = load_pairwise_coloc(config, tissue_id)
     pc_susie_r = load_pc_susie_r(config, tissue_id)
     e_susie_r = load_e_susie_r(config, tissue_id)
-    signal_groups = get_signal_groups_tissue(pair_coloc, pc_susie_r, e_susie_r)
+    signal_groups = get_signal_groups_tissue(pair_coloc, pc_susie_r, e_susie_r, get_variants=get_variants)
     signal_groups['tissue_id'] = tissue_id
     return signal_groups
 
@@ -259,7 +259,11 @@ def annotate_pc_order(pc_df):
     pc_df.loc[pc_df['pc_num'] == 1,'pc_order'] = 'first'
 
 
-
+def remove_cross_map(df, cross_map_ids=None, config=None):
+    if cross_map_ids is None:
+        clusters_annotated = load_across_tissues(config, load_clusters_annotated)
+        cross_map_ids = clusters_annotated[clusters_annotated['has_cross_map']]['cluster_id']
+    return df[~df['cluster_id'].isin(cross_map_ids)]
 
 
 # log odds stuff
@@ -358,7 +362,7 @@ def make_log_odds_plot_multiple(odds_ratios_list, ax=None, labels=None, add_anno
     return ax
 
 
-def get_signal_groups_tissue(pair_coloc, pc_susie_r, e_susie_r, coloc_cutoff=.75):
+def get_signal_groups_tissue(pair_coloc, pc_susie_r, e_susie_r, coloc_cutoff=.75, get_variants=True):
     # filter to coloc'd signals
     pair_coloc = pair_coloc[pair_coloc['PP.H4.abf'] > coloc_cutoff]
 
@@ -391,13 +395,18 @@ def get_signal_groups_tissue(pair_coloc, pc_susie_r, e_susie_r, coloc_cutoff=.75
     underlying_signals['cluster_id'] = underlying_signals['signal_id'].str.split('_pc').str[0].str.split('_e').str[0]
 
     # add the set of lead varaints for all signals in the group
-    def get_lead_var_set(row):
-        lead_var_ids = []
-        [lead_var_ids.append(lead_var) for lead_var in pc_susie_r[pc_susie_r['cs_id'].isin(row['signal_id'].split('-'))]['lead_variant_id'].values]
-        [lead_var_ids.append(lead_var) for lead_var in e_susie_r[e_susie_r['cs_id'].isin(row['signal_id'].split('-'))]['lead_variant_id'].values]
-        return list(set(lead_var_ids))
-
-    underlying_signals['lead_var_set'] = underlying_signals.apply(get_lead_var_set, axis=1)
+    def get_var_set(row, lead=True):
+        var_ids = []
+        if lead:
+            [var_ids.append(var) for var in pc_susie_r[pc_susie_r['cs_id'].isin(row['signal_id'].split('-'))]['lead_variant_id'].values]
+            [var_ids.append(var) for var in e_susie_r[e_susie_r['cs_id'].isin(row['signal_id'].split('-'))]['lead_variant_id'].values]
+        else:
+            [var_ids.append(var) for var in pc_susie_r[pc_susie_r['cs_id'].isin(row['signal_id'].split('-'))]['variant_id'].values]
+            [var_ids.append(var) for var in e_susie_r[e_susie_r['cs_id'].isin(row['signal_id'].split('-'))]['variant_id'].values]
+        return list(set(var_ids))
+    if get_variants:
+        underlying_signals['lead_var_set'] = underlying_signals.apply(get_var_set, axis=1, args=(True,))
+        underlying_signals['var_set'] = underlying_signals.apply(get_var_set, axis=1, args=(False,))
 
     return underlying_signals
 
