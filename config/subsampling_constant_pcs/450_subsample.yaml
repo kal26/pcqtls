@@ -1,0 +1,15 @@
+# for inputs
+tissue_id_path: "data/references/selected_tissue_ids.csv"
+covariates_dir: "data/processed/subsampling/450/covariates/"
+expression_dir: "data/processed/subsampling/450/normalized_expression/"
+chr_list_path: "data/references/chrs.csv"
+genotype_stem: "data/processed/genotypes/GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.SHAPEIT2_phased.MAF01"
+
+# in this case, pcs are an input
+pc_output_dir: "data/processed/subsampling/450/subsampled_pcs/"
+
+# for outputs
+filtered_expression_output_dir: "output/subsampling_constant_pcs/450/clusters_expression/"
+clusters_dir: "output/proteincoding_main/clusters/"
+eqtl_output_dir: "output/subsampling_constant_pcs/450/control_eqtl/"
+pcqtl_output_dir: "output/subsampling_constant_pcs/450/pcqtl/"
