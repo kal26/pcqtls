@@ -1,4 +1,3 @@
-
 rule calculate_pcs:
     input:
         clusters = clusters_dir + '{TISSUE}_clusters_all_chr.csv',
@@ -8,13 +7,15 @@ rule calculate_pcs:
         'tensorqtl_r'
     output:
         pc_output_dir + '{TISSUE}.pcs.bed'
-    shell:"""
-        python workflow/scripts/get_pcs.py \
-            -cl {input.clusters} \
-            -e {input.filtered_normed_expression} \
-            -co {input.covariates} \
-            -o {output} 
+    shell:
         """
+        python workflow/scripts/get_pcs.py \
+                -cl {input.clusters} \
+                -e {input.filtered_normed_expression} \
+                -co {input.covariates} \
+                -o {output} 
+        """
+
 
 # PCQTLS
 

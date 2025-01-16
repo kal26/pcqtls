@@ -350,7 +350,11 @@ def make_log_odds_plot_multiple(odds_ratios_list, ax=None, labels=None, add_anno
 
         if add_annotations:
             for row_idx, row in odds_ratio_df.iterrows():
-                ax.annotate('OR = {:.2f}, p={:.1E}'.format(row['odds_ratio'], row['p_value']), 
+                if row['p_value'] < 10^(-20):
+                    ax.annotate('OR = {:.2f}, p<{:.1E}'.format(row['odds_ratio'], 10^(-20)), 
+                            (row['odds_ratio'], row_idx + idx*offset + 0.05), fontsize=6)
+                else:
+                    ax.annotate('OR = {:.2f}, p={:.1E}'.format(row['odds_ratio'], row['p_value']), 
                             (row['odds_ratio'], row_idx + idx*offset + 0.05), fontsize=6)
             
     if labels:

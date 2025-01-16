@@ -15,27 +15,6 @@ clusters_dir = config['clusters_dir']
 eqtl_output_dir = config['eqtl_output_dir']
 pcqtl_output_dir = config['pcqtl_output_dir']
 pc_output_dir = config['pc_output_dir']
-#annotations_output_dir = config['annotations_output_dir']
-#coloc_output_dir = config['coloc_output_dir']
-
-# annotation paths
-# gencode_path = config['gencode_path']
-# full_abc_path = config['full_abc_path']
-# abc_match_path = config['abc_match_path']
-# ctcf_match_path = config['ctcf_match_path']
-# ctcf_dir = config['ctcf_dir'] 
-# paralog_path = config['paralog_path']
-# go_path = config['go_path']
-# cross_map_path = config['cross_map_path']
-# tad_path = config['tad_path']
-# avg_expression_path = config['avg_expression_path']
-
-# gtex_meta = config['gtex_meta']
-
-
-# # fake coloc paths
-# gwas_meta = "none"
-# gwas_folder = "none"
 
 
 # load in all the wildcards
@@ -51,16 +30,18 @@ include: 'rules/eqtl.smk'
 # include: 'rules/coloc.smk'
 # include: 'rules/annotate.smk'
 
-#tissue_ids = ['Cells_Cultured_fibroblasts']
+tissue_ids = ['Cells_Cultured_fibroblasts']
+
 
 rule all:
     input:
-        filtered_normed_expression = expand(filtered_expression_output_dir + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed', TISSUE = tissue_ids),
+        pcs = expand(pc_output_dir + '{TISSUE}.pcs.bed', TISSUE=tissue_ids),
+        #filtered_normed_expression = expand(filtered_expression_output_dir + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed', TISSUE = tissue_ids),
         #pc_permutation = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_independent_qtl.txt.gz', TISSUE = tissue_ids),
         #eqtl_permutation = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_independent_qtl.txt.gz', TISSUE=tissue_ids),
         #pc1_permutation = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pc1_only.cis_independent_qtl.txt.gz', TISSUE=tissue_ids)
-        # pcqtl_nominal = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE=tissue_ids),
-        # eqtl_nominal = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE=tissue_ids),
+        pcqtl_nominal = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE=tissue_ids),
+        eqtl_nominal = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE=tissue_ids),
         # pcqtl_susie_r = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.susie_R.txt', TISSUE=tissue_ids), 
         #eqtl_susie_r = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie_R.txt', TISSUE=tissue_ids), 
 
