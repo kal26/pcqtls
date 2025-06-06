@@ -8,7 +8,8 @@ import argparse
 import seaborn as sns
 import matplotlib.pyplot as plt
 import scipy as sp
-
+from get_pcs import get_pc_bed
+from annotate_qtls import get_annotate_pcs
 
 
 def get_null_clusters(expressed_gencode, cluster_size, cluster_df=None):
@@ -100,6 +101,44 @@ def get_resamp_null_cluster(null_df, cluster_df, plot=False, number_null = 5000)
         plt.show()
 
     return resamp_null_df
+
+
+# takes about 5 minutes
+
+def get_null_pcs_annotated(config, cluster_size, tissue_id):
+    gid_gencode, full_gencode = load_gencode()
+    expression_path = "{}/{}/{}.v8.normalized_expression.bed".format(prefix, config["expression_dir"], tissue_id)
+    expression_df = pd.read_csv(expression_path, sep='\t')
+    expressed_gencode = full_gencode[full_gencode['transcript_id'].isin(expression_df['gene_id'])]
+    cluster_df = pd.read_csv('{}/{}/{}_clusters_all_chr.csv'.format(prefix, config['clusters_dir'], tissue_id),index_col=0)
+    null_clusters = get_null_clusters(expressed_gencode, cluster_size, cluster_df=cluster_df)
+    covariates_path = "{}/{}/{}.v8.covariates.txt".format(prefix, config["covariates_dir"], tissue_id)
+    covariates_df = pd.read_csv(covariates_path, sep='\t', index_col=0).T
+    residal_exp = calculate_residual(expression_df[covariates_df.index], covariates_df, center=True)
+    residal_exp = pd.DataFrame(residal_exp, columns=covariates_df.index, index=expression_df['gene_id'])
+
+    # residulize the expression 
+    expression_df_gid = expression_df.set_index('gene_id')
+    expression_df_res = expression_df_gid.copy()
+    expression_df_res[expression_df.columns[4:]] = residal_exp
+
+    # get cluster based expression (from snakemake_filter_expression_clusters)
+    cluster_sets = []
+    for idx, row in tqdm(null_clusters.iterrows(), total=len(null_clusters)):
+        cluster_set = expression_df_res.loc[row['Transcripts'].split(',')].copy()
+        cluster_set['start'] = cluster_set['start'].min()
+        cluster_set['end'] = cluster_set['end'].max()
+        cluster_set.insert(3, 'gene_id', ['_'.join([*sorted(cluster_set.index.values), 'e', gid]) for gid in cluster_set.index])
+        cluster_sets.append(cluster_set)
+
+    cluster_expresison = pd.concat(cluster_sets)
+    # get the null pcs
+    null_pcs = get_pc_bed(null_clusters, cluster_expresison, covariates_df)
+    null_pcs['cluster_id'] = null_pcs['gene_id'].str.split('_pc').str[0]
+    null_pcs['pc_id'] = null_pcs['gene_id'].str.split('_pc').str[1].astype('float')
+    null_pcs['cluster_size'] = null_pcs['cluster_id'].str.split('_').apply(len)
+    annotated_null_pcs = get_annotate_pcs(null_pcs.reset_index(drop=True), cluster_expresison.drop(columns='gene_id'))
+    return annotated_null_pcs
 
 
 def main():

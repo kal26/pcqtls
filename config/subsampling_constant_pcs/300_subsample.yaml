@@ -13,3 +13,5 @@ filtered_expression_output_dir: "output/subsampling_constant_pcs/300/clusters_ex
 clusters_dir: "output/proteincoding_main/clusters/"
 eqtl_output_dir: "output/subsampling_constant_pcs/300/control_eqtl/"
 pcqtl_output_dir: "output/subsampling_constant_pcs/300/pcqtl/"
+
+calculate_pcs_enabled: "False"

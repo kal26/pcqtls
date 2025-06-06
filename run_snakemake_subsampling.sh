@@ -4,5 +4,8 @@
 for i in 200 250 300 350 400 450
 do
     echo "Running command for $i:"
+    # touch files so pcs are not recalculated
+    snakemake --snakefile workflow/Snakefile_subsampling --configfile config/subsampling_constant_pcs/${i}_subsample.yaml --profile config/slurm_scg --touch
+    # run the nominal qtl calling
     snakemake --snakefile workflow/Snakefile_subsampling --configfile config/subsampling_constant_pcs/${i}_subsample.yaml --profile config/slurm_scg
 done

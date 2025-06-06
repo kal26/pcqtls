@@ -5,6 +5,9 @@ import statsmodels.api as sm
 import matplotlib.pyplot as plt 
 import seaborn as sns 
 import networkx as nx
+import os
+from pandas.errors import EmptyDataError 
+
 
 
 # working directory prefix
@@ -22,6 +25,10 @@ def load_susie_annotated(config, tissue_id):
     susie_annotated['cs_id'] = susie_annotated['phenotype_id'] + '_cs_' + susie_annotated['cs_id'].astype(str)
     susie_annotated = add_lead_var(susie_annotated)
     return susie_annotated
+
+def load_pc_annotated(config, tissue_id):
+    return pd.read_csv("{}/{}{}/{}.v8.pcs_annotated.txt".format(prefix, config["annotations_output_dir"], tissue_id, tissue_id), sep='\t')
+
 
 def load_overlap(config, tissue_id):
     overlap_df = pd.read_csv('{}/{}/{}.v8.overlap.txt'.format(prefix, config['overlap_output_dir'], tissue_id), sep='\t')
@@ -147,6 +154,7 @@ def load_pairwise_coloc(config, tissue_id):
     pair_coloc = pd.concat(pair_coloc)
     pair_coloc['cs_id_1'] = pair_coloc['qtl1_id'] + '_cs_' + pair_coloc['idx1'].astype(str)
     pair_coloc['cs_id_2'] = pair_coloc['qtl2_id'] + '_cs_' + pair_coloc['idx2'].astype(str)
+    pair_coloc['cluster_id'] = np.where(pair_coloc['qtl1_id'].str.contains('_pc'), pair_coloc['qtl1_id'].str.split('_pc').str[0], pair_coloc['qtl1_id'].str.split('_e_').str[0])
     return pair_coloc
 
 def load_tissue_ids(config):
@@ -441,3 +449,93 @@ def run_get_signal_groups(pair_coloc, pc_susie_r, e_susie_r, coloc_cutoff=.75):
     # Concatenate all results into a single DataFrame
     final_results = pd.concat(results, ignore_index=True)
     return final_results
+
+
+
+def load_gwas_coloc(config):
+    # recursively get list of files ending with .qtl_gwas.txt
+    def get_files(directory):
+        file_list = []
+        for root, directories, files in os.walk(directory):
+            if not 'temp' in root:
+                for file in files:
+                    if "susie_True" in file:
+                        file_list.append(os.path.join(root, file))
+        return file_list
+    coloc_file_list = get_files('{}/{}'.format(prefix, config["coloc_output_dir"] + "gwas"))
+
+    # Load each file into a DataFrame and concatenate them
+    cluster_colocs = []
+    for cluster_file in coloc_file_list:
+        try:
+            cluster_coloc = pd.read_csv(cluster_file, sep='\t')  # Assuming tab-separated file
+            tissue_id = cluster_file.split('/')[9]
+            cluster_coloc['tissue_id'] = tissue_id
+            cluster_coloc['coloc_file'] = cluster_file
+            cluster_colocs.append(cluster_coloc)
+        except EmptyDataError as e:
+            print(f"File is empty: {cluster_file}") 
+
+    # Concatenate all DataFrames into a single DataFrame
+    gwas_coloc = pd.concat(cluster_colocs, ignore_index=True)
+    # drop duplicate rows from intermediate write outs
+    gwas_coloc = gwas_coloc.drop_duplicates()
+
+    # add information to dataframe
+    gwas_coloc['cluster_id'] = np.where(gwas_coloc['qtl_id'].str.contains('_e'), gwas_coloc['qtl_id'].str.split('_e').str[0], gwas_coloc['qtl_id'].str.split('_pc').str[0])
+    # make ids for each credible set in the qtl and gwas
+    gwas_coloc['gwas_cs_id'] = gwas_coloc['gwas_id'] + '_cs_' + gwas_coloc['gwas_cs_is'].astype(int).astype(str) + '_cluster_' + gwas_coloc['cluster_id']
+    gwas_coloc['qtl_cs_id'] = gwas_coloc['qtl_id'] + '_cs_' + gwas_coloc['qtl_cs_is'].astype(int).astype(str) + '_cluster_' + gwas_coloc['cluster_id']
+    # set type as pcqtl or eqtl
+    gwas_coloc['type'] = np.where(gwas_coloc['qtl_cs_id'].str.contains('_pc'), 'pcqtl', 'eqtl')
+    # fill in nas with 0
+    gwas_coloc[['PP.H0.abf', 'PP.H1.abf', 'PP.H2.abf', 'PP.H3.abf', 'PP.H4.abf']] = gwas_coloc[['PP.H0.abf', 'PP.H1.abf', 'PP.H2.abf', 'PP.H3.abf', 'PP.H4.abf']].fillna(0)
+
+    # add tissue specific ids
+    gwas_coloc['gwas_tissue_cs_id'] = 'gwas_' + gwas_coloc['gwas_cs_id'] + '_tissue_' + gwas_coloc['tissue_id']
+    gwas_coloc['qtl_tissue_cs_id'] = 'qtl_' + gwas_coloc['qtl_cs_id'] + '_tissue_' + gwas_coloc['tissue_id']
+    return gwas_coloc
+
+
+
+def get_gwas_signals(gwas_coloc_hits, pair_coloc_hits):
+
+    # add in id with tissue and cluster
+    pair_coloc_hits['qtl_tissue_cs_id_1'] = 'qtl_' + pair_coloc_hits['cs_id_1'] + '_cluster_' + pair_coloc_hits['cluster_id'] + '_tissue_' + pair_coloc_hits['tissue_id']
+    pair_coloc_hits['qtl_tissue_cs_id_2'] = 'qtl_' + pair_coloc_hits['cs_id_2'] + '_cluster_' + pair_coloc_hits['cluster_id'] + '_tissue_' + pair_coloc_hits['tissue_id']
+
+    # Create an undirected graph
+    G = nx.Graph()
+    # add an edge for each gwas-qtl coloc
+    for index, row in gwas_coloc_hits.iterrows():
+        G.add_edge(row['gwas_tissue_cs_id'], row['qtl_tissue_cs_id'])
+
+    # add an edge for each qtl-qtl coloc
+    for index, row in pair_coloc_hits.iterrows():
+        G.add_edge(row['qtl_tissue_cs_id_1'], row['qtl_tissue_cs_id_2'])
+
+    # Get the connected components of the graph
+    connected_components = list(nx.connected_components(G))
+    # Generate underlying signal ids
+    underlying_signals = ['-'.join(sorted(component)) for component in connected_components]
+
+    # make a df
+    underlying_signals = pd.DataFrame({'signal_id':underlying_signals})
+    underlying_signals['num_qtl_coloc'] = underlying_signals['signal_id'].astype(str).str.count('qtl_')
+    underlying_signals['num_gwas_coloc'] = underlying_signals['signal_id'].astype(str).str.count('gwas_')
+    underlying_signals['num_e_coloc'] = underlying_signals['signal_id'].astype(str).str.count('_e_')
+    underlying_signals['num_pc_coloc'] = underlying_signals['signal_id'].astype(str).str.count('_pc')
+    underlying_signals['multiple_e'] = underlying_signals['num_e_coloc'] > 1
+    underlying_signals['multiple_pc'] = underlying_signals['num_pc_coloc'] > 1
+
+    underlying_signals['type'] = np.where(underlying_signals['num_pc_coloc']>0, np.where(underlying_signals['num_e_coloc']>0, 'both', 'pcqtl_only'), 'eqtl_only')
+    underlying_signals['cluster_id'] = underlying_signals['signal_id'].str.split('_cluster_').str[1].str.split('_tissue_').str[0]
+    underlying_signals['tissue_id'] = underlying_signals['signal_id'].str.split('_tissue_').str[1].str.split('-').str[0]
+
+    # Count the number of gwas types
+    underlying_signals['cs_id'] = underlying_signals['signal_id'].str.split('-')
+    underlying_signals_explode = underlying_signals.explode('cs_id')
+    underlying_signals_explode_gwas = underlying_signals_explode[underlying_signals_explode['cs_id'].str.contains('gwas_')]
+    underlying_signals_explode_gwas['gwas_type'] = underlying_signals_explode_gwas['cs_id'].str.split('gwas_').str[1].str.split('_cs').str[0]
+    underlying_signals = pd.merge(underlying_signals, underlying_signals_explode_gwas.groupby('signal_id').agg({'gwas_type':'nunique'}), on='signal_id')
+    return underlying_signals
