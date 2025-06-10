@@ -5,7 +5,7 @@
 
 This repository contains the code and data associated with our research on allelic expression "proxitropy" and the development of a multi-gene eQTL mapping framework, termed cis-principal component expression QTL (cis-pc eQTL or pcQTL). Our study investigates how a single variant can influence the expression of multiple neighboring genes, providing insights into gene regulation and complex trait-associated variation.
 
-![Example Image](images/pcqtl_comparison.png)
+![Example Image](images/pcqtl_comparision.png)
 
 ---
 
