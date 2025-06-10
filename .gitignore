@@ -10,3 +10,4 @@ logs_old/*
 .Rproj.user
 config/*
 *.sh
+.vscode
