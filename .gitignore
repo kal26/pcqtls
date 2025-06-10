@@ -8,3 +8,5 @@ tami_project
 tami_project/*
 logs_old/*
 .Rproj.user
+config/*
+*.sh
