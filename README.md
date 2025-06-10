@@ -5,7 +5,7 @@
 
 This repository contains the code and data associated with our research on allelic expression "proxitropy" and the development of a multi-gene eQTL mapping framework, termed cis-principal component expression QTL (cis-pc eQTL or pcQTL). Our study investigates how a single variant can influence the expression of multiple neighboring genes, providing insights into gene regulation and complex trait-associated variation.
 
-![Example Image](images/pcqtl_comparision.png)
+![Example Image](images/pcqtl_method.png)
 
 ---
 
@@ -46,5 +46,5 @@ Please note that this repository is not currently available as a standalone tool
 We thank the donors and their families for their generous gifts of biospecimens to the GTEx research project. The Genotype-Tissue Expression (GTEx) project was supported by the Common Fund of the Office of the Director of the National Institutes of Health (http://commonfund.nih.gov/GTEx). Additional funds were provided by the National Cancer Institute (NCI), National Human Genome Research Institute (NHGRI), National Heart, Lung, and Blood Institute (NHLBI), National Institute on Drug Abuse (NIDA), National Institute of Mental Health (NIMH), and National Institute of Neurological Disorders and Stroke (NINDS). This research was supported by National Institutes of Health grants R01MH12524, U01AG072573, U01HG012069 to S.B.M. K.L. is supported by the Stanford Genome Training Program (SGTP; NIH/NHGRI T32HG000044). T.G. is supported by the Knight-Hennessy Scholars fellowship
 
 
-![Example Image](images/pcqtl_badge.png)
+![Example Image](images/pcqtl_proxitropy.png)
 
