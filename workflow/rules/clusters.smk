@@ -1,29 +1,50 @@
-rule call_clusters: 
+"""
+Gene Expression Clustering Rules
+
+This module contains rules for identifying co-expressed gene clusters
+from normalized expression data.
+"""
+
+rule call_clusters:
+    """
+    Identify co-expressed gene clusters from normalized expression data.
+    
+    This rule uses correlation-based clustering to group genes with similar
+    expression patterns across samples.
+    """
     input:
-        normalized_expression = expression_dir + '{TISSUE}.v8.normalized_expression.bed',
-        full_covariates = covariates_dir + '{TISSUE}.v8.covariates.txt'
-    params:
-        max_cluster_size = max_cluster_size,
-        min_cluster_size = min_cluster_size,
-        min_corr_cutoff = min_corr_cutoff,
-        percent_corr_cutoff = percent_corr_cutoff,
-        cutoff_type = cutoff_type, # or can be 'value'
-    resources:
-        mem = "80G", 
-        time = "2:00:00",
-    conda:
-        'tensorqtl_r'
+        expression = f"{config['expression_dir']}{{TISSUE}}.v8.normalized_expression.bed",
+        covariates = f"{config['covariates_dir']}{{TISSUE}}.v8.covariates.txt"
+    
     output:
-        clusters = clusters_dir + '{TISSUE}_clusters_all_chr.csv'
-    shell:"""
-        python workflow/scripts/call_clusters.py \
-            -e {input.normalized_expression} \
-            -co {input.full_covariates} \
+        clusters = f"{config['clusters_dir']}{{TISSUE}}.clusters.txt"
+    
+    params:
+        max_cluster_size = 50,
+        min_cluster_size = 2,
+        min_corr_cutoff = config['min_corr_cutoff'],
+        percent_corr_cutoff = float(config['percent_corr_cutoff']),
+        cutoff_type = config['cutoff_type']
+    
+    resources:
+        mem = "80G",
+        time = "2:00:00"
+    
+    threads: 20
+    
+    conda:
+        "tensorqtl_r"
+    
+    shell:
+        """
+        python scripts/call_clusters.py \
+            -e {input.expression} \
+            -co {input.covariates} \
             -o {output.clusters} \
-            --max_cluster_size {params.max_cluster_size} \
-            --min_cluster_size {params.min_cluster_size} \
-            --min_corr_cutoff {params.min_corr_cutoff} \
-            --percent_corr_cutoff {params.percent_corr_cutoff} \
-            --cutoff_type {params.cutoff_type} \
-            --tissue_id {wildcards.TISSUE}
+            --max-cluster-size {params.max_cluster_size} \
+            --min-cluster-size {params.min_cluster_size} \
+            --min-corr-cutoff {params.min_corr_cutoff} \
+            --percent-corr-cutoff {params.percent_corr_cutoff} \
+            --cutoff-type {params.cutoff_type} \
+            --tissue-id {wildcards.TISSUE}
         """

@@ -1,59 +1,93 @@
-setwd('/home/klawren/oak/pcqtls/')
+#!/usr/bin/env Rscript
+# =============================================================================
+# Script: combine_RDS_susie.R
+# Description: Combine SuSiE RDS files from colocalization analysis
+# Author: Kate Lawrence
+# Date: 2025-08-15
+# =============================================================================
 
+# Load required libraries
 library(dplyr)
 library(argparse)
 
-source("workflow/scripts/coloc_functions.R")
+# =============================================================================
+# Argument parsing
+# =============================================================================
 
-# Create Argument Parser
+# Create argument parser
 parser <- ArgumentParser()
-parser$add_argument("--qtl_dir_path", help="folder for QTL pairs")
-parser$add_argument("--tissue_id", help="tissue id")
-parser$add_argument("--coloc_temp_path_head", help="tissue specific directory file path for susie and per chrom gwas")
-parser$add_argument("--output_path", help="Output file path for coloc pair results")
-parser$add_argument("--qtl_type", help="eqtl or pcqtl")
+parser$add_argument("--code-dir", help="Directory containing R script functions", required=TRUE)
+parser$add_argument("--qtl-dir", help="Folder for QTL pairs")
+parser$add_argument("--tissue-id", help="Tissue ID")
+parser$add_argument("--coloc-temp-path-head", help="Tissue specific directory file path for susie and per chrom GWAS")
+parser$add_argument("--output", help="Output file path for coloc pair results")
+parser$add_argument("--qtl-type", help="eQTL or PCQTL")
 
-# Parse the Arguments
+# Parse arguments
 args <- parser$parse_args()
 
-# assign values
+# Extract arguments
+code_dir <- args$code_dir
 coloc_temp_path_head <- args$coloc_temp_path_head
-qtl_dir_path <- args$qtl_dir_path
+qtl_dir_path <- args$qtl_dir
 tissue_id <- args$tissue_id
 qtl_type <- args$qtl_type
-output_path <- args$output_path
+output_path <- args$output
 
+# =============================================================================
+# Source helper functions
+# =============================================================================
 
-combined_results <- data.frame()  # To store combined results
+# Source helper functions from the provided code directory
+source(file.path(code_dir, "coloc_functions.R"))
 
-for (chr_id in 1:22){
-    cat("working on chr ", chr_id, "\n")
-    # load in nominal pc and e resutls to get phenotype ids
-    if (qtl_type == 'eqtl'){
-        qtl_chr <- get_eqtl_chr(qtl_dir_path, chr_id, tissue_id)
+# =============================================================================
+# Combine SuSiE results across chromosomes
+# =============================================================================
+
+# Initialize results dataframe
+combined_results <- data.frame()
+
+# Process each chromosome
+for (chr_id in 1:22) {
+  cat("Working on chromosome", chr_id, "\n")
+  
+  # Load nominal QTL results to get phenotype IDs
+  if (qtl_type == 'eqtl') {
+    qtl_chr <- get_eqtl_chr(qtl_dir_path, chr_id, tissue_id)
+  } else {
+    qtl_chr <- get_pcqtl_chr(qtl_dir_path, chr_id, tissue_id)
+  }
+  
+  phenotype_ids <- unique(qtl_chr$phenotype_id)
+  
+  # Process each phenotype
+  for (phenotype_id in phenotype_ids) {
+    # Handle long QTL IDs
+    if (nchar(phenotype_id) > 150) {
+      out_qtl_id <- get_short_qtl_id(phenotype_id)
     } else {
-        qtl_chr <- get_pcqtl_chr(qtl_dir_path, chr_id, tissue_id)
+      out_qtl_id <- phenotype_id
     }
-    phenotype_ids <- unique(qtl_chr$phenotype_id)
-    # Generate file paths for the corresponding .susie.rds files
-    for (phenotype_id in phenotype_ids) {
-        if (nchar(phenotype_id) > 150){
-            out_qtl_id <- get_short_qtl_id(phenotype_id)
-        } else {
-            out_qtl_id <- phenotype_id
-        }
-        susie_rds_path <- paste(coloc_temp_path_head, out_qtl_id, '.susie.rds', sep="")
-        # Check if the file exists
-        if (file.exists(susie_rds_path)) {
-            # Extract data from the RDS file and combine it
-            rds_data <- extract_data_from_rds(susie_rds_path)
-            combined_results <- bind_rows(combined_results, rds_data)
-        } else {
-            # expected that some files do not exist 
-            # there were no signifigant QTL signals for this phenotype
-            message(paste("File does not exist:", susie_rds_path))
-        }
+    
+    # Generate path to SuSiE RDS file
+    susie_rds_path <- paste(coloc_temp_path_head, out_qtl_id, '.susie.rds', sep = "")
+    
+    # Check if file exists and extract data
+    if (file.exists(susie_rds_path)) {
+      # Extract data from RDS file and combine
+      rds_data <- extract_data_from_rds(susie_rds_path)
+      combined_results <- bind_rows(combined_results, rds_data)
+    } else {
+      # Expected that some files do not exist (no significant QTL signals)
+      message(paste("File does not exist:", susie_rds_path))
     }
+  }
 }
 
+# =============================================================================
+# Write combined results
+# =============================================================================
+
 write.table(combined_results, file = output_path, sep = "\t", quote = FALSE, row.names = TRUE)
+cat("Combined SuSiE results written to:", output_path, "\n")

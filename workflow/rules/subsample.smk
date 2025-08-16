@@ -1,13 +1,45 @@
+"""
+Subsampling Rules
+
+This module contains rules for creating subsamples of expression and covariate data
+for testing and validation purposes.
+"""
+
 rule get_subsample:
+    """
+    Create subsamples of expression and covariate data for testing.
+    
+    This rule generates smaller datasets by selecting a subset of samples from the
+    full expression and covariate data, either using random sampling or taking
+    the first N samples.
+    """
     input: 
-        normalized_expression = expression_dir + '{TISSUE}.v8.normalized_expression.bed',
-        full_covariates = covariates_dir + '{TISSUE}.v8.covariates.txt'
-    params:
-        use_scramble_order = False
-    conda:
-        'tensorqtl_r'
+        expression = f"{config['expression_dir']}{{TISSUE}}.v8.normalized_expression.bed",
+        covariates = f"{config['covariates_dir']}{{TISSUE}}.v8.covariates.txt"
+    
     output:
-        subsample_expression = subsample_dir + 'normalized_expression/{TISSUE}.v8.normalized_expression.bed',
-        subsample_covarience = subsample_dir + 'covariates/{TISSUE}.v8.covariates.txt
-    script:
-        '../scripts/snakemake_make_subsamples.py'
+        subsample_expression = f"output/subsample/normalized_expression/{{TISSUE}}.v8.normalized_expression.bed",
+        subsample_covariates = f"output/subsample/covariates/{{TISSUE}}.v8.covariates.txt"
+    
+    params:
+        use_scramble_order = False,
+        num_samples = None
+    
+    resources:
+        mem = "8G",
+        time = "0:30:00"
+    
+    threads: 1
+    
+    conda:
+        "tensorqtl_r"
+    
+    shell:
+        """
+        python scripts/make_subsamples.py \
+            --expression {input.expression} \
+            --covariates {input.covariates} \
+            --output-expression {output.subsample_expression} \
+            --output-covariates {output.subsample_covariates} \
+            --use-scramble
+        """

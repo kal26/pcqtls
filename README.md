@@ -11,35 +11,281 @@ This repository contains the code associated with our research on allelic expres
 
 ---
 
-## Preprint
+### Preprint
 
 Our preprint is available [here](https://www.biorxiv.org/content/10.1101/2025.06.06.658175v1)
+
+### Data Availability
+
+[ZENODO](https://doi.org/10.5281/zenodo.15605351)
+
+* Clusters of neighboring correlated genes 
+* Summary stats for pcQTL mapping 
 
 
 ## Usage
 
-Please note that this repository is not currently available as a standalone tool. Instead, we recommend utilizing a built-in principal component caller for your analysis needs. For instance, if you are using Python, you can use `scikit-learn` to calculate principal components. 
+This repository contains a Snakemake workflow for performing pcQTL analysis. To run the complete workflow:
+
+0. Create a conda environment according to [Environment Setup](#environment-setup)
+
+1. Download the necessary data as outlined in [Required Datasets](#required-datasets)
+
+2. Edit the example configuration file `config/config_example.yaml` to specify the paths to your input data and desired output directories.
+
+3. Run the workflow with your configuration:
+
+```bash
+snakemake --configfile config/config_example.yaml --cores 10 --use-conda
+```
+
+### Prerequisites
+
+- Snakemake
+- Conda or Mamba 
+- Python 
+- R 
+
+### Environment Setup
+
+Dependencies are:
+
+**Python packages:**
+- tensorqtl==1.0.9
+- pandas==2.0.3
+- numpy==1.24.3
+- scipy==1.10.1
+- scikit-learn==1.3.2
+- pysam==0.21.0
+- statsmodels==0.14.1
+- rpy2==3.5.15
+
+**R packages:**
+- tidyverse==2.0.0
+- data.table==1.14.8
+- ggplot2==3.4.3
+- dplyr==1.1.3 
+- tidyr==1.3.0
+- readr==2.1.4 
+- readxl==1.4.3
+- lubridate==1.9.3
+- coloc==5.2.3
+- susieR==0.12.35
+- nanoparquet==0.4.2
+- Rfast==2.1.5.1
+- argparse==2.2.5
+
+**Additional tools:**
+- plink==1.90b7.7
+- snakemake==7.32.4
+
+The workflow assumes all packages are in a conda enviroment named `tensorqtl_r` . If your conda enviroment is named something else, simply change the conda parameter in the snakemake rules. If all packages are installed in a base enviroment, you can remove the conda parameter.
 
 
-## Data availibility 
+### Workflow Components
 
-* Clusters and summary stats for pcQTLs are available [here](https://doi.org/10.5281/zenodo.15605351).  
-* All processed GTEx data are available via [GTEx portal](https://www.gtexportal.org/home/downloads/adult-gtex). 
-* GWAS summary stats are available [here](https://zenodo.org/records/3629742#.Y9rTQOzMIUF).
+The workflow performs the following analyses:
 
-#### Annotation data
+- **Gene clustering**: Identifies co-expressed gene clusters
+- **eQTL analysis**: Maps expression quantitative trait loci for individual genes
+- **pcQTL analysis**: Maps QTLs for principal components derived from gene clusters
+- **Functional annotation**: Annotates variants and clusters with functional information
+- **Co-localization**: Performs co-localization analysis with GWAS summary statistics
 
-* Paralog and GO terms are available on [biomart](https://www.ensembl.org/info/data/biomart/index.html)
-* CTCF peaks are available on the [ENCODE portal](https://www.encodeproject.org/)
-* TAD boundaries are available on [TADKB](http://dna.cs.miami.edu/TADKB/).
-* ABC predictions across cell types are available from the [Engreitz lab website](https://www.engreitzlab.org/resources).
-* cCREs are available from [SCREEN](https://screen.encodeproject.org/).
+### Output Files
+
+The workflow generates results in the following directories (as specified in your config):
+- `clusters_dir`: Gene expression clusters
+- `eqtl_output_dir`: eQTL analysis results
+- `pcqtl_output_dir`: pcQTL analysis results
+- `annotations_output_dir`: Functional annotations
+- `coloc_output_dir`: Co-localization results
+
+### Output File Formats
+
+#### Gene Clusters (`clusters_dir/{TISSUE}.clusters.txt`)
+Tab-separated file containing gene expression clusters:
+- `chr`: Chromosome (e.g., 'chr1')
+- `cluster_id`: Underscore-separated list of transcripts in each cluster
+- `tissue_id`: Tissue identifier
+- `num_genes`: Number of genes in the cluster
+- `percent_correlated`: Percentage of correlations above threshold
+- `mean_corr`: Mean correlation value
+- `mean_pos_corr`: Mean positive correlation value
+- `mean_neg_corr`: Mean negative correlation value
+
+#### Principal Components (`pc_output_dir/{TISSUE}.pcs.bed`)
+BED format file containing principal components for each cluster:
+- `#chr`: Chromosome
+- `start`: Start position (1-based)
+- `end`: End position (1-based)
+- `gene_id`: Principal component ID (format: `{cluster_id}_pc{pc_number}`)
+- Sample columns: One column per sample with PC values
+
+#### eQTL Results (`eqtl_output_dir/{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl.txt.gz`)
+Compressed tab-separated file with eQTL associations:
+- `phenotype_id`: Gene ID
+- `variant_id`: Variant ID (chr:pos:ref:alt)
+- `tss_distance`: Distance from variant to transcription start site
+- `ma_samples`: Number of samples with minor allele
+- `ma_count`: Minor allele count
+- `af`: Allele frequency
+- `pval_nominal`: Nominal p-value
+- `slope`: Effect size (beta)
+- `slope_se`: Standard error of effect size
+- `pval_perm`: Permutation p-value
+- `pval_beta`: Beta approximation p-value
+
+#### pcQTL Results (`pcqtl_output_dir/{TISSUE}/{TISSUE}.v8.pcs.cis_qtl.txt.gz`)
+Compressed tab-separated file with pcQTL associations:
+- `phenotype_id`: Principal component ID (cluster_id:pc_number)
+- `variant_id`: Variant ID (chr:pos:ref:alt)
+- `tss_distance`: Distance from variant to cluster center
+- `ma_samples`: Number of samples with minor allele
+- `ma_count`: Minor allele count
+- `af`: Allele frequency
+- `pval_nominal`: Nominal p-value
+- `slope`: Effect size (beta)
+- `slope_se`: Standard error of effect size
+- `pval_perm`: Permutation p-value
+- `pval_beta`: Beta approximation p-value
+
+#### SuSiE Fine-mapping Results (`{eqtl/pcqtl}_output_dir/{TISSUE}/{TISSUE}.v8.{cluster_genes/pcs}.susie.txt`)
+Tab-separated file with SuSiE fine-mapping results:
+- `phenotype_id`: Gene ID or PC ID (e.g., "ENSG00000189409.13_ENSG00000197530.12_pc2")
+- `variant_id`: Variant ID (e.g., "chr1_1636278_G_T_b38")
+- `pip`: Posterior inclusion probability
+- `af`: Allele frequency
+- `cs_id`: Credible set ID
+
+#### Annotated Clusters (`annotations_output_dir/{TISSUE}/{TISSUE}.clusters.annotated.txt`)
+Tab-separated file with functional annotations for clusters:
+- `cluster_id`: Cluster identifier
+- `gene_id`: Ensembl gene ID
+- `gene_name`: Gene symbol
+- `chromosome`: Chromosome
+- `start`: Gene start position
+- `end`: Gene end position
+- `strand`: Gene strand
+- `cluster_size`: Number of genes in cluster
+- `cluster_center_chr`: Chromosome of cluster center
+- `cluster_center_pos`: Position of cluster center
+- `abc_enhancer_count`: Number of ABC enhancers connected to gene
+- `ctcf_binding_sites`: Number of CTCF binding sites in cluster
+- `tad_boundary_distance`: Distance to nearest TAD boundary
+- `paralog_count`: Number of paralogs in cluster
+- `go_terms`: Gene ontology terms (comma-separated)
+- `expression_variance`: Variance in expression across samples
+
+#### Co-localization Results
+
+**QTL Pairs** (`coloc_output_dir/pairs/{TISSUE}.v8.pairs_coloc.{CHROM}.txt`):
+- `nsnps`: Number of SNPs in the region
+- `hit1`: Index of first hit
+- `hit2`: Index of second hit
+- `PP.H0.abf`: Posterior probability of no association
+- `PP.H1.abf`: Posterior probability of association with QTL only
+- `PP.H2.abf`: Posterior probability of association with GWAS only
+- `PP.H3.abf`: Posterior probability of association with both, different causal variants
+- `PP.H4.abf`: Posterior probability of association with both, same causal variant
+- `idx1`: Index of first variant
+- `idx2`: Index of second variant
+- `qtl1_id`: QTL identifier for first hit
+- `qtl2_id`: QTL identifier for second hit
+
+**GWAS Co-localization** (`coloc_output_dir/gwas/{TISSUE}/{TISSUE}.v8.{GWAS}.susie_True.gwas_coloc.txt`):
+- `gwas_id`: GWAS identifier
+- `qtl_id`: QTL identifier
+- `nsnps`: Number of SNPs in the region
+- `hit1`: Index of first hit
+- `hit2`: Index of second hit
+- `PP.H0.abf`: Posterior probability of no association
+- `PP.H1.abf`: Posterior probability of association with QTL only
+- `PP.H2.abf`: Posterior probability of association with GWAS only
+- `PP.H3.abf`: Posterior probability of association with both, different causal variants
+- `PP.H4.abf`: Posterior probability of association with both, same causal variant
+- `idx1`: Index of first variant
+- `idx2`: Index of second variant
+- `gwas_cs_is`: GWAS credible set identifier
+- `qtl_cs_is`: QTL credible set identifier
+
+#### Signal Groups
+
+**QTL Signal Groups** (`coloc_output_dir/qtl_signal_groups/{TISSUE}.qtl_signal_groups.txt`):
+- `signal_id`: Unique identifier for signal group (dash-separated list of credible set IDs)
+- `num_e_coloc`: Number of eQTL signals in the group
+- `num_pc_coloc`: Number of pcQTL signals in the group
+- `multiple_e`: Whether group contains multiple eQTL signals
+- `multiple_pc`: Whether group contains multiple pcQTL signals
+- `cluster_id`: Cluster identifier
+- `tissue_id`: Tissue identifier
+- `lead_var_set`: List of lead variants in the signal group
+- `var_set`: List of all variants in the signal group
+
+**GWAS Signal Groups** (`coloc_output_dir/gwas_signal_groups/{TISSUE}.{GWAS}.gwas_signal_groups.txt`):
+- `signal_id`: Unique identifier for signal group (dash-separated list of credible set IDs)
+- `num_qtl_coloc`: Number of QTL signals in the group
+- `num_gwas_coloc`: Number of GWAS signals in the group
+- `num_e_coloc`: Number of eQTL signals in the group
+- `num_pc_coloc`: Number of pcQTL signals in the group
+- `multiple_e`: Whether group contains multiple eQTL signals
+- `multiple_pc`: Whether group contains multiple pcQTL signals
+- `type`: Signal type ('both', 'pcqtl_only', or 'eqtl_only')
+- `cluster_id`: Cluster identifier
+- `tissue_id`: Tissue identifier
+- `gwas_type`: Number of unique GWAS types in the group
 
 
-## Repository structure
+
+## Required Datasets
+
+The workflow requires several input datasets. Below is a comprehensive list of required files and their sources:
+
+### Core Analysis Data
+
+| Dataset | Description | Source | Expected Location in Config |
+|---------|-------------|---------|---------------------------|
+| GTEx v8 Expression Data | Normalized gene expression by tissue | [GTEx Portal](https://storage.googleapis.com/adult-gtex/bulk-qtl/v8/single-tissue-cis-qtl/GTEx_Analysis_v8_eQTL_expression_matrices.tar) | `expression_dir` |
+| GTEx v8 Genotypes | Genotype data: .bed, .bim, and .fam | Protected access on dbGaP, access available via request at this [link](https://www.ncbi.nlm.nih.gov/projects/gap/cgi-bin/study.cgi?study_id=phs000424.v10.p2) | `genotype_stem` |
+| GTEx v8 Covariates | Technical and biological covariates | [GTEx Portal](https://storage.googleapis.com/adult-gtex/bulk-qtl/v8/single-tissue-cis-qtl/GTEx_Analysis_v8_eQTL_covariates.tar.gz) | `covariates_dir` |
+| GTEx v8 Sample Sizes | Sample sizes for each tissue | `references/gtex_sample_sizes.txt` | `gtex_meta` |
+| Tissue IDs | List of tissues to analyze | User generated, from any of the GTEx tissues | `tissue_id_path` |
+| Chromosome List | Chromosomes to analyze |  | `chr_list_path` |
+| GWAS Metadata | GWAS studies for co-localization | [Zenodo](https://zenodo.org/records/3629742#.Y9rTQOzMIUF) | `gwas_meta` |
+| GWAS Summary Stats | GWAS summary statistics files | [Zenodo](https://zenodo.org/records/3629742#.Y9rTQOzMIUF) | `gwas_folder` |
+
+### Annotation Data
+
+| Dataset | Description | Source | Expected Location in Config |
+|---------|-------------|---------|---------------------------|
+| GENCODE v26 | Gene annotations | [GENCODE](https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_26/gencode.v26.annotation.gtf.gz) | `gencode_path` |
+| ABC Enhancer Predictions | Activity-by-Contact enhancer predictions (hg19, requires liftOver to hg38) | [Engreitz Lab](https://www.engreitzlab.org/resources) | `full_abc_path` |
+| CTCF Binding Sites | Matching between tissues and CTCF experiments | `references/ctcf_matched_gtex.txt` | `ctcf_match_path` |
+| CTCF Directory | CTCF binding data from ENTEx, the experiments from `references/ctcf_matched_gtex.txt` | [ENTEx] (https://www.encodeproject.org/entex-matrix/?type=Experiment&status=released&internal_tags=ENTEx) | `ctcf_dir` |
+| Cross-mappability | Cross-mappability from Saha and Battle (2019) | [figshare](https://figshare.com/ndownloader/files/13514741) | `cross_map_path` |
+| Paralog Relationships | Gene paralog information | [Ensembl Biomart](https://jan2020.archive.ensembl.org/biomart/martview/853dbe49995a1a2712b77655b242db21) | `paralog_path` |
+| Gene Ontology Terms | GO term annotations | [Ensembl Biomart](https://jan2020.archive.ensembl.org/biomart/martview/853dbe49995a1a2712b77655b242db21) | `go_path` |
+| Gene ID Cross-mapping | Gene identifier mappings | [Ensembl Biomart](https://www.ensembl.org/info/data/biomart/index.html) | `cross_map_path` |
+| TAD Boundaries | Topologically Associating Domain boundaries (hg19, requires liftOver to hg38) | [TADKB](http://dna.cs.miami.edu/TADKB/download/TAD_annotations.tar.gz) | `tad_path` |
+
+
+
+### Data Preparation Notes
+
+1. **GENCODE Processing**: The GENCODE annotation must be processed to include only "gene" level features with columns `(chr,start,end,strand,gene_id,gene_name,tss_start)`. The `tss_start` column should contain the transcription start site position: use the `start` coordinate for positive-stranded genes and the `end` coordinate for negative-stranded genes. For this analysis, only protein-coding genes were considered.
+
+2. **Genome Assembly Conversion**: The ABC enhancer predictions and TADKB boundary databases are provided in hg19 coordinates. These must be converted to hg38 using liftOver before use in the workflow.  
+
+
+## Repository Structure
 
 * `workflow/rules`: Snakemake workflow for the pcQTL mapping framework.
+* `workflow/scripts`: Python and R scripts used by the workflow.
 * `workflow/figures`: Jupyter notebooks for data analysis and visualization and figure files.
+* `config`: Example configuration file for the workflow.
+* `references`: Small file-size references.
+* `Snakefile`: Main Snakemake workflow file that orchestrates the pcQTL analysis pipeline.
+
 
 
 ## Acknowledgments

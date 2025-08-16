@@ -1,0 +1,14 @@
+sample_size	tissue_id
+581	Adipose_Subcutaneous
+469	Adipose_Visceral_Omentum
+584	Artery_Tibial
+483	Cells_Cultured_fibroblasts
+497	Esophagus_Mucosa
+465	Esophagus_Muscularis
+515	Lung
+706	Muscle_Skeletal
+532	Nerve_Tibial
+517	Skin_Not_Sun_Exposed_Suprapubic
+605	Skin_Sun_Exposed_Lower_leg
+574	Thyroid
+670	Whole_Blood

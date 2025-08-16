@@ -1,0 +1,14 @@
+GTEX,ctcf
+Adipose_Subcutaneous,ENCFF173APP
+Adipose_Visceral_Omentum,ENCFF051ZVS
+Artery_Tibial,ENCFF508XDM
+Cells_Cultured_fibroblasts,ENCFF130ISX
+Esophagus_Mucosa,ENCFF862AXF
+Esophagus_Muscularis,ENCFF862AXF
+Lung,ENCFF786YIA
+Muscle_Skeletal,ENCFF721RAM
+Nerve_Tibial,ENCFF831KJJ
+Skin_Not_Sun_Exposed_Suprapubic,ENCFF525JGP
+Skin_Sun_Exposed_Lower_leg,ENCFF405VLP
+Thyroid,ENCFF498GQK
+Whole_Blood,ENCFF796WRU

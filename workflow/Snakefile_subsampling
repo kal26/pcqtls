@@ -39,7 +39,7 @@ rule all:
         #filtered_normed_expression = expand(filtered_expression_output_dir + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed', TISSUE = tissue_ids),
         #pc_permutation = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_independent_qtl.txt.gz', TISSUE = tissue_ids),
         #eqtl_permutation = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_independent_qtl.txt.gz', TISSUE=tissue_ids),
-        #pc1_permutation = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pc1_only.cis_independent_qtl.txt.gz', TISSUE=tissue_ids)
+
         pcqtl_nominal = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE=tissue_ids),
         eqtl_nominal = expand(eqtl_output_dir + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, TISSUE=tissue_ids),
         # pcqtl_susie_r = expand(pcqtl_output_dir + '{TISSUE}/{TISSUE}.v8.pcs.susie_R.txt', TISSUE=tissue_ids), 

@@ -1,140 +1,340 @@
+#!/usr/bin/env python3
+"""
+Gene Expression Cluster Annotation Script
+
+This script annotates gene expression clusters with various genomic and functional features
+including ABC enhancer-gene connections, CTCF binding sites, TAD boundaries, paralogous genes,
+GO terms, cross-mappability, and correlation statistics. 
+"""
+
+import logging
+import sys
+import os
 import numpy as np
 import pandas as pd
 import argparse
 from tqdm import tqdm 
 import yaml
 import ast
+from pathlib import Path
+
+# Import local modules - use relative imports if possible
+try:
+    from residualize import calculate_residual
+except ImportError:
+    # Fallback for when script is run directly
+    import sys
+    sys.path.append(str(Path(__file__).parent))
+    from residualize import calculate_residual
+
+# Configuration - use environment variables with defaults
+PREFIX = os.getenv('PCQTL_PREFIX', '/home/klawren/oak/pcqtls')
+
+# Constants for genomic analysis
+CHROMOSOMES = list(range(1, 23))  # Human autosomes
+BIDIRECTIONAL_PROMOTER_DISTANCE = 1000  # Base pairs
+ABC_SCORE_STRONG_THRESHOLD = 0.1
+ABC_SCORE_VERY_STRONG_THRESHOLD = 0.25
+HIGH_POSITIVE_CORRELATION_THRESHOLD = 0.5
+HIGH_JACCARD_UNWEIGHTED_THRESHOLD = 0.5
+HIGH_JACCARD_WEIGHTED_THRESHOLD = 0.1
+
+
+def setup_logging(level=logging.INFO):
+    """Set up logging configuration."""
+    logging.basicConfig(
+        level=level,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+
+
+def validate_input_files(cluster_path, expression_path, covariates_path):
+    """Validate that input files exist and are readable."""
+    files_to_check = [
+        (cluster_path, "cluster"),
+        (expression_path, "expression"),
+        (covariates_path, "covariates")
+    ]
+    
+    for file_path, file_type in files_to_check:
+        if not Path(file_path).exists():
+            raise FileNotFoundError(f"{file_type.capitalize()} file not found: {file_path}")
+        if not Path(file_path).is_file():
+            raise ValueError(f"{file_type.capitalize()} path is not a file: {file_path}")
 
 
 
-import sys
-sys.path.append('/home/klawren/oak/pcqtls/workflow/scripts')
-from residualize import calculate_residual
-
-#working directory prefix
-prefix = '/home/klawren/oak/pcqtls'
 
 
-# functions to load in external data
-def load_avg_exression(avg_expression_path = f'{prefix}/data/processed/GTEx_Analysis_RSEMv1.gene_tpm.tissue_avg.csv'):
-    tissue_avg_expression = pd.read_csv(avg_expression_path, sep='\t', index_col=0)
-    return tissue_avg_expression
-
-def load_tad(tad_path = '/home/klawren/oak/pcqtls/data/references/TAD_annotations/TADs_hg38/converted_HiC_IMR90_DI_10kb.txt'):
-    tad_df = pd.read_csv(tad_path, header=None, sep='\t', names=['Chromosome', 'start','end'])
-    tad_df['Chromosome'] = tad_df['Chromosome'].str.strip('chr')
-    tad_df = tad_df[tad_df['Chromosome'].isin([f'{i}' for i in range(24)])]
-    tad_df['Chromosome'] = tad_df['Chromosome'].astype(int)
+def load_tad(tad_path=f'{PREFIX}/data/references/TAD_annotations/TADs_hg38/converted_HiC_IMR90_DI_10kb.txt'):
+    """
+    Load TAD (Topologically Associating Domain) boundary data.
+    
+    Args:
+        tad_path (str): Path to TAD boundary file
+    
+    Returns:
+        pd.DataFrame: TAD boundaries with chr, start, end columns
+    """
+    logger = logging.getLogger(__name__)
+    logger.debug(f'Loading TAD boundaries from {tad_path}')
+    tad_df = pd.read_table(tad_path, header=None, names=['chr', 'start', 'end'])
+    tad_df['chr'] = tad_df['chr'].str.strip('chr')
+    tad_df = tad_df[tad_df['chr'].isin([str(i) for i in CHROMOSOMES])]
+    tad_df['chr'] = tad_df['chr'].astype(int)
+    logger.debug(f'Loaded {len(tad_df)} TAD boundaries')
     return tad_df
 
-def load_gencode(gencode_path='/home/klawren/oak/pcqtls/data/references/processed_gencode.v26.GRCh38.genes.csv', protien_coding_only = True):
-    # load in gene data
-    full_gencode=pd.read_csv(gencode_path)
-    # filter to protien coding
-    if protien_coding_only:
-        non_protein_gencode = full_gencode.copy()
-        full_gencode = full_gencode[full_gencode['gene_type'] == 'protein_coding']
-    gid_gencode = full_gencode.set_index('transcript_id').drop_duplicates()
+
+def load_gencode(gencode_path=f'{PREFIX}/data/references/processed_gencode.v26.GRCh38.genes.txt', 
+                protein_coding_only=True):
+    """
+    Load and process GENCODE gene annotations.
+    
+    Args:
+        gencode_path (str): Path to GENCODE annotation file (TSV with columns: chr,start,end,strand,gene_id,tss_start)
+        protein_coding_only (bool): Whether to filter to protein-coding genes only (not used with simplified format)
+    
+    Returns:
+        tuple: (gid_gencode, full_gencode) where gid_gencode is indexed by gene_id
+    """
+    logger = logging.getLogger(__name__)
+    logger.debug(f'Loading GENCODE annotations from {gencode_path}')
+    
+    # Load gene data (tab-separated)
+    full_gencode = pd.read_table(gencode_path)
+    logger.debug(f'Loaded {len(full_gencode)} total genes from GENCODE')
+    
+    # Add gene_name column if not present (you'll add this back)
+    if 'gene_name' not in full_gencode.columns:
+        full_gencode['gene_name'] = full_gencode['gene_id']
+    
+    gid_gencode = full_gencode.set_index('gene_id').drop_duplicates()
+    logger.debug(f'Created gene-indexed GENCODE with {len(gid_gencode)} unique genes')
     return gid_gencode, full_gencode
 
-def get_redidual_expression(covariates_path, expression_path):
-    # residulized expression for correlations
-    covariates_df = pd.read_csv(covariates_path, sep='\t', index_col=0).T
-    expression_df = pd.read_csv(expression_path, sep='\t')
+
+def get_residual_expression(covariates_path, expression_path):
+    """
+    Calculate residualized expression data by removing covariate effects.
+    
+    Args:
+        covariates_path (str): Path to covariates file
+        expression_path (str): Path to expression data file
+    
+    Returns:
+        pd.DataFrame: Residualized expression data
+    """
+    logger = logging.getLogger(__name__)
+    logger.debug(f'Calculating residualized expression from {expression_path}')
+    
+    # Load covariates and expression data
+    covariates_df = pd.read_table(covariates_path, index_col=0).T
+    expression_df = pd.read_table(expression_path)
+    
+    logger.debug(f'Loaded {len(covariates_df)} covariates and {len(expression_df)} genes')
+    
+    # Set up expression data for residualization
     gid_expression = expression_df.set_index('gene_id')[covariates_df.index]
-    residal_exp = calculate_residual(gid_expression[covariates_df.index], covariates_df, center=True)
-    residal_exp = pd.DataFrame(residal_exp, columns=covariates_df.index, index=gid_expression.index)
-    return residal_exp
+    
+    # Calculate residuals
+    residual_exp = calculate_residual(gid_expression[covariates_df.index], covariates_df, center=True)
+    residual_exp = pd.DataFrame(residual_exp, columns=covariates_df.index, index=gid_expression.index)
+    
+    logger.debug(f'Calculated residuals for {len(residual_exp)} genes')
+    return residual_exp
 
 
-def load_abc(my_tissue_id, full_gencode=None, full_abc_path= '/home/klawren/oak/pcqtls/data/references/functional_annotations/ABC_predictions/AllPredictions.AvgHiC.ABC0.015.minus150.ForABCPaperV3.txt.gz', 
-             abc_match_path='/home/klawren/oak/pcqtls/data/references/functional_annotations/ABC_predictions/ABC_matched_gtex.csv'):
-    try:
-        if full_gencode==None:
-            gid_gencode, full_gencode = load_gencode()
-    except ValueError:
-        pass
-    # load in ABC data for enhancer gene connections
-    full_abc_pred_df = pd.read_csv(full_abc_path, sep='\t')
-    # load in tissue matching for ABC-gtex tissues
-    # this has to be done by hand
-    # some were clear, for those that aren't I've asked for help and put None for now
+def load_abc(my_tissue_id, full_gencode=None, 
+            full_abc_path=f'{PREFIX}/data/references/functional_annotations/ABC_predictions/AllPredictions.AvgHiC.ABC0.015.minus150.ForABCPaperV3.txt.gz', 
+            abc_match_path=f'{PREFIX}/data/references/functional_annotations/ABC_predictions/ABC_matched_gtex.txt'):
+    """
+    Load ABC (Activity-By-Contact) enhancer-gene connection data for a specific tissue.
+    
+    Args:
+        my_tissue_id (str): GTEx tissue identifier
+        full_gencode (pd.DataFrame): GENCODE annotations (loaded if None)
+        full_abc_path (str): Path to ABC predictions file
+        abc_match_path (str): Path to ABC-GTEx tissue matching file
+    
+    Returns:
+        pd.DataFrame: ABC enhancer-gene connections for the specified tissue
+    """
+    # Load GENCODE if not provided
+    if full_gencode is None:
+        gid_gencode, full_gencode = load_gencode()
+    
+    # Load ABC data for enhancer-gene connections
+    full_abc_pred_df = pd.read_table(full_abc_path)
+    
+    # Load tissue matching for ABC-GTEx tissues
     abc_gtex_match = pd.read_csv(abc_match_path)
-    # get just the enhancer-gene connections for the matched tissue
-    abc_df = full_abc_pred_df[full_abc_pred_df['CellType'] == abc_gtex_match[abc_gtex_match['GTEX_tissue'] == my_tissue_id]['ABC_biosample_id'].iloc[0]]
-    # add transcript ids to relevant abc enhancer-gene connection columns these and set as index
-    gene_enhancer_df = pd.merge(full_gencode[['transcript_id', 'gene_name']], abc_df[['chr', 'start', 'end', 'TargetGene','name','class', 'ABC.Score']], left_on='gene_name', right_on='TargetGene', how='left')
-    gene_enhancer_df.rename(columns={'name':'enhancer'}, inplace=True)
-    gene_enhancer_df.set_index('transcript_id', inplace=True)
+    
+    # Get enhancer-gene connections for the matched tissue
+    abc_df = full_abc_pred_df[full_abc_pred_df['CellType'] == 
+                             abc_gtex_match[abc_gtex_match['GTEX_tissue'] == my_tissue_id]['ABC_biosample_id'].iloc[0]]
+    
+    # Add transcript IDs to ABC enhancer-gene connection columns
+    gene_enhancer_df = pd.merge(full_gencode[['gene_id', 'gene_name']], 
+                               abc_df[['chr', 'start', 'end', 'TargetGene', 'name', 'class', 'ABC.Score']], 
+                               left_on='gene_name', right_on='TargetGene', how='left')
+    gene_enhancer_df.rename(columns={'name': 'enhancer'}, inplace=True)
+    gene_enhancer_df.set_index('gene_id', inplace=True)
     gene_enhancer_df.dropna(inplace=True)
 
+    # Process chromosome and enhancer coordinates
     gene_enhancer_df['chr'] = gene_enhancer_df['chr'].str.split('chr').str[1]
-    gene_enhancer_df = gene_enhancer_df[gene_enhancer_df['chr'].isin(f'{i+1}' for i in range(22))]
+    gene_enhancer_df = gene_enhancer_df[gene_enhancer_df['chr'].isin([str(i) for i in CHROMOSOMES])]
     gene_enhancer_df['chr'] = gene_enhancer_df['chr'].astype(int)
     gene_enhancer_df['enhancer_start'] = gene_enhancer_df['enhancer'].str.split(':').str[1].str.split('-').str[0].astype(int)
     gene_enhancer_df['enhancer_end'] = gene_enhancer_df['enhancer'].str.split(':').str[1].str.split('-').str[1].astype(int)
+    
     return gene_enhancer_df
 
 
-def load_ctcf(my_tissue_id, ctcf_match_path='/home/klawren/oak/pcqtls/data/references/functional_annotations/ctcf_chip/ctcf_matched_gtex.csv', 
-                      ctcf_dir='/home/klawren/oak/pcqtls/data/references/functional_annotations/ctcf_chip'):
-    # load in ctcf data
+def load_ctcf(my_tissue_id, 
+             ctcf_match_path=f'{PREFIX}/data/references/functional_annotations/ctcf_chip/ctcf_matched_gtex.txt', 
+             ctcf_dir=f'{PREFIX}/data/references/functional_annotations/ctcf_chip'):
+    """
+    Load CTCF binding site data for a specific tissue.
+    
+    Args:
+        my_tissue_id (str): GTEx tissue identifier
+        ctcf_match_path (str): Path to CTCF-GTEx tissue matching file
+        ctcf_dir (str): Directory containing CTCF binding site files
+    
+    Returns:
+        pd.DataFrame: CTCF binding sites for the specified tissue
+    """
+    # Load CTCF data
     ctcf_gtex_match = pd.read_csv(ctcf_match_path)
     ctcf_file = ctcf_gtex_match[ctcf_gtex_match['GTEX'] == my_tissue_id].iloc[0]['ctcf']
-    ctcf_df = pd.read_csv(f'{ctcf_dir}/{ctcf_file}.bed.gz', sep='\t', 
-                        names=['chr', 'start', 'end', 'name', 'score', 'strand', 'signal_value', 'p_value', 'q_value', 'peak'])
+    
+    ctcf_df = pd.read_table(f'{ctcf_dir}/{ctcf_file}.bed.gz', 
+                           names=['chr', 'start', 'end', 'name', 'score', 'strand', 
+                                 'signal_value', 'p_value', 'q_value', 'peak'])
+    
+    # Create interval arrays for efficient overlap queries
     ctcf_df['peak_inter'] = pd.arrays.IntervalArray.from_arrays(ctcf_df['start'], ctcf_df['end'])
-    ctcf_df['point_inter'] = pd.arrays.IntervalArray.from_arrays(ctcf_df['start'] + ctcf_df['peak'], ctcf_df['start'] + ctcf_df['peak'] + 1)
-    ctcf_df['Chromosome'] = ctcf_df['chr'].str.split('chr').str[1].astype(str)
+    ctcf_df['point_inter'] = pd.arrays.IntervalArray.from_arrays(ctcf_df['start'] + ctcf_df['peak'], 
+                                                               ctcf_df['start'] + ctcf_df['peak'] + 1)
+    ctcf_df['chr'] = ctcf_df['chr'].str.split('chr').str[1].astype(str)
+    
     return ctcf_df
 
 
-def load_paralogs(paralog_path):
-    # load in paralogs
-    paralog_df = pd.read_csv(paralog_path, sep='\t')
-    # drop genes that don't have paralogues
+def load_paralogs(paralog_path=f'{PREFIX}/data/references/functional_annotations/paralogs_biomart_ensembl97.tsv.gz'):
+    """
+    Load paralogous gene data.
+    
+    Args:
+        paralog_path (str): Path to paralog data file
+    
+    Returns:
+        pd.Series: Grouped paralog data with gene IDs as index and sets of paralog IDs as values
+    """
+    # Load paralogs
+    paralog_df = pd.read_table(paralog_path)
+    
+    # Drop genes that don't have paralogues
     paralog_df.dropna(subset=['Human paralogue gene stable ID'], inplace=True)
-    # group by the gene that has the paralogs (this is bidirectional)
-    # this needs to be done on gene ids without versions, as this isn't the same version number (sadly the correct version isn't availble on biomart)
+    
+    # Group by the gene that has the paralogs (this is bidirectional)
+    # Note: This uses gene IDs without versions as versions may differ between datasets
     paralog_df = paralog_df.groupby('Gene stable ID')['Human paralogue gene stable ID'].apply(set)
+    
     return paralog_df
 
 
-def load_go(go_path):
-    # load in go terms
-    go_df = pd.read_csv(go_path, sep='\t', header=None,
+def load_go(go_path=f'{PREFIX}/data/references/functional_annotations/go_biomart_ensembl97.tsv.gz'):
+    """
+    Load GO (Gene Ontology) term data.
+    
+    Args:
+        go_path (str): Path to GO term file
+    
+    Returns:
+        pd.Series: Grouped GO terms with gene IDs as index and sets of GO accessions as values
+    """
+    # Load GO terms
+    go_df = pd.read_table(go_path, header=None,
                         names = ['Gene stable ID', 'Gene stable ID version', 'Gene start (bp)', 'Gene end', 'Strand', 
                                  'tss', 'gencode_annotation', 'gene_name', 'transcript_type', 'go_accession', 'go_name', 'go_domain'])
-    # only consider matching biological process go terms, as in Ribiero 2021
+    
+    # Only consider matching biological process GO terms, as in Ribiero 2021
     go_df = go_df[go_df['go_domain'] == 'biological_process'].groupby('Gene stable ID')['go_accession'].apply(set)
+    
     return go_df
 
 
-def load_cross_map(cross_map_path):
-    # load in cross mapablity (this is cleaned up in cross_mappability.ipynb)
+def load_cross_map(cross_map_path=f'{PREFIX}/data/references/cross_mappability/cross_mappability_100_agg.csv'):
+    """
+    Load cross-mappability data.
+    
+    Args:
+        cross_map_path (str): Path to cross-mappability file
+    
+    Returns:
+        pd.DataFrame: Cross-mappability data with gene_1 as index and a dictionary of gene_2 and cross_mappability as columns
+    """
+    # Load cross mapablity (this is cleaned up in cross_mappability.ipynb)
     cross_mappability = pd.read_csv(cross_map_path)
     cross_mappability.set_index('gene_1', inplace=True)
     return cross_mappability
 
 
 
-# functions to annotate a cluster df
+# Functions to annotate cluster properties
 
 def get_cluster_size(row, gid_gencode):
-    transcript_ids = row['Transcripts'].split(',')
-    cluster_gencode = gid_gencode.loc[transcript_ids]
-    return  cluster_gencode['end'].max() - cluster_gencode['start'].min()
+    """
+    Calculate the genomic span of a cluster.
+    
+    Args:
+        row (pd.Series): Cluster row with cluster_id
+        gid_gencode (pd.DataFrame): GENCODE annotations indexed by gene_id
+    
+    Returns:
+        int: Genomic span (end - start) of the cluster
+    """
+    gene_ids = row['cluster_id'].split('_')
+    cluster_gencode = gid_gencode.loc[gene_ids]
+    return cluster_gencode['end'].max() - cluster_gencode['start'].min()
+
 
 def get_cluster_tss_size(row, gid_gencode):
-    transcript_ids = row['Transcripts'].split(',')
-    cluster_gencode = gid_gencode.loc[transcript_ids]
-    return  cluster_gencode['tss_start'].max() - cluster_gencode['tss_start'].min()
+    """
+    Calculate the TSS span of a cluster.
+    
+    Args:
+        row (pd.Series): Cluster row with cluster_id
+        gid_gencode (pd.DataFrame): GENCODE annotations indexed by gene_id
+    
+    Returns:
+        int: TSS span (max TSS - min TSS) of the cluster
+    """
+    gene_ids = row['cluster_id'].split('_')
+    cluster_gencode = gid_gencode.loc[gene_ids]
+    return cluster_gencode['tss_start'].max() - cluster_gencode['tss_start'].min()
 
 
 def get_num_overlapping(row, gid_gencode):
-    transcript_ids = row['Transcripts'].split(',')
-    cluster_gencode = gid_gencode.loc[transcript_ids]
-    return  sum((cluster_gencode['tss_start'] - cluster_gencode['tss_start'].shift(1)) < 1000)
+    """
+    Count the number of overlapping TSS regions within a cluster.
+    
+    Args:
+        row (pd.Series): Cluster row with cluster_id
+        gid_gencode (pd.DataFrame): GENCODE annotations indexed by gene_id
+    
+    Returns:
+        int: Number of overlapping TSS regions (within 1kb)
+    """
+    gene_ids = row['cluster_id'].split('_')
+    cluster_gencode = gid_gencode.loc[gene_ids]
+    return sum((cluster_gencode['tss_start'] - cluster_gencode['tss_start'].shift(1)) < 1000)
 
 # def get_cluster_start_ids(cluster_df):
 #     # the first for pairs, the first and second for threes, ect
@@ -148,14 +348,28 @@ def get_num_overlapping(row, gid_gencode):
 #     return cluster_start_ids
 
 def annotate_sizes(cluster_df, gid_gencode):
+    """
+    Add cluster size annotations to the cluster DataFrame.
+    
+    Args:
+        cluster_df (pd.DataFrame): Cluster DataFrame to annotate
+        gid_gencode (pd.DataFrame): GENCODE annotations indexed by transcript_id
+    """
     cluster_df['cluster_size'] = cluster_df.apply(get_cluster_size, axis=1, args=(gid_gencode,))
     cluster_df['cluster_tss_size'] = cluster_df.apply(get_cluster_tss_size, axis=1, args=(gid_gencode,))
 
 
 def annotate_positions(cluster_df, gid_gencode):
+    """
+    Add genomic position annotations to the cluster DataFrame.
+    
+    Args:
+        cluster_df (pd.DataFrame): Cluster DataFrame to annotate
+        gid_gencode (pd.DataFrame): GENCODE annotations indexed by gene_id
+    """
     for idx, row in cluster_df.iterrows():
-        transcript_ids = row['Transcripts'].split(',')
-        cluster_gencode = gid_gencode.loc[transcript_ids]
+        gene_ids = row['cluster_id'].split('_')
+        cluster_gencode = gid_gencode.loc[gene_ids]
         cluster_df.loc[idx, 'start'] = cluster_gencode['start'].min()
         cluster_df.loc[idx, 'end'] = cluster_gencode['end'].max()
         cluster_df.loc[idx, 'tss_min'] = cluster_gencode['tss_start'].min()
@@ -163,36 +377,65 @@ def annotate_positions(cluster_df, gid_gencode):
 
 
 def get_bidirectional(row, gid_gencode):
-    transcript_ids = row['Transcripts'].split(',')
-    cluster_gencode = gid_gencode.loc[transcript_ids]
+    """
+    Count bidirectional promoter pairs in a cluster.
+    
+    Args:
+        row (pd.Series): Cluster row with cluster_id
+        gid_gencode (pd.DataFrame): GENCODE annotations indexed by gene_id
+    
+    Returns:
+        int: Number of bidirectional promoter pairs (divided by 2 to avoid double counting)
+    """
+    gene_ids = row['cluster_id'].split('_')
+    cluster_gencode = gid_gencode.loc[gene_ids]
     num_bidirectional = 0
-    # check all pairwise combos of genes
+    
+    # Check all pairwise combinations of genes
     for idx, first_gene_row in cluster_gencode.iterrows():
         for idx, second_gene_row in cluster_gencode.iterrows():
             opp_strand = first_gene_row['strand'] != second_gene_row['strand']
-            close = abs(first_gene_row['tss_start'] - second_gene_row['tss_start']) <= 1000
+            close = abs(first_gene_row['tss_start'] - second_gene_row['tss_start']) <= BIDIRECTIONAL_PROMOTER_DISTANCE
             if opp_strand & close:
-                # found a bidirectional promotor
-                num_bidirectional +=1
+                # Found a bidirectional promoter
+                num_bidirectional += 1
 
-    # didn't find a bidirectional promotor
-    return num_bidirectional/2
+    # Return half to avoid double counting
+    return num_bidirectional / 2
+
 
 def annotate_bidirectional(cluster_df, gid_gencode):
+    """
+    Add bidirectional promoter annotations to the cluster DataFrame.
+    
+    Args:
+        cluster_df (pd.DataFrame): Cluster DataFrame to annotate
+        gid_gencode (pd.DataFrame): GENCODE annotations indexed by transcript_id
+    """
     cluster_df['num_bidirectional_promoter'] = cluster_df.apply(get_bidirectional, axis=1, args=(gid_gencode,))
     cluster_df['has_bidirectional_promoter'] = cluster_df['num_bidirectional_promoter'] > 0
 
-# annotate clusters with the number of shared enhancers
-
 def annotate_enhancers(cluster_df, gene_enhancer_df):
+    """
+    Annotate clusters with ABC enhancer information.
+    
+    Args:
+        cluster_df (pd.DataFrame): Cluster DataFrame to annotate
+        gene_enhancer_df (pd.DataFrame): ABC enhancer-gene connections
+    """
     for idx, row in tqdm(cluster_df.iterrows(), total=len(cluster_df)):
-        enhancer_list = gene_enhancer_df[gene_enhancer_df.index.isin(row['Transcripts'].split(','))]
+        # Get enhancers for genes in this cluster
+        enhancer_list = gene_enhancer_df[gene_enhancer_df.index.isin(row['cluster_id'].split('_'))]
         full_enhancer_list = enhancer_list['enhancer']
-        strong_enhancer_list = enhancer_list[enhancer_list['ABC.Score']>=0.1]['enhancer']
-        very_strong_enhancer_list = enhancer_list[enhancer_list['ABC.Score']>=0.25]['enhancer']
+        strong_enhancer_list = enhancer_list[enhancer_list['ABC.Score'] >= ABC_SCORE_STRONG_THRESHOLD]['enhancer']
+        very_strong_enhancer_list = enhancer_list[enhancer_list['ABC.Score'] >= ABC_SCORE_VERY_STRONG_THRESHOLD]['enhancer']
+        
+        # Count shared enhancers at different strength thresholds
         num_shared_enhancers = sum(full_enhancer_list.duplicated())
         num_shared_strong_enhancers = sum(strong_enhancer_list.duplicated())
         num_shared_very_strong_enhancers = sum(very_strong_enhancer_list.duplicated())
+        
+        # Store annotations
         cluster_df.loc[idx, 'num_abc_genes'] = len(enhancer_list.index.unique())
         cluster_df.loc[idx, 'num_shared_enhancers'] = num_shared_enhancers
         cluster_df.loc[idx, 'num_shared_strong_enhancers'] = num_shared_strong_enhancers
@@ -207,15 +450,17 @@ def annotate_ctcf(cluster_df, ctcf_df):
     # ctcf intervals for each chromosome
     chr_ctcf_peaks={}
     chr_ctcf_points={}
-    for chr in cluster_df['Chromosome'].unique():
-        ctcf_chr = ctcf_df[ctcf_df['Chromosome'] == chr.astype(str)]
-        chr_ctcf_peaks[chr] = pd.arrays.IntervalArray.from_arrays(ctcf_chr['start'], ctcf_chr['end'])
-        chr_ctcf_points[chr] = pd.arrays.IntervalArray.from_arrays(ctcf_chr['start'] + ctcf_chr['peak'], ctcf_chr['start'] + ctcf_chr['peak'] + 1)
+    for chr_val in cluster_df['chr'].unique():
+        # Handle both chr prefix and numeric chromosome formats
+        chr_str = chr_val if isinstance(chr_val, str) else f'chr{chr_val}'
+        ctcf_chr = ctcf_df[ctcf_df['chr'] == chr_str]
+        chr_ctcf_peaks[chr_val] = pd.arrays.IntervalArray.from_arrays(ctcf_chr['start'], ctcf_chr['end'])
+        chr_ctcf_points[chr_val] = pd.arrays.IntervalArray.from_arrays(ctcf_chr['start'] + ctcf_chr['peak'], ctcf_chr['start'] + ctcf_chr['peak'] + 1)
     # annotate each cluster
     for idx, row in tqdm(cluster_df.iterrows(), total=len(cluster_df)):
         try:
-            num_ctcf_peak = sum(chr_ctcf_peaks[row['Chromosome']].overlaps(row['interval']))
-            num_ctcf_point = sum(chr_ctcf_points[row['Chromosome']].overlaps(row['interval']))
+            num_ctcf_peak = sum(chr_ctcf_peaks[row['chr']].overlaps(row['interval']))
+            num_ctcf_point = sum(chr_ctcf_points[row['chr']].overlaps(row['interval']))
         except KeyError:
             num_ctcf_peak = 0
             num_ctcf_point = 0
@@ -226,7 +471,9 @@ def annotate_ctcf(cluster_df, ctcf_df):
 
 
 def count_tad_overlap(row, tad_df, inter_column):
-    tad_chr = tad_df[tad_df['Chromosome']==row.Chromosome]
+    # Handle both chr prefix and numeric chromosome formats
+    chr_val = row.chr if isinstance(row.chr, str) else f'chr{row.chr}'
+    tad_chr = tad_df[tad_df['chr']==chr_val]
     # intervals for the TADs and TAD edges
     chr_tad_intervals = pd.arrays.IntervalArray.from_arrays(tad_chr['start'], tad_chr['end'])
     chr_tad_edges = pd.arrays.IntervalArray.from_arrays(pd.concat([tad_chr['start'], tad_chr['end']]), pd.concat([tad_chr['start']+1, tad_chr['end']+1]))
@@ -249,10 +496,22 @@ def count_tad_overlap(row, tad_df, inter_column):
         return 1
 
 def annotate_tads(cluster_df, tad_df):
+    """
+    Annotate clusters with TAD boundary information.
+    
+    Args:
+        cluster_df (pd.DataFrame): Cluster DataFrame to annotate
+        tad_df (pd.DataFrame): TAD boundary data
+    """
+    # Create interval arrays for efficient overlap queries
     cluster_df['tss_inter'] = pd.arrays.IntervalArray.from_arrays(cluster_df['tss_min'], cluster_df['tss_max'])
     cluster_df['gene_inter'] = pd.arrays.IntervalArray.from_arrays(cluster_df['start'], cluster_df['end'])
+    
+    # Count TAD overlaps for gene and TSS regions
     cluster_df['num_tads_gene'] = cluster_df.apply(count_tad_overlap, axis=1, args=(tad_df, 'gene_inter'))
     cluster_df['num_tads_tss'] = cluster_df.apply(count_tad_overlap, axis=1, args=(tad_df, 'tss_inter'))
+    
+    # Create boolean flags for TAD spanning
     cluster_df['has_tads_gene'] = cluster_df['num_tads_gene'] > 1
     cluster_df['has_tads_tss'] = cluster_df['num_tads_tss'] > 1
 
@@ -260,7 +519,7 @@ def annotate_tads(cluster_df, tad_df):
 
 def annotate_enhancers_jaccard(cluster_df, gene_enhancer_df):
     for idx, row in tqdm(cluster_df.iterrows(), total=len(cluster_df)):
-        transcript_list = row['Transcripts'].split(',')
+        transcript_list = row['cluster_id'].split('_')
         jaccards_unweighted=[]
         jaccards_weighted=[]
         for i in range(len(transcript_list)):
@@ -299,20 +558,31 @@ def annotate_enhancers_jaccard(cluster_df, gene_enhancer_df):
         cluster_df.loc[idx, 'mean_jaccard_weighted'] = np.average(jaccards_weighted)
 
 
-def annotate_correlation(cluster_df, residal_exp):
+def annotate_correlation(cluster_df, residual_exp):
+    """
+    Annotate clusters with correlation statistics.
+    
+    Args:
+        cluster_df (pd.DataFrame): Cluster DataFrame to annotate
+        residual_exp (pd.DataFrame): Residualized expression data
+    """
     for idx, row in tqdm(cluster_df.iterrows(), total=len(cluster_df)):
-        transcript_list = row['Transcripts'].split(',')
-        cluster_expression = residal_exp.loc[transcript_list].T.corr('spearman').to_numpy()
+        transcript_list = row['cluster_id'].split('_')
+        
+        # Calculate Spearman correlations between genes in cluster
+        cluster_expression = residual_exp.loc[transcript_list].T.corr('spearman').to_numpy()
         cluster_corr = cluster_expression[np.triu_indices(len(cluster_expression), k=1)]
-        cluster_df.loc[idx, 'Mean_cor'] = cluster_corr.mean()
+        
+        # Store correlation statistics
+        cluster_df.loc[idx, 'mean_corr'] = cluster_corr.mean()
         cluster_df.loc[idx, 'corr_list'] = str(cluster_corr)
-        cluster_df.loc[idx, 'Mean_pos_cor'] = cluster_corr[cluster_corr>0].mean()
-        cluster_df.loc[idx, 'Mean_neg_cor'] = cluster_corr[cluster_corr<0].mean()
+        cluster_df.loc[idx, 'mean_pos_corr'] = cluster_corr[cluster_corr > 0].mean()
+        cluster_df.loc[idx, 'mean_neg_corr'] = cluster_corr[cluster_corr < 0].mean()
 
 
 def annotate_go(cluster_df, go_df):
     for idx, row in tqdm(cluster_df.iterrows(), total=len(cluster_df)):
-        transcript_list_versions = row['Transcripts'].split(',')
+        transcript_list_versions = row['cluster_id'].split('_')
         transcript_list_no_versions = [transcript.split('.')[0] for transcript in transcript_list_versions]
 
         go_list = go_df[go_df.index.isin(transcript_list_no_versions)]
@@ -329,7 +599,7 @@ def annotate_go(cluster_df, go_df):
 
 # annotate paralogs
 def get_paralogs(row, paralog_df):
-    transcript_list_versions = row['Transcripts'].split(',')
+    transcript_list_versions = row['cluster_id'].split('_')
     transcript_list_no_versions = set([transcript.split('.')[0] for transcript in transcript_list_versions])
 
     paralogs = 0
@@ -349,7 +619,7 @@ def annotate_paralogs(cluster_df, paralog_df):
 
 def get_cross_map(row, cross_mappability, cross_map_threshold=100):
     # number of transcripts that cross map to some other transcript in the cluster
-    transcript_list = set(row['Transcripts'].split(','))
+    transcript_list = set(row['cluster_id'].split('_'))
     cross_maps = 0
     for transcript in transcript_list:
         try:
@@ -369,94 +639,168 @@ def annotate_cross_maps(cluster_df, cross_mappability):
 
 def annotate_complexes(cluster_df, complex_df):
     for idx, row in tqdm(cluster_df.iterrows(), total=len(cluster_df)):
-        complex_list = complex_df[complex_df.index.isin(row['Transcripts'].split(','))]
+        complex_list = complex_df[complex_df.index.isin(row['cluster_id'].split('_'))]
         num_complexes = sum(complex_list.explode('ComplexID').duplicated())
         cluster_df.loc[idx, 'num_complexes'] = num_complexes
         cluster_df.loc[idx, 'has_complexes'] = num_complexes > 0
 
 
-def annotate_avg_expression(cluster_df, tissue_avg_expression):
-    for idx, row in tqdm(cluster_df.iterrows(), total=len(cluster_df)):
-        transcript_list = row['Transcripts'].split(',')
-        cluster_avg_expression = tissue_avg_expression.loc[row['tissue'],transcript_list]
-        cluster_df.loc[idx, 'avg_expression'] = np.mean(cluster_avg_expression)
-        cluster_df.loc[idx, 'avg_log_expression'] = np.mean(np.log10(cluster_avg_expression))
+
 
 # function to add all annotations, give correctly loaded data
-def add_annotations(cluster_df, gid_gencode, gene_enhancer_df, paralog_df, cross_mappability, go_df, ctcf_df, residal_exp, tad_df):
+def add_annotations(cluster_df, gid_gencode, gene_enhancer_df, paralog_df, cross_mappability, go_df, ctcf_df, residual_exp, tad_df):
+    """
+    Add all annotations to the cluster DataFrame.
+    
+    Args:
+        cluster_df (pd.DataFrame): Cluster DataFrame to annotate
+        gid_gencode (pd.DataFrame): GENCODE annotations
+        gene_enhancer_df (pd.DataFrame): ABC enhancer-gene connections
+        paralog_df (pd.Series): Paralog data
+        cross_mappability (pd.DataFrame): Cross-mappability data
+        go_df (pd.Series): GO term data
+        ctcf_df (pd.DataFrame): CTCF binding site data
+        residual_exp (pd.DataFrame): Residualized expression data
+        tad_df (pd.DataFrame): TAD boundary data
+    """
+    logger = logging.getLogger(__name__)
+    logger.info(f'Starting annotation of {len(cluster_df)} clusters')
+    
     cluster_df.reset_index(drop=True, inplace=True)
+    
+    # Add basic cluster properties
+    logger.info('Adding cluster size annotations...')
     annotate_sizes(cluster_df, gid_gencode)
-    print('annotated sizes')
-    annotate_positions(cluster_df, gid_gencode) # this must go before annotate ctcf and tads
-    print('annotated positions')
+    
+    # Add genomic positions (must be done before TAD and CTCF annotations)
+    logger.info('Adding genomic position annotations...')
+    annotate_positions(cluster_df, gid_gencode)
+    
+    # Add TAD boundary information
+    logger.info('Adding TAD boundary annotations...')
     annotate_tads(cluster_df, tad_df)
-    print('annotated tads')
+    
+    # Add bidirectional promoter information
+    logger.info('Adding bidirectional promoter annotations...')
     annotate_bidirectional(cluster_df, gid_gencode)
-    print('annotated bidirectional promoters')
+    
+    # Add enhancer information
+    logger.info('Adding enhancer annotations...')
     annotate_enhancers(cluster_df, gene_enhancer_df)
-    print('annotated enhancers')
+    
+    # Add paralog information
+    logger.info('Adding paralog annotations...')
     annotate_paralogs(cluster_df, paralog_df)
-    print('annotated paralogs')
-    annotate_cross_maps(cluster_df,cross_mappability)
-    print('annotated cross mappability')
+    
+    # Add cross-mappability information
+    logger.info('Adding cross-mappability annotations...')
+    annotate_cross_maps(cluster_df, cross_mappability)
+    
+    # Add GO term information
+    logger.info('Adding GO term annotations...')
     annotate_go(cluster_df, go_df)
-    print('annotated go')
+    
+    # Add enhancer Jaccard indices
+    logger.info('Adding enhancer Jaccard index annotations...')
     annotate_enhancers_jaccard(cluster_df, gene_enhancer_df)
-    print('annotated enhancers with jaccard index')
+    
+    # Add CTCF binding site information
+    logger.info('Adding CTCF binding site annotations...')
     annotate_ctcf(cluster_df, ctcf_df)
-    print('annotated ctcf')
+    
+    # Add correlation information (if not already present)
+    logger.info('Adding correlation annotations...')
     try:
-        cluster_df['has_neg_corr'] = ~cluster_df['Mean_neg_cor'].isna()
-        cluster_df['has_high_pos_corr'] = cluster_df['Mean_pos_cor'] > .5
+        cluster_df['has_neg_corr'] = ~cluster_df['mean_neg_corr'].isna()
+        cluster_df['has_high_pos_corr'] = cluster_df['mean_pos_corr'] > HIGH_POSITIVE_CORRELATION_THRESHOLD
+        logger.debug('Correlation annotations already present')
     except KeyError:
-        annotate_correlation(cluster_df, residal_exp)
-        cluster_df['has_neg_corr'] = ~cluster_df['Mean_neg_cor'].isna()
-        cluster_df['has_high_pos_corr'] = cluster_df['Mean_pos_cor'] > .5
-        print('annotated correlations')
+        logger.debug('Calculating correlation annotations...')
+        annotate_correlation(cluster_df, residual_exp)
+        cluster_df['has_neg_corr'] = ~cluster_df['mean_neg_corr'].isna()
+        cluster_df['has_high_pos_corr'] = cluster_df['mean_pos_corr'] > HIGH_POSITIVE_CORRELATION_THRESHOLD
+    
+    logger.info(f'Completed annotation of {len(cluster_df)} clusters')
 
 
 
 def load_and_annotate(cluster_df, my_tissue_id, covariates_path, expression_path,
-                      gencode_path='data/references/processed_gencode.v26.GRCh38.genes.csv', 
-                      full_abc_path = 'data/references/functional_annotations/ABC_predictions/AllPredictions.AvgHiC.ABC0.015.minus150.ForABCPaperV3.txt.gz', 
-                      abc_match_path='data/references/functional_annotations/ABC_predictions/ABC_matched_gtex.csv', 
-                      ctcf_match_path='data/references/functional_annotations/ctcf_chip/ctcf_matched_gtex.csv', 
-                      ctcf_dir='data/references/functional_annotations/ctcf_chip', 
-                      paralog_path='/data/references/functional_annotations/paralogs_biomart_ensembl97.tsv.gz', 
-                      go_path='data/references/functional_annotations/go_biomart_ensembl97.tsv.gz', 
-                      cross_map_path='data/references/cross_mappability/cross_mappability_100_agg.csv',
-                      tad_path='data/references/TAD_annotations/TADs_hg38/converted_HiC_IMR90_DI_10kb.txt',
-                      verbosity=0):
-    if verbosity:
-        print('loading data')
-    gid_gencode, full_gencode = load_gencode(f'{prefix}/{gencode_path}')
-    gene_enhancer_df = load_abc(my_tissue_id, full_gencode, f'{prefix}/{full_abc_path}', f'{prefix}/{abc_match_path}')
-    ctcf_df = load_ctcf(my_tissue_id, f'{prefix}/{ctcf_match_path}', f'{prefix}/{ctcf_dir}')
-    paralog_df = load_paralogs(f'{prefix}/{paralog_path}')
-    go_df = load_go(f'{prefix}/{go_path}')
-    cross_mappability = load_cross_map(f'{prefix}/{cross_map_path}')
-    residal_exp = get_redidual_expression(covariates_path, expression_path)
-    tad_df = load_tad(f'{prefix}/{tad_path}')
-    if verbosity:
-        print('data loaded')
+                      gencode_path=f'{PREFIX}/data/references/processed_gencode.v26.GRCh38.genes.txt', 
+                      full_abc_path = f'{PREFIX}/data/references/functional_annotations/ABC_predictions/AllPredictions.AvgHiC.ABC0.015.minus150.ForABCPaperV3.txt.gz', 
+                      abc_match_path=f'{PREFIX}/data/references/functional_annotations/ABC_predictions/ABC_matched_gtex.txt', 
+                      ctcf_match_path=f'{PREFIX}/data/references/functional_annotations/ctcf_chip/ctcf_matched_gtex.txt', 
+                      ctcf_dir=f'{PREFIX}/data/references/functional_annotations/ctcf_chip', 
+                      paralog_path=f'{PREFIX}/data/references/functional_annotations/paralogs_biomart_ensembl97.tsv.gz', 
+                      go_path=f'{PREFIX}/data/references/functional_annotations/go_biomart_ensembl97.tsv.gz', 
+                      cross_map_path=f'{PREFIX}/data/references/cross_mappability/cross_mappability_100_agg.csv',
+                      tad_path=f'{PREFIX}/data/references/TAD_annotations/TADs_hg38/converted_HiC_IMR90_DI_10kb.txt'):
+    """
+    Load all annotation data and annotate clusters.
+    
+    Args:
+        cluster_df (pd.DataFrame): Cluster DataFrame to annotate
+        my_tissue_id (str): GTEx tissue identifier
+        covariates_path (str): Path to covariates file
+        expression_path (str): Path to expression file
+        gencode_path (str): Path to GENCODE file
+        full_abc_path (str): Path to ABC predictions file
+        abc_match_path (str): Path to ABC-GTEx matching file
+        ctcf_match_path (str): Path to CTCF-GTEx matching file
+        ctcf_dir (str): Directory containing CTCF files
+        paralog_path (str): Path to paralog file
+        go_path (str): Path to GO terms file
+        cross_map_path (str): Path to cross-mappability file
+        tad_path (str): Path to TAD boundaries file
+    """
+    logger = logging.getLogger(__name__)
+    logger.info(f'Loading annotation data for tissue: {my_tissue_id}')
+    
+    # Load all annotation data
+    logger.info('Loading GENCODE annotations...')
+    gid_gencode, full_gencode = load_gencode(f'{PREFIX}/{gencode_path}')
+    
+    logger.info('Loading ABC enhancer-gene connections...')
+    gene_enhancer_df = load_abc(my_tissue_id, full_gencode, f'{PREFIX}/{full_abc_path}', f'{PREFIX}/{abc_match_path}')
+    
+    logger.info('Loading CTCF binding sites...')
+    ctcf_df = load_ctcf(my_tissue_id, f'{PREFIX}/{ctcf_match_path}', f'{PREFIX}/{ctcf_dir}')
+    
+    logger.info('Loading paralog data...')
+    paralog_df = load_paralogs(f'{PREFIX}/{paralog_path}')
+    
+    logger.info('Loading GO terms...')
+    go_df = load_go(f'{PREFIX}/{go_path}')
+    
+    logger.info('Loading cross-mappability data...')
+    cross_mappability = load_cross_map(f'{PREFIX}/{cross_map_path}')
+    
+    logger.info('Calculating residualized expression...')
+    residual_exp = get_residual_expression(covariates_path, expression_path)
+    
+    logger.info('Loading TAD boundaries...')
+    tad_df = load_tad(f'{PREFIX}/{tad_path}')
+    
+    logger.info('All annotation data loaded successfully')
+    
+    # Annotate clusters
     cluster_df.reset_index(drop=True, inplace=True)
-    add_annotations(cluster_df, gid_gencode, gene_enhancer_df, paralog_df, cross_mappability, go_df, ctcf_df, residal_exp, tad_df)
+    add_annotations(cluster_df, gid_gencode, gene_enhancer_df, paralog_df, cross_mappability, go_df, ctcf_df, residual_exp, tad_df)
 
 
 
-def run_annotate_from_config(config_path, my_tissue_id, verbosity=0):
+def run_annotate_from_config(config_path, my_tissue_id):
     # general paths from config
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
     clusters_dir = config['clusters_dir']
     expression_dir = config['expression_dir']
-    expression_path = f'{prefix}/{expression_dir}/{my_tissue_id}.v8.normalized_expression.bed'
+    expression_path = f'{PREFIX}/{expression_dir}/{my_tissue_id}.v8.normalized_expression.bed'
     covariates_dir = config['covariates_dir']
-    covariates_path = f'{prefix}/{covariates_dir}/{my_tissue_id}.v8.covariates.txt'
+    covariates_path = f'{PREFIX}/{covariates_dir}/{my_tissue_id}.v8.covariates.txt'
 
-    cluster_df = pd.read_csv(f'{prefix}/{clusters_dir}/{my_tissue_id}_clusters_all_chr.csv', index_col=0)
+    cluster_df = pd.read_csv(f'{PREFIX}/{clusters_dir}/{my_tissue_id}.clusters.txt', index_col=0)
     cluster_df.reset_index(drop=True, inplace=True)
-    load_and_annotate(cluster_df, my_tissue_id, covariates_path, expression_path, verbosity=verbosity)
+    load_and_annotate(cluster_df, my_tissue_id, covariates_path, expression_path)
     return cluster_df
 
 def run_annotate_from_paths(my_tissue_id, clusters_path, expression_path, covariates_path,
@@ -479,33 +823,88 @@ def run_annotate_from_paths(my_tissue_id, clusters_path, expression_path, covari
 
 
 def main():
-    # Parse arguments from cmd
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-t', '--tissue', help = 'which tissue we are in')
-    parser.add_argument('-c', '--cluster_path', help = 'path to .csv clusters')
-    parser.add_argument('-e', '--expression_path', help = 'path to .bed normalized expression')
-    parser.add_argument('-co', '--covariates_path', help = 'path to covariates')
-    parser.add_argument('--gencode_path', help = 'path to gencode')
-    parser.add_argument('--full_abc_path', help = 'path to abc')
-    parser.add_argument('--abc_match_path', help = 'path to abc gtex matching')
-    parser.add_argument('--ctcf_match_path', help = 'path to ctcf matching')
-    parser.add_argument('--ctcf_dir', help = 'path to ctcf dir')
-    parser.add_argument('--paralog_path', help = 'path to paralogs')
-    parser.add_argument('--go_path', help = 'path to go')
-    parser.add_argument('--cross_map_path', help = 'path to cross map')
-    parser.add_argument('--tad_path', help = 'path to tad data')
-    parser.add_argument('-o', '--out_path', help='path to write out annotated clusters')
-    parser.add_argument('--verbosity', type=int, default=0, help = 'output verbosity')
+    """
+    Main function to handle command-line interface and execute cluster annotation.
+    
+    Parses command-line arguments and runs the cluster annotation pipeline.
+    """
+    # Set up logging
+    setup_logging()
+    logger = logging.getLogger(__name__)
+    
+    # Set up command-line argument parser
+    parser = argparse.ArgumentParser(
+        description='Annotate gene expression clusters with genomic and functional features',
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    
+    # Required arguments
+    parser.add_argument('-t', '--tissue-id', required=True,
+                       help='GTEx tissue identifier')
+    parser.add_argument('-c', '--clusters', required=True,
+                       help='Cluster CSV file')
+    parser.add_argument('-e', '--expression', required=True,
+                       help='Normalized expression BED file')
+    parser.add_argument('-co', '--covariates', required=True,
+                       help='Covariates file')
+    parser.add_argument('-o', '--output', required=True,
+                       help='Output file for annotated clusters')
+    
+    # Optional annotation files
+    parser.add_argument('--gencode', 
+                       help='GENCODE annotation file')
+    parser.add_argument('--full-abc', 
+                       help='ABC predictions file')
+    parser.add_argument('--abc-match', 
+                       help='ABC-GTEx tissue matching file')
+    parser.add_argument('--ctcf-match', 
+                       help='CTCF-GTEx tissue matching file')
+    parser.add_argument('--ctcf-dir', 
+                       help='Directory containing CTCF binding site files')
+    parser.add_argument('--paralog', 
+                       help='Paralog data file')
+    parser.add_argument('--go', 
+                       help='GO term file')
+    parser.add_argument('--cross-map', 
+                       help='Cross-mappability file')
+    parser.add_argument('--tad', 
+                       help='TAD boundary file')
+    parser.add_argument('--verbose', '-v', action='store_true',
+                       help='Enable verbose logging')
 
+
+    # Parse arguments
     args = parser.parse_args()
-    cluster_df_annotated = run_annotate_from_paths(args.tissue, args.cluster_path, args.expression_path, args.covariates_path,
-                                                   args.gencode_path, args.full_abc_path, args.abc_match_path, args.ctcf_match_path,
-                                                   args.ctcf_dir, args.paralog_path, args.go_path, args.cross_map_path, args.tad_path)
-    # add cluster id
-    for idx, row in cluster_df_annotated.iterrows():
-        cluster_df_annotated.loc[idx, 'cluster_id']  = '_'.join([*sorted(row['Transcripts'].split(','))])
+    
+    if args.verbose:
+        setup_logging(logging.DEBUG)
+    
+    try:
+        # Validate input files
+        logger.info("Validating input files...")
+        validate_input_files(args.cluster_path, args.expression_path, args.covariates_path)
+        
+        logger.info(f'Starting cluster annotation for tissue: {args.tissue}')
+        
+        # Run annotation
+        cluster_df_annotated = run_annotate_from_paths(args.tissue, args.cluster_path, args.expression_path, args.covariates_path,
+                                                       args.gencode_path, args.full_abc_path, args.abc_match_path, args.ctcf_match_path,
+                                                       args.ctcf_dir, args.paralog_path, args.go_path, args.cross_map_path, args.tad_path)
 
-    cluster_df_annotated.to_csv(args.out_path)
+        # Write output
+        logger.info(f'Writing annotated clusters to {args.out_path}')
+        cluster_df_annotated.to_csv(args.out_path, index=False)
+        logger.info(f'Successfully wrote {len(cluster_df_annotated)} annotated clusters to {args.out_path}')
+        
+    except FileNotFoundError as e:
+        logger.error(f"File not found: {e}")
+        sys.exit(1)
+    except ValueError as e:
+        logger.error(f"Invalid input: {e}")
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
