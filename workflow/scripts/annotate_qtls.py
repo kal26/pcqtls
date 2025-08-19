@@ -186,7 +186,7 @@ def add_annotations_qtl(qtls, gid_gencode, gene_enhancer_df, ctcf_df, tad_df):
 
 
 def load_and_annotate(qtls, my_tissue_id,
-                      gencode_path='data/references/processed_gencode.v26.GRCh38.genes.txt', 
+                      gencode_path='data/references/gencode.v26.genes.txt', 
                       full_abc_path='data/references/functional_annotations/ABC_predictions/AllPredictions.AvgHiC.ABC0.015.minus150.ForABCPaperV3.txt.gz', 
                       abc_match_path='data/references/functional_annotations/ABC_predictions/ABC_matched_gtex.txt', 
                       ctcf_match_path='data/references/functional_annotations/ctcf_chip/ctcf_matched_gtex.txt', 

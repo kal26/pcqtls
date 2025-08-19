@@ -1,5 +1,5 @@
 # for inputs
-tissue_id_path: "data/references/selected_tissue_ids.txt"
+tissue_id_path: "data/references/selected_tissue_ids.csv"
 covariates_dir: "data/processed/covariates_peers/"
 expression_dir: "data/processed/normalized_expression_proteincoding/"
 chr_list_path: "data/references/chrs.csv"
@@ -17,24 +17,25 @@ annotations_output_dir: "output/proteincoding_main/annotations/"
 # for clusters
 percent_corr_cutoff: .7
 cutoff_type: "pvalue"
-min_corr_cutoff: 0.1 
+min_corr_cutoff: 0.1 # this doesn"t matter with pvalue as cutoff type
 
 # for cluster annotation
 gencode_path: "data/references/gencode.v26.genes.txt"
 full_abc_path: "data/references/functional_annotations/ABC_predictions/ABC.hg38.bed"
-abc_match_path: "data/references/functional_annotations/ABC_predictions/ABC_matched_gtex.txt"
-ctcf_match_path: "data/references/functional_annotations/ctcf_chip/ctcf_matched_gtex.txt"
+abc_match_path: "data/references/functional_annotations/ABC_predictions/ABC_matched_gtex.csv"
+ctcf_match_path: "data/references/functional_annotations/ctcf_chip/ctcf_matched_gtex.csv"
 ctcf_dir: "data/references/functional_annotations/ctcf_chip"
-paralog_path: "/data/references/functional_annotations/paralogs_biomart_ensembl97.tsv.gz"
+paralog_path: "data/references/functional_annotations/paralogs_biomart_ensembl97.tsv.gz"
 go_path: "data/references/functional_annotations/go_biomart_ensembl97.tsv.gz"
 cross_map_path: "data/references/cross_mappability/cross_mappability_100_agg.csv"
 tad_path: "data/references/TAD_annotations/TADs_hg38/converted_HiC_IMR90_DI_10kb.txt"
+avg_expression_path: "data/processed/GTEx_Analysis_RSEMv1.gene_tpm.tissue_avg.csv"
 
 # for coloc
 coloc_output_dir: "output/proteincoding_main/coloc/"
 
 gwas_meta: "data/references/gwas_metadata.txt"
-gtex_meta: "data/references/gtex_sample_sizes.txt"
-gwas_folder: "data/references/gwas_summary_stats/"
+gtex_meta: "data/references/gtex_sample_sizes.csv"
+gwas_folder: "/oak/stanford/groups/smontgom/shared/gwas_summary_stats/barbeira_gtex_imputed/imputed_gwas_hg38_1.1/"
 
 code_dir: "workflow/scripts"

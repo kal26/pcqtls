@@ -85,7 +85,7 @@ def load_tad(tad_path=f'{PREFIX}/data/references/TAD_annotations/TADs_hg38/conve
     return tad_df
 
 
-def load_gencode(gencode_path=f'{PREFIX}/data/references/processed_gencode.v26.GRCh38.genes.txt', 
+def load_gencode(gencode_path=f'{PREFIX}/data/references/gencode.v26.genes.txt', 
                 protein_coding_only=True):
     """
     Load and process GENCODE gene annotations.
@@ -657,7 +657,7 @@ def add_annotations(cluster_df, gid_gencode, gene_enhancer_df, paralog_df, cross
 
 
 def load_and_annotate(cluster_df, my_tissue_id, covariates_path, expression_path,
-                      gencode_path=f'{PREFIX}/data/references/processed_gencode.v26.GRCh38.genes.txt', 
+                      gencode_path=f'{PREFIX}/data/references/gencode.v26.genes.txt', 
                       full_abc_path = f'{PREFIX}/data/references/functional_annotations/ABC_predictions/AllPredictions.AvgHiC.ABC0.015.minus150.ForABCPaperV3.txt.gz', 
                       abc_match_path=f'{PREFIX}/data/references/functional_annotations/ABC_predictions/ABC_matched_gtex.txt', 
                       ctcf_match_path=f'{PREFIX}/data/references/functional_annotations/ctcf_chip/ctcf_matched_gtex.txt', 
