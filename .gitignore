@@ -15,6 +15,7 @@ run_snakemake_subsampling.sh
 run_snakemake.sh
 config_old/*
 config/slurm_scg/*
+config/main_pcqtl.yaml
 # R-specific files
 .RData
 .Rhistory
