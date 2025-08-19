@@ -1,7 +1,7 @@
 
-### Output File Formats
+# Output File Formats
 
-#### Gene Clusters (`clusters_dir/{TISSUE}.clusters.txt`)
+## Gene Clusters (`clusters_dir/{TISSUE}.clusters.txt`)
 Tab-separated file containing gene expression clusters:
 - `chr`: Chromosome (e.g., 'chr1')
 - `cluster_id`: Underscore-separated list of transcripts in each cluster
@@ -12,7 +12,7 @@ Tab-separated file containing gene expression clusters:
 - `mean_pos_corr`: Mean positive correlation value
 - `mean_neg_corr`: Mean negative correlation value
 
-#### Principal Components (`pc_output_dir/{TISSUE}.pcs.bed`)
+## Principal Components (`pc_output_dir/{TISSUE}.pcs.bed`)
 BED format file containing principal components for each cluster:
 - `chr`: Chromosome (e.g., 'chr1')
 - `start`: First start position of any gene in the cluster (1-based)
@@ -20,8 +20,8 @@ BED format file containing principal components for each cluster:
 - `gene_id`: Principal component ID (format: `{cluster_id}_pc{pc_number}`)
 - Sample columns: One column per sample with PC values
 
-#### eQTL Summary Stats (`eqtl_output_dir/{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.parquet`)
-Compressed tab-separated file with eQTL associations:
+## eQTL Summary Stats (`eqtl_output_dir/{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.parquet`)
+Parquet file with eQTL associations:
 - `phenotype_id`: Gene ID (format: `{cluster_id}_e_{gene_id}`)
 - `variant_id`: Variant ID (format: `{chr}_{pos}_{ref}_{alt}`)
 - `start_distance`: Distance from variant to phenotype start
@@ -33,8 +33,8 @@ Compressed tab-separated file with eQTL associations:
 - `slope`: ERegression slope (beta)
 - `slope_se`: Standard error of Regression slope
 
-#### pcQTL Summary Stats  (`pcqtl_output_dir/{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.parquet`)
-Compressed tab-separated file with pcQTL associations:
+## pcQTL Summary Stats  (`pcqtl_output_dir/{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.parquet`)
+Parquet file with pcQTL associations:
 - `phenotype_id`: Principal component ID (format: `{cluster_id}_pc{pc_number}`)
 - `variant_id`: Variant ID (format: `{chr}_{pos}_{ref}_{alt}`)
 - `start_distance`: Distance from variant to phenotype start
@@ -46,14 +46,14 @@ Compressed tab-separated file with pcQTL associations:
 - `slope`: ERegression slope (beta)
 - `slope_se`: Standard error of Regression slope
 
-#### SuSiE Fine-mapping Results (`{eqtl/pcqtl}_output_dir/{TISSUE}/{TISSUE}.v8.{cluster_genes/pcs}.susie.txt`)
+## SuSiE Fine-mapping Results (`{eqtl/pcqtl}_output_dir/{TISSUE}/{TISSUE}.v8.{cluster_genes/pcs}.susie_R.txt`)
 Tab-separated file with SuSiE fine-mapping results:
 - `phenotype_id`: Gene ID or PC ID
 - `variant_id`: Variant ID (format: `{chr}_{pos}_{ref}_{alt}`)
 - `pip`: Posterior inclusion probability
 - `cs_id`: Credible set ID 
 
-#### Annotated Clusters (`annotations_output_dir/{TISSUE}/{TISSUE}.clusters.annotated.txt`)
+## Annotated Clusters (`annotations_output_dir/{TISSUE}/{TISSUE}.clusters.annotated.txt`)
 Tab-separated file with functional annotations for clusters:
 - `cluster_id`: Cluster identifier
 - `gene_id`: Ensembl gene ID
@@ -72,9 +72,9 @@ Tab-separated file with functional annotations for clusters:
 - `go_terms`: Gene ontology terms (comma-separated)
 - `expression_variance`: Variance in expression across samples
 
-#### Co-localization Results
 
-**QTL Pairs** (`coloc_output_dir/pairs/{TISSUE}.v8.pairs_coloc.{CHROM}.txt`):
+## QTL Colocalization (`coloc_output_dir/pairs/{TISSUE}.v8.pairs_coloc.{CHROM}.txt`):
+Tab-separated file with colocalizations between QTLs:
 - `qtl1_id`: Gene ID or PC ID for first phenotype
 - `qtl2_id`: Gene ID or PC ID for second phenotype
 - `nsnps`: Number of SNPs in the region
@@ -89,7 +89,8 @@ Tab-separated file with functional annotations for clusters:
 - `idx2`: Credible set ID of second phenotype
 
 
-**GWAS Co-localization** (`coloc_output_dir/gwas/{TISSUE}/{TISSUE}.v8.{GWAS}.susie_True.gwas_coloc.txt`):
+## GWAS Colocalization (`coloc_output_dir/gwas/{TISSUE}/{TISSUE}.v8.{GWAS}.susie_True.gwas_coloc.txt`):
+Tab-separated file with colocalizations between GWAS and QTLs:
 - `gwas_id`: GWAS identifier
 - `qtl_id`: Gene ID or PC ID
 - `nsnps`: Number of SNPs in the region
@@ -104,9 +105,8 @@ Tab-separated file with functional annotations for clusters:
 - `idx2`: Credible set ID of second phenotype
 
 
-#### Signal Groups
-
-**QTL Signal Groups** (`coloc_output_dir/qtl_signal_groups/{TISSUE}.qtl_signal_groups.txt`):
+## QTL Signal Groups (`coloc_output_dir/qtl_signal_groups/{TISSUE}.qtl_signal_groups.txt`):
+Tab-separated file with credible set groups for QTLs:
 - `signal_id`: Unique identifier for signal group (dash-separated list of credible set IDs)
 - `num_e_coloc`: Number of eQTL signals in the group
 - `num_pc_coloc`: Number of pcQTL signals in the group
@@ -115,7 +115,8 @@ Tab-separated file with functional annotations for clusters:
 - `lead_var_set`: List of lead variants in the signal group
 - `var_set`: List of all variants in the signal group
 
-**GWAS Signal Groups** (`coloc_output_dir/gwas_signal_groups/{TISSUE}.{GWAS}.gwas_signal_groups.txt`):
+## GWAS Signal Groups (`coloc_output_dir/gwas_signal_groups/{TISSUE}.{GWAS}.gwas_signal_groups.txt`):
+Tab-separated file with credible set groups for GWAS and QTLs:
 - `signal_id`: Unique identifier for signal group (dash-separated list of credible set IDs)
 - `num_qtl_coloc`: Number of QTL signals in the group
 - `num_gwas_coloc`: Number of GWAS signals in the group
