@@ -16,20 +16,20 @@ rule run_coloc_pairs:
     to identify shared genetic signals within the same tissue.
     """
     input:
-        eqtl_nominal = f"{config['eqtl_output_dir']}{{TISSUE}}/{{TISSUE}}.v8.cluster_genes.cis_qtl_pairs.{{CHROM}}.parquet",
-        pcqtl_nominal = f"{config['pcqtl_output_dir']}{{TISSUE}}/{{TISSUE}}.v8.pcs.cis_qtl_pairs.{{CHROM}}.parquet",
-        gtex_meta = config['gtex_meta_path'],
-        annotated_cluster = f"{config['annotations_output_dir']}{{TISSUE}}/{{TISSUE}}.clusters.annotated.txt"
+        eqtl_nominal = config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet',
+        pcqtl_nominal = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet',
+        gtex_meta = config['gtex_meta'],
+        annotated_cluster = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.clusters.annotated.txt'
     
     output:
-        coloc_pairs = f"{config['coloc_output_dir']}pairs/{{TISSUE}}.v8.pairs_coloc.{{CHROM}}.txt"
+        coloc_pairs = config['coloc_output_dir'] + 'pairs/{TISSUE}.v8.pairs_coloc.{CHROM}.txt'
     
     params:
         tissue = "{TISSUE}",
         chrom = "{CHROM}",
-        ld_path_head = f"{config['coloc_output_dir']}{{TISSUE}}/temp/",
+        ld_path_head = config['coloc_output_dir'] + '{TISSUE}/temp/',
         genotype_stem = config['genotype_stem'],
-        coloc_temp_path_head = f"{config['coloc_output_dir']}{{TISSUE}}/temp/",
+        coloc_temp_path_head = config['coloc_output_dir'] + '{TISSUE}/temp/',
         code_dir = config['code_dir']
     
     resources:
@@ -39,7 +39,7 @@ rule run_coloc_pairs:
     threads: 20
     
     conda:
-        "coloc"
+        "tensorqtl_r"
     
     shell:
         """
@@ -66,23 +66,23 @@ rule run_gwas_coloc:
     GWAS summary statistics to identify shared genetic signals.
     """
     input:
-        eqtl_susie = f"{config['eqtl_output_dir']}{{TISSUE}}/{{TISSUE}}.v8.cluster_genes.susie.txt",
-        pcqtl_susie = f"{config['pcqtl_output_dir']}{{TISSUE}}/{{TISSUE}}.v8.pcs.susie.txt",
-        gwas_summary = f"{config['gwas_folder']}{{GWAS}}.txt",
-        gwas_meta = config['gwas_meta_path'],
-        gtex_meta = config['gtex_meta_path'],
-        annotated_cluster = f"{config['annotations_output_dir']}{{TISSUE}}/{{TISSUE}}.clusters.annotated.txt"
+        eqtl_susie = config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie.txt',
+        pcqtl_susie = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.susie.txt',
+        gwas_summary = config['gwas_folder'] + 'imputed_{GWAS}.txt.gz',
+        gwas_meta = config['gwas_meta'],
+        gtex_meta = config['gtex_meta'],
+        annotated_cluster = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.clusters.annotated.txt'
     
     output:
-        gwas_coloc = f"{config['coloc_output_dir']}gwas/{{TISSUE}}/{{TISSUE}}.v8.{{GWAS}}.susie_{USE_SUSIE}.gwas_coloc.txt"
+        gwas_coloc = config['coloc_output_dir'] + 'gwas/{TISSUE}/{TISSUE}.v8.{GWAS}.susie_' + USE_SUSIE + '.gwas_coloc.txt'
     
     params:
         tissue = "{TISSUE}",
         gwas = "{GWAS}",
         use_susie = USE_SUSIE,
-        ld_path_head = f"{config['coloc_output_dir']}{{TISSUE}}/temp/",
+        ld_path_head = config['coloc_output_dir'] + '{TISSUE}/temp/',
         genotype_stem = config['genotype_stem'],
-        coloc_temp_path_head = f"{config['coloc_output_dir']}{{TISSUE}}/temp/",
+        coloc_temp_path_head = config['coloc_output_dir'] + '{TISSUE}/temp/',
         code_dir = config['code_dir']
     
     resources:
@@ -92,7 +92,7 @@ rule run_gwas_coloc:
     threads: 40
     
     conda:
-        "coloc"
+        "tensorqtl_r"
     
     shell:
         """
@@ -122,12 +122,12 @@ rule group_qtl_signals:
     using network analysis to identify connected components.
     """
     input:
-        pair_coloc = f"{config['coloc_output_dir']}pairs/{{TISSUE}}.v8.pairs_coloc.txt",
-        pc_susie = f"{config['pcqtl_output_dir']}{{TISSUE}}/{{TISSUE}}.v8.pcs.susie_R.txt",
-        e_susie = f"{config['eqtl_output_dir']}{{TISSUE}}/{{TISSUE}}.v8.cluster_genes.susie_R.txt"
+        pair_coloc = expand(config['coloc_output_dir'] + 'pairs/{TISSUE}.v8.pairs_coloc.{CHROM}.txt', CHROM=chr_list, allow_missing=True),
+        pc_susie = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.susie_R.txt',
+        e_susie = config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie_R.txt'
     
     output:
-        qtl_signal_groups = f"{config['coloc_output_dir']}qtl_signal_groups/{{TISSUE}}.qtl_signal_groups.txt"
+        qtl_signal_groups = config['coloc_output_dir'] + 'qtl_signal_groups/{TISSUE}.qtl_signal_groups.txt'
     
     params:
         tissue = "{TISSUE}",
@@ -159,19 +159,17 @@ rule group_gwas_signals:
     """
     Group GWAS signals from co-localization results.
     
-    This rule identifies signal groups that include both QTL-QTL and QTL-GWAS
-    co-localizations using network analysis.
+    This rule identifies signal groups that include a QTL-GWAS co-localization.
     """
     input:
-        gwas_coloc = f"{config['coloc_output_dir']}gwas/{{TISSUE}}/{{TISSUE}}.v8.{{GWAS}}.susie_{USE_SUSIE}.gwas_coloc.txt",
-        pair_coloc = f"{config['coloc_output_dir']}pairs/{{TISSUE}}.v8.pairs_coloc.txt"
+        gwas_coloc = expand(config['coloc_output_dir'] + 'gwas/{TISSUE}/{TISSUE}.v8.{GWAS}.susie_' + USE_SUSIE + '.gwas_coloc.txt', GWAS=gwas_ids, allow_missing=True),
+        pair_coloc = expand(config['coloc_output_dir'] + 'pairs/{TISSUE}.v8.pairs_coloc.{CHROM}.txt', CHROM=chr_list, allow_missing=True)
     
     output:
-        gwas_signal_groups = f"{config['coloc_output_dir']}gwas_signal_groups/{{TISSUE}}.{{GWAS}}.gwas_signal_groups.txt"
+        gwas_signal_groups = config['coloc_output_dir'] + 'gwas_signal_groups/{TISSUE}.gwas_signal_groups.txt'
     
     params:
         tissue = "{TISSUE}",
-        gwas = "{GWAS}",
         coloc_cutoff = 0.75
     
     resources:

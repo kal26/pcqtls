@@ -13,12 +13,12 @@ rule calculate_pcs:
     for downstream pcQTL analysis.
     """
     input:
-        clusters = f"{config['clusters_dir']}{{TISSUE}}.clusters.txt",
-        filtered_expression = f"{config['filtered_expression_output_dir']}{{TISSUE}}.v8.normalized_residualized_expression.cluster_genes.bed",
-        covariates = f"{config['covariates_dir']}{{TISSUE}}.v8.covariates.txt"
+        clusters = config['clusters_dir'] + '{TISSUE}.clusters.txt',
+        filtered_expression = config['filtered_expression_output_dir'] + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed',
+        covariates = config['covariates_dir'] + '{TISSUE}.v8.covariates.txt'
     
     output:
-        pcs = f"{config['pc_output_dir']}{{TISSUE}}.pcs.bed"
+        pcs = config['pc_output_dir'] + '{TISSUE}.pcs.bed'
     
     conda:
         "tensorqtl_r"
@@ -41,12 +41,12 @@ rule run_pcqtl_cis_nominal:
     between genetic variants and principal components derived from gene clusters.
     """
     input:
-        genotypes = f"{config['genotype_stem']}.fam",
-        pcs = f"{config['pc_output_dir']}{{TISSUE}}.pcs.bed",
-        covariates = f"{config['covariates_dir']}{{TISSUE}}.v8.covariates.txt"
+        genotypes = config['genotype_stem'] + '.fam',
+        pcs = config['pc_output_dir'] + '{TISSUE}.pcs.bed',
+        covariates = config['covariates_dir'] + '{TISSUE}.v8.covariates.txt'
     
     output:
-        expand(f"{config['pcqtl_output_dir']}{{TISSUE}}/{{TISSUE}}.v8.pcs.cis_qtl_pairs.{{CHROM}}.parquet", 
+        expand(config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet', 
                CHROM=chr_list, allow_missing=True)
     
     params:
@@ -83,12 +83,12 @@ rule run_pcqtl_cis:
     significant variant for each principal component phenotype.
     """
     input:
-        genotypes = f"{config['genotype_stem']}.fam",
-        pcs = f"{config['pc_output_dir']}{{TISSUE}}.pcs.bed",
-        covariates = f"{config['covariates_dir']}{{TISSUE}}.v8.covariates.txt"
+        genotypes = config['genotype_stem'] + '.fam',
+        pcs = config['pc_output_dir'] + '{TISSUE}.pcs.bed',
+        covariates = config['covariates_dir'] + '{TISSUE}.v8.covariates.txt'
     
     output:
-        pcqtl_results = f"{config['pcqtl_output_dir']}{{TISSUE}}/{{TISSUE}}.v8.pcs.cis_qtl.txt.gz"
+        pcqtl_results = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl.txt.gz'
     
     params:
         genotype_stem = config['genotype_stem'],
@@ -121,13 +121,13 @@ rule run_pcqtl_cis_independent:
     regression, building on the permutation analysis results.
     """
     input:
-        genotypes = f"{config['genotype_stem']}.fam",
-        pcs = f"{config['pc_output_dir']}{{TISSUE}}.pcs.bed",
-        covariates = f"{config['covariates_dir']}{{TISSUE}}.v8.covariates.txt",
-        cis_results = f"{config['pcqtl_output_dir']}{{TISSUE}}/{{TISSUE}}.v8.pcs.cis_qtl.txt.gz"
+        genotypes = config['genotype_stem'] + '.fam',
+        pcs = config['pc_output_dir'] + '{TISSUE}.pcs.bed',
+        covariates = config['covariates_dir'] + '{TISSUE}.v8.covariates.txt',
+        cis_results = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl.txt.gz'
     
     output:
-        independent_qtls = f"{config['pcqtl_output_dir']}{{TISSUE}}/{{TISSUE}}.v8.pcs.cis_independent_qtl.txt.gz"
+        independent_qtls = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.cis_independent_qtl.txt.gz'
     
     params:
         genotype_stem = config['genotype_stem'],
@@ -165,12 +165,12 @@ rule run_pcqtl_susie:
     that are likely to contain the causal variant for each pcQTL association.
     """
     input:
-        genotypes = f"{config['genotype_stem']}.fam",
-        pcs = f"{config['pc_output_dir']}{{TISSUE}}.pcs.bed",
-        covariates = f"{config['covariates_dir']}{{TISSUE}}.v8.covariates.txt"
+        genotypes = config['genotype_stem'] + '.fam',
+        pcs = config['pc_output_dir'] + '{TISSUE}.pcs.bed',
+        covariates = config['covariates_dir'] + '{TISSUE}.v8.covariates.txt'
     
     output:
-        susie_results = f"{config['pcqtl_output_dir']}{{TISSUE}}/{{TISSUE}}.v8.pcs.susie.txt"
+        susie_results = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.susie.txt'
     
     params:
         genotype_stem = config['genotype_stem'],

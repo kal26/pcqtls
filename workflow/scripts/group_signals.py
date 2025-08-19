@@ -258,7 +258,7 @@ def get_gwas_signals(gwas_coloc_hits, pair_coloc_hits):
     return underlying_signals
 
 
-def group_gwas_signals(gwas_coloc_file, pair_coloc_file, output_file, coloc_cutoff=0.75):
+def group_gwas_signals(gwas_coloc_files, pair_coloc_files, output_file, coloc_cutoff=0.75):
     """
     Group GWAS signals from co-localization files.
     
@@ -266,8 +266,8 @@ def group_gwas_signals(gwas_coloc_file, pair_coloc_file, output_file, coloc_cuto
     signal groups that include both QTL-QTL and QTL-GWAS co-localizations.
     
     Args:
-        gwas_coloc_file: Path to GWAS co-localization results file
-        pair_coloc_file: Path to pairwise co-localization results file
+        gwas_coloc_files: Path(s) to GWAS co-localization results file(s)
+        pair_coloc_files: Path(s) to pairwise co-localization results file(s)
         output_file: Path to save GWAS signal groups results
         coloc_cutoff: PP.H4 threshold for co-localization (default: 0.75)
     """
@@ -277,8 +277,49 @@ def group_gwas_signals(gwas_coloc_file, pair_coloc_file, output_file, coloc_cuto
         logger.info('Loading GWAS and pairwise co-localization results...')
         
         # Load data
-        gwas_coloc = pd.read_csv(gwas_coloc_file, sep='\t')
-        pair_coloc = pd.read_csv(pair_coloc_file, sep='\t')
+        # Handle multiple gwas_coloc files (per GWAS)
+        if isinstance(gwas_coloc_files, str):
+            gwas_coloc_files = [gwas_coloc_files]
+            
+        if len(gwas_coloc_files) == 1:
+            gwas_coloc = pd.read_csv(gwas_coloc_files[0], sep='\t')
+        else:
+            logger.info(f'Loading {len(gwas_coloc_files)} gwas_coloc files...')
+            gwas_coloc_dfs = []
+            for file_path in gwas_coloc_files:
+                if os.path.exists(file_path):
+                    df = pd.read_csv(file_path, sep='\t')
+                    gwas_coloc_dfs.append(df)
+                else:
+                    logger.warning(f'File not found: {file_path}')
+            
+            if gwas_coloc_dfs:
+                gwas_coloc = pd.concat(gwas_coloc_dfs, ignore_index=True)
+                logger.info(f'Combined {len(gwas_coloc_dfs)} GWAS files into {len(gwas_coloc)} rows')
+            else:
+                raise ValueError("No valid gwas_coloc files found")
+        
+        # Handle multiple pair_coloc files (per chromosome)
+        if isinstance(pair_coloc_files, str):
+            pair_coloc_files = [pair_coloc_files]
+            
+        if len(pair_coloc_files) == 1:
+            pair_coloc = pd.read_csv(pair_coloc_files[0], sep='\t')
+        else:
+            logger.info(f'Loading {len(pair_coloc_files)} pair_coloc files...')
+            pair_coloc_dfs = []
+            for file_path in pair_coloc_files:
+                if os.path.exists(file_path):
+                    df = pd.read_csv(file_path, sep='\t')
+                    pair_coloc_dfs.append(df)
+                else:
+                    logger.warning(f'File not found: {file_path}')
+            
+            if pair_coloc_dfs:
+                pair_coloc = pd.concat(pair_coloc_dfs, ignore_index=True)
+                logger.info(f'Combined {len(pair_coloc_dfs)} files into {len(pair_coloc)} rows')
+            else:
+                raise ValueError("No valid pair_coloc files found")
         
         logger.info('Filtering to significant co-localizations...')
         
@@ -311,10 +352,10 @@ def main():
     parser = argparse.ArgumentParser(description='Analyze signal groups from co-localization results')
     parser.add_argument('--mode', choices=['qtl', 'gwas'], required=True, 
                        help='Analysis mode: qtl for QTL signal groups, gwas for GWAS signal groups')
-    parser.add_argument('--pair-coloc', help='Path to pairwise co-localization file')
+    parser.add_argument('--pair-coloc', nargs='+', help='Path(s) to pairwise co-localization file(s)')
     parser.add_argument('--pc-susie', help='Path to pcQTL SuSiE results')
     parser.add_argument('--e-susie', help='Path to eQTL SuSiE results')
-    parser.add_argument('--gwas-coloc', help='Path to GWAS co-localization file')
+    parser.add_argument('--gwas-coloc', nargs='+', help='Path(s) to GWAS co-localization file(s)')
     parser.add_argument('--output', required=True, help='Output file path')
     parser.add_argument('--coloc-cutoff', type=float, default=0.75, help='Co-localization threshold')
     parser.add_argument('--verbose', action='store_true', help='Enable verbose logging')
@@ -337,7 +378,25 @@ def main():
                 raise ValueError("QTL mode requires --pair-coloc, --pc-susie, and --e-susie arguments")
             
             # Load data
-            pair_coloc = pd.read_csv(args.pair_coloc, sep='\t')
+            # Handle multiple pair_coloc files (per chromosome)
+            if len(args.pair_coloc) == 1:
+                pair_coloc = pd.read_csv(args.pair_coloc[0], sep='\t')
+            else:
+                logger.info(f'Loading {len(args.pair_coloc)} pair_coloc files...')
+                pair_coloc_dfs = []
+                for file_path in args.pair_coloc:
+                    if os.path.exists(file_path):
+                        df = pd.read_csv(file_path, sep='\t')
+                        pair_coloc_dfs.append(df)
+                    else:
+                        logger.warning(f'File not found: {file_path}')
+                
+                if pair_coloc_dfs:
+                    pair_coloc = pd.concat(pair_coloc_dfs, ignore_index=True)
+                    logger.info(f'Combined {len(pair_coloc_dfs)} files into {len(pair_coloc)} rows')
+                else:
+                    raise ValueError("No valid pair_coloc files found")
+            
             pc_susie = pd.read_csv(args.pc_susie, sep='\t')
             e_susie = pd.read_csv(args.e_susie, sep='\t')
             

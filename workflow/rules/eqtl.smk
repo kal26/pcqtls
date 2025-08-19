@@ -13,12 +13,12 @@ rule filter_expression_clusters:
     files for downstream QTL analysis.
     """
     input:
-        clusters = f"{config['clusters_dir']}{{TISSUE}}.clusters.txt",
-        expression = f"{config['expression_dir']}{{TISSUE}}.v8.normalized_expression.bed",
-        covariates = f"{config['covariates_dir']}{{TISSUE}}.v8.covariates.txt"
+        clusters = config['clusters_dir'] + '{TISSUE}.clusters.txt',
+        expression = config['expression_dir'] + '{TISSUE}.v8.normalized_expression.bed',
+        covariates = config['covariates_dir'] + '{TISSUE}.v8.covariates.txt'
     
     output:
-        filtered_expression = f"{config['filtered_expression_output_dir']}{{TISSUE}}.v8.normalized_residualized_expression.cluster_genes.bed"
+        filtered_expression = config['filtered_expression_output_dir'] + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed'
     
     conda:
         "tensorqtl_r"
@@ -41,12 +41,12 @@ rule run_eqtl_cis_nominal:
     between genetic variants and individual gene expression levels within clusters.
     """
     input:
-        genotypes = f"{config['genotype_stem']}.fam",
-        expression = f"{config['filtered_expression_output_dir']}{{TISSUE}}.v8.normalized_residualized_expression.cluster_genes.bed",
-        covariates = f"{config['covariates_dir']}{{TISSUE}}.v8.covariates.txt"
+        genotypes = config['genotype_stem'] + '.fam',
+        expression = config['filtered_expression_output_dir'] + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed',
+        covariates = config['covariates_dir'] + '{TISSUE}.v8.covariates.txt'
     
     output:
-        expand(f"{config['eqtl_output_dir']}{{TISSUE}}/{{TISSUE}}.v8.cluster_genes.cis_qtl_pairs.{{CHROM}}.parquet", 
+        expand(config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', 
                CHROM=chr_list, allow_missing=True)
     
     params:
@@ -83,12 +83,12 @@ rule run_eqtl_cis:
     significant variant for each gene expression phenotype.
     """
     input:
-        genotypes = f"{config['genotype_stem']}.fam",
-        expression = f"{config['filtered_expression_output_dir']}{{TISSUE}}.v8.normalized_residualized_expression.cluster_genes.bed",
-        covariates = f"{config['covariates_dir']}{{TISSUE}}.v8.covariates.txt"
+        genotypes = config['genotype_stem'] + '.fam',
+        expression = config['filtered_expression_output_dir'] + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed',
+        covariates = config['covariates_dir'] + '{TISSUE}.v8.covariates.txt'
     
     output:
-        eqtl_results = f"{config['eqtl_output_dir']}{{TISSUE}}/{{TISSUE}}.v8.cluster_genes.cis_qtl.txt.gz"
+        eqtl_results = config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl.txt.gz'
     
     params:
         genotype_stem = config['genotype_stem'],
@@ -121,13 +121,13 @@ rule run_eqtl_cis_independent:
     regression, building on the permutation analysis results.
     """
     input:
-        genotypes = f"{config['genotype_stem']}.fam",
-        expression = f"{config['filtered_expression_output_dir']}{{TISSUE}}.v8.normalized_residualized_expression.cluster_genes.bed",
-        covariates = f"{config['covariates_dir']}{{TISSUE}}.v8.covariates.txt",
-        cis_results = f"{config['eqtl_output_dir']}{{TISSUE}}/{{TISSUE}}.v8.cluster_genes.cis_qtl.txt.gz"
+        genotypes = config['genotype_stem'] + '.fam',
+        expression = config['filtered_expression_output_dir'] + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed',
+        covariates = config['covariates_dir'] + '{TISSUE}.v8.covariates.txt',
+        cis_results = config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl.txt.gz'
     
     output:
-        independent_qtls = f"{config['eqtl_output_dir']}{{TISSUE}}/{{TISSUE}}.v8.cluster_genes.cis_independent_qtl.txt.gz"
+        independent_qtls = config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_independent_qtl.txt.gz'
     
     params:
         genotype_stem = config['genotype_stem'],
@@ -162,12 +162,12 @@ rule run_eqtl_susie:
     that are likely to contain the causal variant for each eQTL association.
     """
     input:
-        genotypes = f"{config['genotype_stem']}.fam",
-        expression = f"{config['filtered_expression_output_dir']}{{TISSUE}}.v8.normalized_residualized_expression.cluster_genes.bed",
-        covariates = f"{config['covariates_dir']}{{TISSUE}}.v8.covariates.txt"
+        genotypes = config['genotype_stem'] + '.fam',
+        expression = config['filtered_expression_output_dir'] + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed',
+        covariates = config['covariates_dir'] + '{TISSUE}.v8.covariates.txt'
     
     output:
-        susie_results = f"{config['eqtl_output_dir']}{{TISSUE}}/{{TISSUE}}.v8.cluster_genes.susie.txt"
+        susie_results = config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie.txt'
     
     params:
         genotype_stem = config['genotype_stem'],

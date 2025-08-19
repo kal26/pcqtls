@@ -13,11 +13,11 @@ rule call_clusters:
     expression patterns across samples.
     """
     input:
-        expression = f"{config['expression_dir']}{{TISSUE}}.v8.normalized_expression.bed",
-        covariates = f"{config['covariates_dir']}{{TISSUE}}.v8.covariates.txt"
+        expression = config['expression_dir'] + '{TISSUE}.v8.normalized_expression.bed',
+        covariates = config['covariates_dir'] + '{TISSUE}.v8.covariates.txt'
     
     output:
-        clusters = f"{config['clusters_dir']}{{TISSUE}}.clusters.txt"
+        clusters = config['clusters_dir'] + '{TISSUE}.clusters.txt'
     
     params:
         max_cluster_size = 50,

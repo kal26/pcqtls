@@ -14,9 +14,9 @@ rule annotate_clusters:
     connections, CTCF binding sites, TAD boundaries, and expression statistics.
     """
     input:
-        clusters = f"{config['clusters_dir']}{{TISSUE}}.clusters.txt",
-        expression = f"{config['filtered_expression_output_dir']}{{TISSUE}}.v8.normalized_residualized_expression.cluster_genes.bed",
-        covariates = f"{config['covariates_output_dir']}{{TISSUE}}.v8.covariates.txt",
+        clusters = config['clusters_dir'] + '{TISSUE}.clusters.txt',
+        expression = config['filtered_expression_output_dir'] + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed',
+        covariates = config['covariates_dir'] + '{TISSUE}.v8.covariates.txt',
         gencode = config['gencode_path'],
         abc = config['full_abc_path'],
         abc_match = config['abc_match_path'],
@@ -28,7 +28,7 @@ rule annotate_clusters:
         tad = config['tad_path']
     
     output:
-        annotated_clusters = f"{config['annotations_output_dir']}{{TISSUE}}/{{TISSUE}}.clusters.annotated.txt"
+        annotated_clusters = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.clusters.annotated.txt'
     
     resources:
         mem = "20G",
@@ -67,9 +67,9 @@ rule annotate_null_clusters:
     from the same genomic regions as real clusters for statistical validation.
     """
     input:
-        clusters = f"{config['clusters_dir']}{{TISSUE}}.clusters.txt",
-        expression = f"{config['filtered_expression_output_dir']}{{TISSUE}}.v8.normalized_residualized_expression.cluster_genes.bed",
-        covariates = f"{config['covariates_output_dir']}{{TISSUE}}.v8.covariates.txt",
+        clusters = config['clusters_dir'] + '{TISSUE}.clusters.txt',
+        expression = config['filtered_expression_output_dir'] + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed',
+        covariates = config['covariates_dir'] + '{TISSUE}.v8.covariates.txt',
         gencode = config['gencode_path'],
         abc = config['full_abc_path'],
         abc_match = config['abc_match_path'],
@@ -81,7 +81,7 @@ rule annotate_null_clusters:
         tad = config['tad_path']
     
     output:
-        annotated_nulls = f"{config['annotations_output_dir']}{{TISSUE}}/{{TISSUE}}.null_{{CLUSTER_SIZE}}genes.annotated.txt"
+        annotated_nulls = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.null_{CLUSTER_SIZE}genes.annotated.txt'
     
     params:
         cluster_size = "{CLUSTER_SIZE}"
@@ -124,14 +124,14 @@ rule annotate_pcs:
     including slopes and R-squared values for each PC-gene pair within clusters.
     """
     input:
-        pcs = pc_output_dir + '{TISSUE}.pcs.bed',
-        filtered_normed_expression = filtered_expression_output_dir + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed',
+        pcs = config['pc_output_dir'] + '{TISSUE}.pcs.bed',
+        filtered_normed_expression = config['filtered_expression_output_dir'] + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed',
     conda:
         'tensorqtl_r'
     resources:
         mem = "20G"
     output:
-        pc_annotated = annotations_output_dir + '{TISSUE}/{TISSUE}.v8.pcs_annotated.txt'
+        pc_annotated = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs_annotated.txt'
     shell:
         """
         python scripts/annotate_pcs.py \
@@ -149,11 +149,11 @@ rule convert_susie_to_vcf:
     variant effect prediction using VEP.
     """
     input:
-        e_susie_results = f"{config['eqtl_output_dir']}{{TISSUE}}/{{TISSUE}}.v8.cluster_genes.susie.txt",
-        pc_susie_results = f"{config['pcqtl_output_dir']}{{TISSUE}}/{{TISSUE}}.v8.pcs.susie.txt"
+        e_susie_results = config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie.txt',
+        pc_susie_results = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.susie.txt'
     
     output:
-        vcf = f"{config['annotations_output_dir']}{{TISSUE}}/{{TISSUE}}.v8.susie_R_vars.vcf"
+        vcf = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.v8.susie_R_vars.vcf'
     
     resources:
         mem = "5G",
@@ -181,10 +181,10 @@ rule run_vep:
     regulatory effects, protein consequences, and population frequencies.
     """
     input:
-        vcf = f"{config['annotations_output_dir']}{{TISSUE}}/{{TISSUE}}.v8.susie_R_vars.vcf"
+        vcf = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.v8.susie_R_vars.vcf'
     
     output:
-        vep_results = f"{config['annotations_output_dir']}{{TISSUE}}/{{TISSUE}}.v8.leadvars.vep.vcf"
+        vep_results = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.v8.leadvars.vep.vcf'
     
     resources:
         mem = "30G",
@@ -217,12 +217,12 @@ rule merge_susie_vep_annotations:
     TAD boundaries.
     """
     input:
-        e_susie_results = f"{config['eqtl_output_dir']}{{TISSUE}}/{{TISSUE}}.v8.cluster_genes.susie.txt",
-        pc_susie_results = f"{config['pcqtl_output_dir']}{{TISSUE}}/{{TISSUE}}.v8.pcs.susie.txt",
-        vep_results = f"{config['annotations_output_dir']}{{TISSUE}}/{{TISSUE}}.v8.leadvars.vep.vcf",
-        annotated_pcs = f"{config['annotations_output_dir']}{{TISSUE}}/{{TISSUE}}.v8.pcs_annotated.txt",
-        e_nominal = expand(f"{config['eqtl_output_dir']}{{TISSUE}}/{{TISSUE}}.v8.cluster_genes.cis_qtl_pairs.chr{{chr}}.parquet", chr=range(1, 23)),
-        pc_nominal = expand(f"{config['pcqtl_output_dir']}{{TISSUE}}/{{TISSUE}}.v8.pcs.cis_qtl_pairs.chr{{chr}}.parquet", chr=range(1, 23)),
+        e_susie_results = config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie_R.txt',
+        pc_susie_results = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.susie_R.txt',
+        vep_results = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.v8.leadvars.vep.vcf',
+        annotated_pcs = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs_annotated.txt',
+        e_nominal = expand(config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.chr{chr}.parquet', chr=range(1, 23), allow_missing=True),
+        pc_nominal = expand(config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.chr{chr}.parquet', chr=range(1, 23), allow_missing=True),
         gencode = config['gencode_path'],
         abc = config['full_abc_path'],
         abc_match = config['abc_match_path'],
@@ -231,7 +231,7 @@ rule merge_susie_vep_annotations:
         tad = config['tad_path']
     
     output:
-        annotated_susie = f"{config['annotations_output_dir']}{{TISSUE}}/{{TISSUE}}.v8.susie_R_vars.annotated.csv"
+        annotated_susie = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.v8.susie_R_vars.annotated.csv'
     
     resources:
         mem = "20G",
