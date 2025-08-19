@@ -103,9 +103,9 @@ The workflow requires several input datasets. Below is a comprehensive list of r
 | GTEx v8 Genotypes | Genotype data: .bed, .bim, and .fam | Protected access on dbGaP, access available via request at this [link](https://www.ncbi.nlm.nih.gov/projects/gap/cgi-bin/study.cgi?study_id=phs000424.v10.p2) | `genotype_stem` |
 | GTEx v8 Covariates | Technical and biological covariates | [GTEx Portal](https://storage.googleapis.com/adult-gtex/bulk-qtl/v8/single-tissue-cis-qtl/GTEx_Analysis_v8_eQTL_covariates.tar.gz) | `covariates_dir` |
 | GTEx v8 Sample Sizes | Sample sizes for each tissue | `references/gtex_sample_sizes.txt` | `gtex_meta` |
-| Tissue IDs | List of tissues to analyze | User generated, from any of the GTEx tissues | `tissue_id_path` |
-| Chromosome List | Chromosomes to analyze |  | `chr_list_path` |
-| GWAS Metadata | GWAS studies for co-localization | [Zenodo](https://zenodo.org/records/3629742#.Y9rTQOzMIUF) | `gwas_meta` |
+| Tissue IDs | List of tissues to analyze | User generated, see `references/selected_tissue_ids.txt` as an example | `tissue_id_path` |
+| Chromosome List | Chromosomes to analyze | `references/chrs.txt` | `chr_list_path` |
+| GWAS Metadata | Metadata from GWAS studies | [Zenodo](https://zenodo.org/records/3629742#.Y9rTQOzMIUF) | `gwas_meta` |
 | GWAS Summary Stats | GWAS summary statistics files | [Zenodo](https://zenodo.org/records/3629742#.Y9rTQOzMIUF) | `gwas_folder` |
 
 ### Annotation Data
@@ -114,12 +114,11 @@ The workflow requires several input datasets. Below is a comprehensive list of r
 |---------|-------------|---------|---------------------------|
 | GENCODE v26 | Gene annotations | [GENCODE](https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_26/gencode.v26.annotation.gtf.gz) | `gencode_path` |
 | ABC Enhancer Predictions | Activity-by-Contact enhancer predictions (hg19, requires liftOver to hg38) | [Engreitz Lab](https://www.engreitzlab.org/resources) | `full_abc_path` |
-| CTCF Binding Sites | Matching between tissues and CTCF experiments | `references/ctcf_matched_gtex.txt` | `ctcf_match_path` |
-| CTCF Directory | CTCF binding data from ENTEx, the experiments from `references/ctcf_matched_gtex.txt` | [ENTEx] (https://www.encodeproject.org/entex-matrix/?type=Experiment&status=released&internal_tags=ENTEx) | `ctcf_dir` |
+| CTCF ID-tissue | Matching between tissues and CTCF experiments | `references/ctcf_matched_gtex.txt` | `ctcf_match_path` |
+| CTCF Peaks | CTCF binding data from ENTEx, the experiments from `references/ctcf_matched_gtex.txt` | [ENTEx](https://www.encodeproject.org/entex-matrix/?type=Experiment&status=released&internal_tags=ENTEx) | `ctcf_dir` |
 | Cross-mappability | Cross-mappability from Saha and Battle (2019) | [figshare](https://figshare.com/ndownloader/files/13514741) | `cross_map_path` |
 | Paralog Relationships | Gene paralog information | [Ensembl Biomart](https://jan2020.archive.ensembl.org/biomart/martview/853dbe49995a1a2712b77655b242db21) | `paralog_path` |
 | Gene Ontology Terms | GO term annotations | [Ensembl Biomart](https://jan2020.archive.ensembl.org/biomart/martview/853dbe49995a1a2712b77655b242db21) | `go_path` |
-| Gene ID Cross-mapping | Gene identifier mappings | [Ensembl Biomart](https://www.ensembl.org/info/data/biomart/index.html) | `cross_map_path` |
 | TAD Boundaries | Topologically Associating Domain boundaries (hg19, requires liftOver to hg38) | [TADKB](http://dna.cs.miami.edu/TADKB/download/TAD_annotations.tar.gz) | `tad_path` |
 
 
