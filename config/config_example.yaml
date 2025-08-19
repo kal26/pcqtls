@@ -17,7 +17,7 @@ annotations_output_dir: "output/proteincoding_main/annotations/"
 # for clusters
 percent_corr_cutoff: .7
 cutoff_type: "pvalue"
-min_corr_cutoff: 0.1 # this doesn"t matter with pvalue as cutoff type
+min_corr_cutoff: 0.1 
 
 # for cluster annotation
 gencode_path: "data/references/processed_gencode.v26.GRCh38.genes.txt"
@@ -33,8 +33,8 @@ tad_path: "data/references/TAD_annotations/TADs_hg38/converted_HiC_IMR90_DI_10kb
 # for coloc
 coloc_output_dir: "output/proteincoding_main/coloc/"
 
-gwas_meta: "/home/klawren/oak/pcqtls/data/references/gwas_metadata.txt"
-gtex_meta: "/home/klawren/oak/pcqtls/data/references/gtex_sample_sizes.txt"
-gwas_folder: "/oak/stanford/groups/smontgom/shared/gwas_summary_stats/barbeira_gtex_imputed/imputed_gwas_hg38_1.1"
+gwas_meta: "data/references/gwas_metadata.txt"
+gtex_meta: "data/references/gtex_sample_sizes.txt"
+gwas_folder: "data/references/gwas_summary_stats/"
 
 code_dir: "workflow/scripts"
