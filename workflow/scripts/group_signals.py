@@ -83,8 +83,6 @@ def group_signals_tissue(pair_coloc, pc_susie_r, e_susie_r, coloc_cutoff=.75, ge
     underlying_signals = pd.DataFrame({'signal_id': underlying_signals})
     underlying_signals['num_e_coloc'] = underlying_signals['signal_id'].astype(str).str.count('_e_')
     underlying_signals['num_pc_coloc'] = underlying_signals['signal_id'].astype(str).str.count('_pc')
-    underlying_signals['multiple_e'] = underlying_signals['num_e_coloc'] > 1
-    underlying_signals['multiple_pc'] = underlying_signals['num_pc_coloc'] > 1
     underlying_signals['cluster_id'] = underlying_signals['signal_id'].str.split('_pc').str[0].str.split('_e').str[0]
 
     # Add the set of lead variants for all signals in the group
@@ -197,8 +195,8 @@ def load_gwas_coloc(config):
                                        gwas_coloc['qtl_id'].str.split('_pc').str[0])
     
     # Make ids for each credible set in the qtl and gwas
-    gwas_coloc['gwas_cs_id'] = gwas_coloc['gwas_id'] + '_cs_' + gwas_coloc['gwas_cs_is'].astype(int).astype(str) + '_cluster_' + gwas_coloc['cluster_id']
-    gwas_coloc['qtl_cs_id'] = gwas_coloc['qtl_id'] + '_cs_' + gwas_coloc['qtl_cs_is'].astype(int).astype(str) + '_cluster_' + gwas_coloc['cluster_id']
+    gwas_coloc['gwas_cs_id'] = gwas_coloc['gwas_id'] + '_cs_' + gwas_coloc['idx1'].astype(int).astype(str) + '_cluster_' + gwas_coloc['cluster_id']
+    gwas_coloc['qtl_cs_id'] = gwas_coloc['qtl_id'] + '_cs_' + gwas_coloc['idx2'].astype(int).astype(str) + '_cluster_' + gwas_coloc['cluster_id']
     
     # Set type as pcqtl or eqtl
     gwas_coloc['type'] = np.where(gwas_coloc['qtl_cs_id'].str.contains('_pc'), 'pcqtl', 'eqtl')
@@ -254,23 +252,8 @@ def get_gwas_signals(gwas_coloc_hits, pair_coloc_hits):
     underlying_signals['num_gwas_coloc'] = underlying_signals['signal_id'].astype(str).str.count('gwas_')
     underlying_signals['num_e_coloc'] = underlying_signals['signal_id'].astype(str).str.count('_e_')
     underlying_signals['num_pc_coloc'] = underlying_signals['signal_id'].astype(str).str.count('_pc')
-    underlying_signals['multiple_e'] = underlying_signals['num_e_coloc'] > 1
-    underlying_signals['multiple_pc'] = underlying_signals['num_pc_coloc'] > 1
-
-    underlying_signals['type'] = np.where(underlying_signals['num_pc_coloc'] > 0, 
-                                         np.where(underlying_signals['num_e_coloc'] > 0, 'both', 'pcqtl_only'), 
-                                         'eqtl_only')
     underlying_signals['cluster_id'] = underlying_signals['signal_id'].str.split('_cluster_').str[1].str.split('_tissue_').str[0]
     underlying_signals['tissue_id'] = underlying_signals['signal_id'].str.split('_tissue_').str[1].str.split('-').str[0]
-
-    # Count the number of gwas types
-    underlying_signals['cs_id'] = underlying_signals['signal_id'].str.split('-')
-    underlying_signals_explode = underlying_signals.explode('cs_id')
-    underlying_signals_explode_gwas = underlying_signals_explode[underlying_signals_explode['cs_id'].str.contains('gwas_')]
-    underlying_signals_explode_gwas['gwas_type'] = underlying_signals_explode_gwas['cs_id'].str.split('gwas_').str[1].str.split('_cs').str[0]
-    underlying_signals = pd.merge(underlying_signals, 
-                                 underlying_signals_explode_gwas.groupby('signal_id').agg({'gwas_type': 'nunique'}), 
-                                 on='signal_id')
     
     return underlying_signals
 

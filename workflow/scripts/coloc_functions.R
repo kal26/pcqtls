@@ -321,6 +321,12 @@ get_qtl_pairwise_coloc <- function(qtls_for_coloc, qtl_susies) {
     }
   }
   
+  # Reorder columns to put qtl1_id and qtl2_id first
+  if (nrow(qtl_coloc_results) > 0) {
+    qtl_coloc_results <- qtl_coloc_results[, c("qtl1_id", "qtl2_id", 
+                                               setdiff(colnames(qtl_coloc_results), c("qtl1_id", "qtl2_id")))]
+  }
+  
   return(qtl_coloc_results)
 }
 
@@ -483,9 +489,7 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
     }
   }
   
-  # Add column names for consistency
-  gwas_coloc_results$gwas_cs_is <- gwas_coloc_results$idx1 
-  gwas_coloc_results$qtl_cs_is <- gwas_coloc_results$idx2
+
   
   return(gwas_coloc_results)
 }

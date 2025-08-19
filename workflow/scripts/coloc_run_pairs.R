@@ -167,8 +167,14 @@ if (nrow(all_cluster_coloc_results) > 0) {
 }
 
 # =============================================================================
-# Write results
+# Reorder columns and write results
 # =============================================================================
+
+# Reorder columns to put qtl1_id and qtl2_id first
+if (nrow(all_cluster_coloc_results) > 0) {
+  all_cluster_coloc_results <- all_cluster_coloc_results[, c("qtl1_id", "qtl2_id", 
+                                                             setdiff(colnames(all_cluster_coloc_results), c("qtl1_id", "qtl2_id")))]
+}
 
 write.table(all_cluster_coloc_results, file = output_path, quote = FALSE, row.names = FALSE, sep = '\t')
 cat("Colocalization analysis completed. Results written to:", output_path, "\n")
