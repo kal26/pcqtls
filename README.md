@@ -75,6 +75,7 @@ Dependencies are:
 **Additional tools:**
 - plink==1.90b7.7
 - snakemake==7.32.4
+- ensembl-vep==114.2
 
 The workflow assumes all packages are in a conda enviroment named `tensorqtl_r` . If your conda enviroment is named something else, simply change the conda parameter in the snakemake rules. If all packages are installed in a base enviroment, you can remove the conda parameter.
 
