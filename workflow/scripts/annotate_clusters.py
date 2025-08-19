@@ -33,11 +33,7 @@ PREFIX = os.getenv('PCQTL_PREFIX', '/home/klawren/oak/pcqtls')
 # Constants for genomic analysis
 CHROMOSOMES = list(range(1, 23))  # Human autosomes
 BIDIRECTIONAL_PROMOTER_DISTANCE = 1000  # Base pairs
-ABC_SCORE_STRONG_THRESHOLD = 0.1
-ABC_SCORE_VERY_STRONG_THRESHOLD = 0.25
 HIGH_POSITIVE_CORRELATION_THRESHOLD = 0.5
-HIGH_JACCARD_UNWEIGHTED_THRESHOLD = 0.5
-HIGH_JACCARD_WEIGHTED_THRESHOLD = 0.1
 
 
 def setup_logging(level=logging.INFO):
@@ -415,35 +411,7 @@ def annotate_bidirectional(cluster_df, gid_gencode):
     cluster_df['num_bidirectional_promoter'] = cluster_df.apply(get_bidirectional, axis=1, args=(gid_gencode,))
     cluster_df['has_bidirectional_promoter'] = cluster_df['num_bidirectional_promoter'] > 0
 
-def annotate_enhancers(cluster_df, gene_enhancer_df):
-    """
-    Annotate clusters with ABC enhancer information.
-    
-    Args:
-        cluster_df (pd.DataFrame): Cluster DataFrame to annotate
-        gene_enhancer_df (pd.DataFrame): ABC enhancer-gene connections
-    """
-    for idx, row in tqdm(cluster_df.iterrows(), total=len(cluster_df)):
-        # Get enhancers for genes in this cluster
-        enhancer_list = gene_enhancer_df[gene_enhancer_df.index.isin(row['cluster_id'].split('_'))]
-        full_enhancer_list = enhancer_list['enhancer']
-        strong_enhancer_list = enhancer_list[enhancer_list['ABC.Score'] >= ABC_SCORE_STRONG_THRESHOLD]['enhancer']
-        very_strong_enhancer_list = enhancer_list[enhancer_list['ABC.Score'] >= ABC_SCORE_VERY_STRONG_THRESHOLD]['enhancer']
-        
-        # Count shared enhancers at different strength thresholds
-        num_shared_enhancers = sum(full_enhancer_list.duplicated())
-        num_shared_strong_enhancers = sum(strong_enhancer_list.duplicated())
-        num_shared_very_strong_enhancers = sum(very_strong_enhancer_list.duplicated())
-        
-        # Store annotations
-        cluster_df.loc[idx, 'num_abc_genes'] = len(enhancer_list.index.unique())
-        cluster_df.loc[idx, 'num_shared_enhancers'] = num_shared_enhancers
-        cluster_df.loc[idx, 'num_shared_strong_enhancers'] = num_shared_strong_enhancers
-        cluster_df.loc[idx, 'num_enhancers'] = len(full_enhancer_list)
-        cluster_df.loc[idx, 'num_strong_enhancers'] = len(strong_enhancer_list)
-        cluster_df.loc[idx, 'has_shared_enhancer'] = num_shared_enhancers > 0
-        cluster_df.loc[idx, 'has_shared_strong_enhancer'] = num_shared_strong_enhancers > 0
-        cluster_df.loc[idx, 'has_shared_very_strong_enhancer'] = num_shared_very_strong_enhancers > 0
+
 
 def annotate_ctcf(cluster_df, ctcf_df):
     cluster_df['interval'] = pd.arrays.IntervalArray.from_arrays(cluster_df['tss_min'], cluster_df['tss_max'])
@@ -517,45 +485,7 @@ def annotate_tads(cluster_df, tad_df):
 
 
 
-def annotate_enhancers_jaccard(cluster_df, gene_enhancer_df):
-    for idx, row in tqdm(cluster_df.iterrows(), total=len(cluster_df)):
-        transcript_list = row['cluster_id'].split('_')
-        jaccards_unweighted=[]
-        jaccards_weighted=[]
-        for i in range(len(transcript_list)):
-            for j in range(i):
-                enhancer_list = gene_enhancer_df[gene_enhancer_df.index.isin([transcript_list[i], transcript_list[j]])]
-                enhancer_list['ABC.Score_min'] = enhancer_list['ABC.Score']
-                enhancer_min_max = enhancer_list.groupby('enhancer').agg({'ABC.Score':'max', 'ABC.Score_min':'min'})
 
-                # zero out the mins for those elements that exist for only 1 gene
-                enhancer_gene_counts = enhancer_list.groupby('enhancer').agg({'gene_name':'nunique'}) 
-                single_enhancers = enhancer_gene_counts.index.values[enhancer_gene_counts['gene_name'] == 1]
-                enhancer_min_max.loc[single_enhancers, 'ABC.Score_min'] = 0
-                # jaccard without reweighting
-                jaccards_unweighted.append(enhancer_min_max['ABC.Score_min'].sum()/enhancer_min_max['ABC.Score'].sum())
-
-                # assuming these don't sum to 1 for a given gene becuase the promoter-self connections aren't listed
-                # add in an element for each genes promotor to get the final weighting right
-                reweightings = enhancer_list.groupby('gene_name').agg({'ABC.Score':sum})
-                reweightings['ABC.Score'] = 1- reweightings['ABC.Score']
-                reweightings['ABC.Score_min'] = 0
-
-                enhancer_min_max = pd.concat([enhancer_min_max, reweightings])
-                # jaccard with reweighting
-                jaccards_weighted.append(enhancer_min_max['ABC.Score_min'].sum()/enhancer_min_max['ABC.Score'].sum())
-
-        # nan if there are no enhancers for a gene in my abc predictions
-        # mask the nans to 0
-        jaccards_unweighted = np.nan_to_num(jaccards_unweighted)
-        jaccards_weighted = np.nan_to_num(jaccards_weighted)
-
-        cluster_df.loc[idx, 'max_jaccard_unweighted'] = max(jaccards_unweighted)
-        cluster_df.loc[idx, 'max_jaccard_weighted'] = max(jaccards_weighted)
-        cluster_df.loc[idx, 'has_high_jaccard_unweighted'] = max(jaccards_unweighted) > 0.5
-        cluster_df.loc[idx, 'has_high_jaccard_weighted'] = max(jaccards_weighted) > 0.1
-        cluster_df.loc[idx, 'mean_jaccard_unweighted'] = np.average(jaccards_unweighted)
-        cluster_df.loc[idx, 'mean_jaccard_weighted'] = np.average(jaccards_weighted)
 
 
 def annotate_correlation(cluster_df, residual_exp):
@@ -650,7 +580,9 @@ def annotate_complexes(cluster_df, complex_df):
 # function to add all annotations, give correctly loaded data
 def add_annotations(cluster_df, gid_gencode, gene_enhancer_df, paralog_df, cross_mappability, go_df, ctcf_df, residual_exp, tad_df):
     """
-    Add all annotations to the cluster DataFrame.
+    Add all annotations to the cluster DataFrame using the general annotation framework.
+    
+    This version is more efficient and easier to extend than the original add_annotations function.
     
     Args:
         cluster_df (pd.DataFrame): Cluster DataFrame to annotate
@@ -662,65 +594,65 @@ def add_annotations(cluster_df, gid_gencode, gene_enhancer_df, paralog_df, cross
         ctcf_df (pd.DataFrame): CTCF binding site data
         residual_exp (pd.DataFrame): Residualized expression data
         tad_df (pd.DataFrame): TAD boundary data
+        
+    Returns:
+        pd.DataFrame: Annotated cluster DataFrame
     """
     logger = logging.getLogger(__name__)
-    logger.info(f'Starting annotation of {len(cluster_df)} clusters')
+    logger.info(f'Starting general annotation of {len(cluster_df)} clusters')
     
+    # Reset index for consistent processing
     cluster_df.reset_index(drop=True, inplace=True)
     
-    # Add basic cluster properties
+    # Add basic cluster properties first (these don't use the framework)
     logger.info('Adding cluster size annotations...')
     annotate_sizes(cluster_df, gid_gencode)
     
-    # Add genomic positions (must be done before TAD and CTCF annotations)
+    # Add genomic positions (must be done before interval-based annotations)
     logger.info('Adding genomic position annotations...')
     annotate_positions(cluster_df, gid_gencode)
     
-    # Add TAD boundary information
-    logger.info('Adding TAD boundary annotations...')
-    annotate_tads(cluster_df, tad_df)
-    
-    # Add bidirectional promoter information
+    # Add bidirectional promoter information (special case)
     logger.info('Adding bidirectional promoter annotations...')
     annotate_bidirectional(cluster_df, gid_gencode)
     
-    # Add enhancer information
-    logger.info('Adding enhancer annotations...')
-    annotate_enhancers(cluster_df, gene_enhancer_df)
+    # Create and add interval-based annotators
+    logger.info('Setting up interval-based annotators...')
     
-    # Add paralog information
-    logger.info('Adding paralog annotations...')
-    annotate_paralogs(cluster_df, paralog_df)
+    # TAD annotator
+    annotate_tads(cluster_df, tad_df)
     
-    # Add cross-mappability information
-    logger.info('Adding cross-mappability annotations...')
-    annotate_cross_maps(cluster_df, cross_mappability)
-    
-    # Add GO term information
-    logger.info('Adding GO term annotations...')
-    annotate_go(cluster_df, go_df)
-    
-    # Add enhancer Jaccard indices
-    logger.info('Adding enhancer Jaccard index annotations...')
-    annotate_enhancers_jaccard(cluster_df, gene_enhancer_df)
-    
-    # Add CTCF binding site information
-    logger.info('Adding CTCF binding site annotations...')
+    # CTCF annotator
     annotate_ctcf(cluster_df, ctcf_df)
     
-    # Add correlation information (if not already present)
-    logger.info('Adding correlation annotations...')
-    try:
-        cluster_df['has_neg_corr'] = ~cluster_df['mean_neg_corr'].isna()
-        cluster_df['has_high_pos_corr'] = cluster_df['mean_pos_corr'] > HIGH_POSITIVE_CORRELATION_THRESHOLD
-        logger.debug('Correlation annotations already present')
-    except KeyError:
-        logger.debug('Calculating correlation annotations...')
-        annotate_correlation(cluster_df, residual_exp)
-        cluster_df['has_neg_corr'] = ~cluster_df['mean_neg_corr'].isna()
-        cluster_df['has_high_pos_corr'] = cluster_df['mean_pos_corr'] > HIGH_POSITIVE_CORRELATION_THRESHOLD
+    # Add gene-link-based annotations
+    logger.info('Adding gene-link-based annotations...')
     
-    logger.info(f'Completed annotation of {len(cluster_df)} clusters')
+    # ABC enhancer annotation (detailed)
+    annotate_abc_detailed(cluster_df, gene_enhancer_df)
+    
+    # Paralog annotation
+    annotate_paralogs_general(cluster_df, paralog_df)
+    
+    # GO terms annotation
+    annotate_go_general(cluster_df, go_df)
+    
+    # Cross-mappability annotation
+    annotate_cross_maps_general(cluster_df, cross_mappability)
+    
+    # Correlation annotation
+    logger.info('Adding correlation annotations...')
+    annotate_correlation(cluster_df, residual_exp)
+    cluster_df['has_neg_corr'] = ~cluster_df['mean_neg_corr'].isna()
+    cluster_df['has_high_pos_corr'] = cluster_df['mean_pos_corr'] > HIGH_POSITIVE_CORRELATION_THRESHOLD
+    
+    logger.info(f'Completed general annotation of {len(cluster_df)} clusters')
+    return cluster_df
+
+
+
+
+
 
 
 
@@ -735,90 +667,140 @@ def load_and_annotate(cluster_df, my_tissue_id, covariates_path, expression_path
                       cross_map_path=f'{PREFIX}/data/references/cross_mappability/cross_mappability_100_agg.csv',
                       tad_path=f'{PREFIX}/data/references/TAD_annotations/TADs_hg38/converted_HiC_IMR90_DI_10kb.txt'):
     """
-    Load all annotation data and annotate clusters.
+    Load all annotation data and annotate clusters using the general framework.
     
     Args:
-        cluster_df (pd.DataFrame): Cluster DataFrame to annotate
-        my_tissue_id (str): GTEx tissue identifier
-        covariates_path (str): Path to covariates file
-        expression_path (str): Path to expression file
-        gencode_path (str): Path to GENCODE file
-        full_abc_path (str): Path to ABC predictions file
-        abc_match_path (str): Path to ABC-GTEx matching file
-        ctcf_match_path (str): Path to CTCF-GTEx matching file
-        ctcf_dir (str): Directory containing CTCF files
-        paralog_path (str): Path to paralog file
-        go_path (str): Path to GO terms file
-        cross_map_path (str): Path to cross-mappability file
-        tad_path (str): Path to TAD boundaries file
+        cluster_df: Cluster DataFrame to annotate
+        my_tissue_id: GTEx tissue identifier
+        covariates_path: Path to covariates file
+        expression_path: Path to expression file
+        annotation_config: Configuration for annotators (uses default if None)
+        **kwargs: Additional file paths for annotation data
+        
+    Returns:
+        pd.DataFrame: Annotated cluster DataFrame
     """
     logger = logging.getLogger(__name__)
     logger.info(f'Loading annotation data for tissue: {my_tissue_id}')
     
     # Load all annotation data
     logger.info('Loading GENCODE annotations...')
-    gid_gencode, full_gencode = load_gencode(f'{PREFIX}/{gencode_path}')
+    gid_gencode, full_gencode = load_gencode(gencode_path)
     
     logger.info('Loading ABC enhancer-gene connections...')
-    gene_enhancer_df = load_abc(my_tissue_id, full_gencode, f'{PREFIX}/{full_abc_path}', f'{PREFIX}/{abc_match_path}')
+    gene_enhancer_df = load_abc(my_tissue_id, full_gencode, full_abc_path, abc_match_path)
     
     logger.info('Loading CTCF binding sites...')
-    ctcf_df = load_ctcf(my_tissue_id, f'{PREFIX}/{ctcf_match_path}', f'{PREFIX}/{ctcf_dir}')
+    ctcf_df = load_ctcf(my_tissue_id, ctcf_match_path, ctcf_dir)
     
     logger.info('Loading paralog data...')
-    paralog_df = load_paralogs(f'{PREFIX}/{paralog_path}')
+    paralog_df = load_paralogs(paralog_path)
     
     logger.info('Loading GO terms...')
-    go_df = load_go(f'{PREFIX}/{go_path}')
+    go_df = load_go(go_path)
     
     logger.info('Loading cross-mappability data...')
-    cross_mappability = load_cross_map(f'{PREFIX}/{cross_map_path}')
+    cross_mappability = load_cross_map(cross_map_path)
     
     logger.info('Calculating residualized expression...')
     residual_exp = get_residual_expression(covariates_path, expression_path)
     
     logger.info('Loading TAD boundaries...')
-    tad_df = load_tad(f'{PREFIX}/{tad_path}')
+    tad_df = load_tad(tad_path)
     
     logger.info('All annotation data loaded successfully')
     
-    # Annotate clusters
+    # Annotate clusters using the general framework
     cluster_df.reset_index(drop=True, inplace=True)
-    add_annotations(cluster_df, gid_gencode, gene_enhancer_df, paralog_df, cross_mappability, go_df, ctcf_df, residual_exp, tad_df)
-
-
-
-def run_annotate_from_config(config_path, my_tissue_id):
-    # general paths from config
-    with open(config_path, 'r') as f:
-        config = yaml.safe_load(f)
-    clusters_dir = config['clusters_dir']
-    expression_dir = config['expression_dir']
-    expression_path = f'{PREFIX}/{expression_dir}/{my_tissue_id}.v8.normalized_expression.bed'
-    covariates_dir = config['covariates_dir']
-    covariates_path = f'{PREFIX}/{covariates_dir}/{my_tissue_id}.v8.covariates.txt'
-
-    cluster_df = pd.read_csv(f'{PREFIX}/{clusters_dir}/{my_tissue_id}.clusters.txt', index_col=0)
-    cluster_df.reset_index(drop=True, inplace=True)
-    load_and_annotate(cluster_df, my_tissue_id, covariates_path, expression_path)
+    
+    # Add basic cluster properties first
+    logger.info('Adding basic cluster properties...')
+    annotate_sizes(cluster_df, gid_gencode)
+    annotate_positions(cluster_df, gid_gencode)
+    annotate_bidirectional(cluster_df, gid_gencode)
+    
+    # Use general annotation functions
+    cluster_df = add_annotations(cluster_df, gid_gencode, gene_enhancer_df, paralog_df, cross_mappability, go_df, ctcf_df, residual_exp, tad_df)
+    
     return cluster_df
 
-def run_annotate_from_paths(my_tissue_id, clusters_path, expression_path, covariates_path,
-                      gencode_path, full_abc_path, abc_match_path, ctcf_match_path,
-                      ctcf_dir, paralog_path, go_path, cross_map_path, tad_path):
-    # this version for use in snakemake
-    cluster_df = pd.read_csv(clusters_path, index_col=0)
-    cluster_df.reset_index(drop=True, inplace=True)
-    load_and_annotate(cluster_df, my_tissue_id, covariates_path, expression_path, 
-                      gencode_path=gencode_path, 
-                      full_abc_path = full_abc_path,
-                      abc_match_path=abc_match_path,
-                      ctcf_match_path=ctcf_match_path,
-                      ctcf_dir= ctcf_dir,
-                      paralog_path=paralog_path,
-                      go_path=go_path,
-                      cross_map_path=cross_map_path, 
-                      tad_path=tad_path)
+
+def parse_abc_data(cluster_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Parse stored ABC data back into a more usable format.
+    
+    This function converts the string-stored ABC data back into proper data structures
+    for easier analysis.
+    
+    Args:
+        cluster_df: Cluster DataFrame with ABC annotations
+        
+    Returns:
+        pd.DataFrame: Cluster DataFrame with parsed ABC data
+    """
+    import ast
+    
+    logger = logging.getLogger(__name__)
+    logger.info("Parsing ABC data for easier analysis...")
+    
+    # Create new columns for parsed data
+    cluster_df['shared_enhancers_parsed'] = None
+    cluster_df['shared_enhancer_scores_parsed'] = None
+    cluster_df['shared_enhancer_cell_types_parsed'] = None
+    
+    for idx, row in cluster_df.iterrows():
+        try:
+            # Parse the string representations back to Python objects
+            shared_enhancers = ast.literal_eval(row['shared_enhancers'])
+            shared_scores = ast.literal_eval(row['shared_enhancer_scores'])
+            shared_cell_types = ast.literal_eval(row['shared_enhancer_cell_types'])
+            
+            # Store parsed data
+            cluster_df.loc[idx, 'shared_enhancers_parsed'] = shared_enhancers
+            cluster_df.loc[idx, 'shared_enhancer_scores_parsed'] = shared_scores
+            cluster_df.loc[idx, 'shared_enhancer_cell_types_parsed'] = shared_cell_types
+            
+        except (ValueError, SyntaxError) as e:
+            logger.warning(f"Failed to parse ABC data for cluster {idx}: {e}")
+            cluster_df.loc[idx, 'shared_enhancers_parsed'] = []
+            cluster_df.loc[idx, 'shared_enhancer_scores_parsed'] = []
+            cluster_df.loc[idx, 'shared_enhancer_cell_types_parsed'] = []
+    
+    return cluster_df
+
+
+def get_abc_summary_stats(cluster_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calculate summary statistics for ABC data.
+    
+    Args:
+        cluster_df: Cluster DataFrame with parsed ABC data
+        
+    Returns:
+        pd.DataFrame: Summary statistics for ABC data
+    """
+    logger = logging.getLogger(__name__)
+    logger.info("Calculating ABC summary statistics...")
+    
+    # Initialize summary columns
+    cluster_df['abc_mean_score'] = 0.0
+    cluster_df['abc_max_score'] = 0.0
+    cluster_df['abc_min_score'] = 0.0
+    cluster_df['abc_score_std'] = 0.0
+    
+    for idx, row in cluster_df.iterrows():
+        if row['has_shared_enhancer'] and row['shared_enhancer_scores_parsed']:
+            # Flatten all scores from all shared enhancers
+            all_scores = []
+            for score_list in row['shared_enhancer_scores_parsed']:
+                all_scores.extend(score_list)
+            
+            if all_scores:
+                cluster_df.loc[idx, 'abc_mean_score'] = np.mean(all_scores)
+                cluster_df.loc[idx, 'abc_max_score'] = np.max(all_scores)
+                cluster_df.loc[idx, 'abc_min_score'] = np.min(all_scores)
+                cluster_df.loc[idx, 'abc_score_std'] = np.std(all_scores)
+    
     return cluster_df
 
 
@@ -887,9 +869,7 @@ def main():
         logger.info(f'Starting cluster annotation for tissue: {args.tissue}')
         
         # Run annotation
-        cluster_df_annotated = run_annotate_from_paths(args.tissue, args.cluster_path, args.expression_path, args.covariates_path,
-                                                       args.gencode_path, args.full_abc_path, args.abc_match_path, args.ctcf_match_path,
-                                                       args.ctcf_dir, args.paralog_path, args.go_path, args.cross_map_path, args.tad_path)
+        cluster_df_annotated = load_and_annotate(cluster_df, my_tissue_id, covariates_path, expression_path)
 
         # Write output
         logger.info(f'Writing annotated clusters to {args.out_path}')

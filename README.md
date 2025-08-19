@@ -3,25 +3,15 @@
 
 ## Overview
 
-This repository contains the code associated with our research on allelic expression "proxitropy" and the development of a multi-gene eQTL mapping framework, termed cis-principal component expression QTL (cis-pc eQTL or pcQTL). Our study investigates how a single variant can influence the expression of multiple neighboring genes, providing insights into gene regulation and complex trait-associated variation.
+This repository contains the code associated with our work developing a multi-gene eQTL mapping framework, termed cis-principal component expression QTL (cis-pc eQTL or pcQTL). pcQTL leverage allelic expression "proxitropy" - the phenomenon by which one variant changes the expression of mulptile, nearby genes - to map QTL effects missed by a standard single-gene eQTL approach. 
 
 <div style="text-align: center;">
     <img src="images/pcqtl_method.png" alt="pcQTL vs eQTL methods" style="max-width: 100%; height: auto;">
 </div>
 
----
-
 ### Preprint
 
 Our preprint is available [here](https://www.biorxiv.org/content/10.1101/2025.06.06.658175v1)
-
-### Data Availability
-
-[ZENODO](https://doi.org/10.5281/zenodo.15605351)
-
-* Clusters of neighboring correlated genes 
-* Summary stats for pcQTL mapping 
-
 
 ## Usage
 
@@ -39,14 +29,21 @@ This repository contains a Snakemake workflow for performing pcQTL analysis. To 
 snakemake --configfile config/config_example.yaml --cores 10 --use-conda
 ```
 
-### Prerequisites
+### Repository Structure
+
+* `workflow/rules`: Snakemake workflow for the pcQTL mapping framework.
+* `workflow/scripts`: Python and R scripts used by the workflow.
+* `workflow/figures`: Jupyter notebooks for data analysis and visualization and figure files.
+* `config`: Example configuration file for the workflow.
+* `references`: Small file-size references.
+* `Snakefile`: Main Snakemake workflow file that orchestrates the pcQTL analysis pipeline.
+
+### Environment Setup
 
 - Snakemake
 - Conda or Mamba 
 - Python 
 - R 
-
-### Environment Setup
 
 Dependencies are:
 
@@ -92,150 +89,6 @@ The workflow performs the following analyses:
 - **Functional annotation**: Annotates variants and clusters with functional information
 - **Co-localization**: Performs co-localization analysis with GWAS summary statistics
 
-### Output Files
-
-The workflow generates results in the following directories (as specified in your config):
-- `clusters_dir`: Gene expression clusters
-- `eqtl_output_dir`: eQTL analysis results
-- `pcqtl_output_dir`: pcQTL analysis results
-- `annotations_output_dir`: Functional annotations
-- `coloc_output_dir`: Co-localization results
-
-### Output File Formats
-
-#### Gene Clusters (`clusters_dir/{TISSUE}.clusters.txt`)
-Tab-separated file containing gene expression clusters:
-- `chr`: Chromosome (e.g., 'chr1')
-- `cluster_id`: Underscore-separated list of transcripts in each cluster
-- `tissue_id`: Tissue identifier
-- `num_genes`: Number of genes in the cluster
-- `percent_correlated`: Percentage of correlations above threshold
-- `mean_corr`: Mean correlation value
-- `mean_pos_corr`: Mean positive correlation value
-- `mean_neg_corr`: Mean negative correlation value
-
-#### Principal Components (`pc_output_dir/{TISSUE}.pcs.bed`)
-BED format file containing principal components for each cluster:
-- `#chr`: Chromosome
-- `start`: Start position (1-based)
-- `end`: End position (1-based)
-- `gene_id`: Principal component ID (format: `{cluster_id}_pc{pc_number}`)
-- Sample columns: One column per sample with PC values
-
-#### eQTL Results (`eqtl_output_dir/{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl.txt.gz`)
-Compressed tab-separated file with eQTL associations:
-- `phenotype_id`: Gene ID
-- `variant_id`: Variant ID (chr:pos:ref:alt)
-- `tss_distance`: Distance from variant to transcription start site
-- `ma_samples`: Number of samples with minor allele
-- `ma_count`: Minor allele count
-- `af`: Allele frequency
-- `pval_nominal`: Nominal p-value
-- `slope`: Effect size (beta)
-- `slope_se`: Standard error of effect size
-- `pval_perm`: Permutation p-value
-- `pval_beta`: Beta approximation p-value
-
-#### pcQTL Results (`pcqtl_output_dir/{TISSUE}/{TISSUE}.v8.pcs.cis_qtl.txt.gz`)
-Compressed tab-separated file with pcQTL associations:
-- `phenotype_id`: Principal component ID (cluster_id:pc_number)
-- `variant_id`: Variant ID (chr:pos:ref:alt)
-- `tss_distance`: Distance from variant to cluster center
-- `ma_samples`: Number of samples with minor allele
-- `ma_count`: Minor allele count
-- `af`: Allele frequency
-- `pval_nominal`: Nominal p-value
-- `slope`: Effect size (beta)
-- `slope_se`: Standard error of effect size
-- `pval_perm`: Permutation p-value
-- `pval_beta`: Beta approximation p-value
-
-#### SuSiE Fine-mapping Results (`{eqtl/pcqtl}_output_dir/{TISSUE}/{TISSUE}.v8.{cluster_genes/pcs}.susie.txt`)
-Tab-separated file with SuSiE fine-mapping results:
-- `phenotype_id`: Gene ID or PC ID (e.g., "ENSG00000189409.13_ENSG00000197530.12_pc2")
-- `variant_id`: Variant ID (e.g., "chr1_1636278_G_T_b38")
-- `pip`: Posterior inclusion probability
-- `af`: Allele frequency
-- `cs_id`: Credible set ID
-
-#### Annotated Clusters (`annotations_output_dir/{TISSUE}/{TISSUE}.clusters.annotated.txt`)
-Tab-separated file with functional annotations for clusters:
-- `cluster_id`: Cluster identifier
-- `gene_id`: Ensembl gene ID
-- `gene_name`: Gene symbol
-- `chromosome`: Chromosome
-- `start`: Gene start position
-- `end`: Gene end position
-- `strand`: Gene strand
-- `cluster_size`: Number of genes in cluster
-- `cluster_center_chr`: Chromosome of cluster center
-- `cluster_center_pos`: Position of cluster center
-- `abc_enhancer_count`: Number of ABC enhancers connected to gene
-- `ctcf_binding_sites`: Number of CTCF binding sites in cluster
-- `tad_boundary_distance`: Distance to nearest TAD boundary
-- `paralog_count`: Number of paralogs in cluster
-- `go_terms`: Gene ontology terms (comma-separated)
-- `expression_variance`: Variance in expression across samples
-
-#### Co-localization Results
-
-**QTL Pairs** (`coloc_output_dir/pairs/{TISSUE}.v8.pairs_coloc.{CHROM}.txt`):
-- `nsnps`: Number of SNPs in the region
-- `hit1`: Index of first hit
-- `hit2`: Index of second hit
-- `PP.H0.abf`: Posterior probability of no association
-- `PP.H1.abf`: Posterior probability of association with QTL only
-- `PP.H2.abf`: Posterior probability of association with GWAS only
-- `PP.H3.abf`: Posterior probability of association with both, different causal variants
-- `PP.H4.abf`: Posterior probability of association with both, same causal variant
-- `idx1`: Index of first variant
-- `idx2`: Index of second variant
-- `qtl1_id`: QTL identifier for first hit
-- `qtl2_id`: QTL identifier for second hit
-
-**GWAS Co-localization** (`coloc_output_dir/gwas/{TISSUE}/{TISSUE}.v8.{GWAS}.susie_True.gwas_coloc.txt`):
-- `gwas_id`: GWAS identifier
-- `qtl_id`: QTL identifier
-- `nsnps`: Number of SNPs in the region
-- `hit1`: Index of first hit
-- `hit2`: Index of second hit
-- `PP.H0.abf`: Posterior probability of no association
-- `PP.H1.abf`: Posterior probability of association with QTL only
-- `PP.H2.abf`: Posterior probability of association with GWAS only
-- `PP.H3.abf`: Posterior probability of association with both, different causal variants
-- `PP.H4.abf`: Posterior probability of association with both, same causal variant
-- `idx1`: Index of first variant
-- `idx2`: Index of second variant
-- `gwas_cs_is`: GWAS credible set identifier
-- `qtl_cs_is`: QTL credible set identifier
-
-#### Signal Groups
-
-**QTL Signal Groups** (`coloc_output_dir/qtl_signal_groups/{TISSUE}.qtl_signal_groups.txt`):
-- `signal_id`: Unique identifier for signal group (dash-separated list of credible set IDs)
-- `num_e_coloc`: Number of eQTL signals in the group
-- `num_pc_coloc`: Number of pcQTL signals in the group
-- `multiple_e`: Whether group contains multiple eQTL signals
-- `multiple_pc`: Whether group contains multiple pcQTL signals
-- `cluster_id`: Cluster identifier
-- `tissue_id`: Tissue identifier
-- `lead_var_set`: List of lead variants in the signal group
-- `var_set`: List of all variants in the signal group
-
-**GWAS Signal Groups** (`coloc_output_dir/gwas_signal_groups/{TISSUE}.{GWAS}.gwas_signal_groups.txt`):
-- `signal_id`: Unique identifier for signal group (dash-separated list of credible set IDs)
-- `num_qtl_coloc`: Number of QTL signals in the group
-- `num_gwas_coloc`: Number of GWAS signals in the group
-- `num_e_coloc`: Number of eQTL signals in the group
-- `num_pc_coloc`: Number of pcQTL signals in the group
-- `multiple_e`: Whether group contains multiple eQTL signals
-- `multiple_pc`: Whether group contains multiple pcQTL signals
-- `type`: Signal type ('both', 'pcqtl_only', or 'eqtl_only')
-- `cluster_id`: Cluster identifier
-- `tissue_id`: Tissue identifier
-- `gwas_type`: Number of unique GWAS types in the group
-
-
 
 ## Required Datasets
 
@@ -269,7 +122,6 @@ The workflow requires several input datasets. Below is a comprehensive list of r
 | TAD Boundaries | Topologically Associating Domain boundaries (hg19, requires liftOver to hg38) | [TADKB](http://dna.cs.miami.edu/TADKB/download/TAD_annotations.tar.gz) | `tad_path` |
 
 
-
 ### Data Preparation Notes
 
 1. **GENCODE Processing**: The GENCODE annotation must be processed to include only "gene" level features with columns `(chr,start,end,strand,gene_id,gene_name,tss_start)`. The `tss_start` column should contain the transcription start site position: use the `start` coordinate for positive-stranded genes and the `end` coordinate for negative-stranded genes. For this analysis, only protein-coding genes were considered.
@@ -277,15 +129,144 @@ The workflow requires several input datasets. Below is a comprehensive list of r
 2. **Genome Assembly Conversion**: The ABC enhancer predictions and TADKB boundary databases are provided in hg19 coordinates. These must be converted to hg38 using liftOver before use in the workflow.  
 
 
-## Repository Structure
+## Output Files
 
-* `workflow/rules`: Snakemake workflow for the pcQTL mapping framework.
-* `workflow/scripts`: Python and R scripts used by the workflow.
-* `workflow/figures`: Jupyter notebooks for data analysis and visualization and figure files.
-* `config`: Example configuration file for the workflow.
-* `references`: Small file-size references.
-* `Snakefile`: Main Snakemake workflow file that orchestrates the pcQTL analysis pipeline.
+The workflow generates results in the following directories (as specified in your config):
+- `clusters_dir`: Gene expression clusters
+- `eqtl_output_dir`: eQTL analysis results
+- `pcqtl_output_dir`: pcQTL analysis results
+- `annotations_output_dir`: Functional annotations
+- `coloc_output_dir`: Co-localization results
 
+### Output File Formats
+
+#### Gene Clusters (`clusters_dir/{TISSUE}.clusters.txt`)
+Tab-separated file containing gene expression clusters:
+- `chr`: Chromosome (e.g., 'chr1')
+- `cluster_id`: Underscore-separated list of transcripts in each cluster
+- `tissue_id`: Tissue identifier
+- `num_genes`: Number of genes in the cluster
+- `percent_correlated`: Percentage of correlations above threshold
+- `mean_corr`: Mean correlation value
+- `mean_pos_corr`: Mean positive correlation value
+- `mean_neg_corr`: Mean negative correlation value
+
+#### Principal Components (`pc_output_dir/{TISSUE}.pcs.bed`)
+BED format file containing principal components for each cluster:
+- `chr`: Chromosome (e.g., 'chr1')
+- `start`: First start position of any gene in the cluster (1-based)
+- `end`: Last end position of any gene in the cluster (1-based)
+- `gene_id`: Principal component ID (format: `{cluster_id}_pc{pc_number}`)
+- Sample columns: One column per sample with PC values
+
+#### eQTL Summary Stats (`eqtl_output_dir/{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.parquet`)
+Compressed tab-separated file with eQTL associations:
+- `phenotype_id`: Gene ID (format: `{cluster_id}_e_{gene_id}`)
+- `variant_id`: Variant ID (format: `{chr}_{pos}_{ref}_{alt}`)
+- `start_distance`: Distance from variant to phenotype start
+- `end_distance`: Distance from variant to phenotype end
+- `af`: In-sample ALT allele frequency of the variant
+- `ma_samples`: Number of samples with at least one minor allele
+- `ma_count`: Minor allele count
+- `pval_nominal`: Nominal p-value of the association between the phenotype and variant
+- `slope`: ERegression slope (beta)
+- `slope_se`: Standard error of Regression slope
+
+#### pcQTL Summary Stats  (`pcqtl_output_dir/{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.parquet`)
+Compressed tab-separated file with pcQTL associations:
+- `phenotype_id`: Principal component ID (format: `{cluster_id}_pc{pc_number}`)
+- `variant_id`: Variant ID (format: `{chr}_{pos}_{ref}_{alt}`)
+- `start_distance`: Distance from variant to phenotype start
+- `end_distance`: Distance from variant to phenotype end
+- `af`: In-sample ALT allele frequency of the variant
+- `ma_samples`: Number of samples with at least one minor allele
+- `ma_count`: Minor allele count
+- `pval_nominal`: Nominal p-value of the association between the phenotype and variant
+- `slope`: ERegression slope (beta)
+- `slope_se`: Standard error of Regression slope
+
+#### SuSiE Fine-mapping Results (`{eqtl/pcqtl}_output_dir/{TISSUE}/{TISSUE}.v8.{cluster_genes/pcs}.susie.txt`)
+Tab-separated file with SuSiE fine-mapping results:
+- `phenotype_id`: Gene ID or PC ID
+- `variant_id`: Variant ID (format: `{chr}_{pos}_{ref}_{alt}`)
+- `pip`: Posterior inclusion probability
+- `cs_id`: Credible set ID 
+
+#### Annotated Clusters (`annotations_output_dir/{TISSUE}/{TISSUE}.clusters.annotated.txt`)
+Tab-separated file with functional annotations for clusters:
+- `cluster_id`: Cluster identifier
+- `gene_id`: Ensembl gene ID
+- `gene_name`: Gene symbol
+- `chromosome`: Chromosome
+- `start`: Gene start position
+- `end`: Gene end position
+- `strand`: Gene strand
+- `cluster_size`: Number of genes in cluster
+- `cluster_center_chr`: Chromosome of cluster center
+- `cluster_center_pos`: Position of cluster center
+- `abc_enhancer_count`: Number of ABC enhancers connected to gene
+- `ctcf_binding_sites`: Number of CTCF binding sites in cluster
+- `tad_boundary_distance`: Distance to nearest TAD boundary
+- `paralog_count`: Number of paralogs in cluster
+- `go_terms`: Gene ontology terms (comma-separated)
+- `expression_variance`: Variance in expression across samples
+
+#### Co-localization Results
+
+**QTL Pairs** (`coloc_output_dir/pairs/{TISSUE}.v8.pairs_coloc.{CHROM}.txt`):
+- `qtl1_id`: Gene ID or PC ID for first phenotype
+- `qtl2_id`: Gene ID or PC ID for second phenotype
+- `nsnps`: Number of SNPs in the region
+- `hit1`: Lead variant ID of first phenotype (format: `{chr}_{pos}_{ref}_{alt}`)
+- `hit2`: Lead variant ID of second phenotype (format: `{chr}_{pos}_{ref}_{alt}`)
+- `PP.H0.abf`: Posterior probability of no association
+- `PP.H1.abf`: Posterior probability of association with first phenotype only
+- `PP.H2.abf`: Posterior probability of association with second phenotype only
+- `PP.H3.abf`: Posterior probability of association with both, different causal variants
+- `PP.H4.abf`: Posterior probability of association with both, same causal variant (colocalization)
+- `idx1`: Credible set ID of first phenotype
+- `idx2`: Credible set ID of second phenotype
+
+
+**GWAS Co-localization** (`coloc_output_dir/gwas/{TISSUE}/{TISSUE}.v8.{GWAS}.susie_True.gwas_coloc.txt`):
+- `gwas_id`: GWAS identifier
+- `qtl_id`: Gene ID or PC ID
+- `nsnps`: Number of SNPs in the region
+- `hit1`: Lead variant ID of GWAS (format: `{chr}_{pos}_{ref}_{alt}`)
+- `hit2`: Lead variant ID of QTL (format: `{chr}_{pos}_{ref}_{alt}`)
+- `PP.H0.abf`: Posterior probability of no association
+- `PP.H1.abf`: Posterior probability of association with QTL only
+- `PP.H2.abf`: Posterior probability of association with GWAS only
+- `PP.H3.abf`: Posterior probability of association with both, different causal variants
+- `PP.H4.abf`: Posterior probability of association with both, same causal variant (colocalization)
+- `idx1`: Credible set ID of first phenotype
+- `idx2`: Credible set ID of second phenotype
+
+
+#### Signal Groups
+
+**QTL Signal Groups** (`coloc_output_dir/qtl_signal_groups/{TISSUE}.qtl_signal_groups.txt`):
+- `signal_id`: Unique identifier for signal group (dash-separated list of credible set IDs)
+- `num_e_coloc`: Number of eQTL signals in the group
+- `num_pc_coloc`: Number of pcQTL signals in the group
+- `cluster_id`: Cluster identifier
+- `tissue_id`: Tissue identifier
+- `lead_var_set`: List of lead variants in the signal group
+- `var_set`: List of all variants in the signal group
+
+**GWAS Signal Groups** (`coloc_output_dir/gwas_signal_groups/{TISSUE}.{GWAS}.gwas_signal_groups.txt`):
+- `signal_id`: Unique identifier for signal group (dash-separated list of credible set IDs)
+- `num_qtl_coloc`: Number of QTL signals in the group
+- `num_gwas_coloc`: Number of GWAS signals in the group
+- `num_e_coloc`: Number of eQTL signals in the group
+- `num_pc_coloc`: Number of pcQTL signals in the group
+- `cluster_id`: Cluster identifier
+- `tissue_id`: Tissue identifier
+
+### Results Availability
+
+* Clusters of neighboring correlated genes 
+* Summary stats for pcQTL mapping [ZENODO](https://doi.org/10.5281/zenodo.15605351)
 
 
 ## Acknowledgments
