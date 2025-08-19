@@ -30,24 +30,6 @@ def load_pc_annotated(config, tissue_id):
     """Load PC annotation results for a tissue."""
     return pd.read_table("{}/{}{}/{}.v8.pcs_annotated.txt".format(prefix, config["annotations_output_dir"], tissue_id, tissue_id))
 
-def load_overlap(config, tissue_id):
-    """Load overlap results for a tissue."""
-    overlap_df = pd.read_table('{}/{}/{}.v8.overlap.txt'.format(prefix, config['overlap_output_dir'], tissue_id))
-    overlap_df['var_cluster'] = overlap_df['lead_variant_id'] + '_' + overlap_df['cluster_id']
-    # Add pc num column
-    overlap_df['pc_num'] = np.where(overlap_df['orig_cs_dataset']=='pc_qtl',  overlap_df['cs_full_id'].str.split('_').str[-2].str.strip('pc'), 0)
-    overlap_df['pc_num'] = overlap_df['pc_num'].astype(int)
-    # Add in cluster size
-    # Add in the variant position as a column
-    overlap_df['lead_variant_pos'] = overlap_df['lead_variant_id'].str.split('_').str[1].astype(int)
-    # Split first, last, and middle pcs
-    overlap_df['pc_order'] = 'middle'
-    overlap_df.loc[overlap_df['pc_num'] == overlap_df['num_genes'],'pc_order'] = 'last'
-    overlap_df.loc[overlap_df['pc_num'] == 1,'pc_order'] = 'first'
-    overlap_df.loc[overlap_df['orig_cs_dataset'] == 'control_eqtl','pc_order'] = 'eqtl'
-    
-    return overlap_df
-
 def load_clusters_annotated(config, tissue_id):
     """Load annotated clusters for a tissue."""
     annot_cluster = pd.read_csv('{}/{}/{}/{}.clusters.annotated.txt'.format(prefix, config['annotations_output_dir'], tissue_id, tissue_id), index_col=0)

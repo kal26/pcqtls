@@ -10,7 +10,7 @@ logs_old/*
 .Rproj.user
 *.sh
 .vscode
-workflow/notebooks
+workflow/revisions
 run_snakemake_subsampling.sh
 run_snakemake.sh
 config_old/*

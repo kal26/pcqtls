@@ -20,7 +20,7 @@ cutoff_type: "pvalue"
 min_corr_cutoff: 0.1 
 
 # for cluster annotation
-gencode_path: "data/references/gencode.v26.genes.txt"
+gencode_path: "data/references/gencode.v26.tss_annotated.genes.txt"
 full_abc_path: "data/references/functional_annotations/ABC_predictions/ABC.hg38.bed"
 abc_match_path: "data/references/functional_annotations/ABC_predictions/ABC_matched_gtex.txt"
 ctcf_match_path: "data/references/functional_annotations/ctcf_chip/ctcf_matched_gtex.txt"
