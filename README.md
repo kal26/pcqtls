@@ -124,7 +124,7 @@ The workflow requires several input datasets. Below is a comprehensive list of r
 
 ### Data Preparation Notes
 
-1. **GENCODE Processing**: The GENCODE annotation must be processed to include only "gene" level features with columns `(chr,start,end,strand,gene_id,gene_name,tss_start)`. The `tss_start` column should contain the transcription start site position: use the `start` coordinate for positive-stranded genes and the `end` coordinate for negative-stranded genes. For this analysis, only protein-coding genes were considered.
+1. **GENCODE Processing**: The GENCODE annotation must be processed to include only "gene" level features with columns `(chr,start,end,strand,gene_id,gene_name,basic_tss,alternative_tss)`. The `basic_tss`(basic tagged transcript) and `alternative_tss` (list from all other transcripts) columns should contain the transcription start site position: use the `start` coordinate for positive-stranded genes and the `end` coordinate for negative-stranded genes. For this analysis, only protein-coding genes were considered.
 
 2. **Genome Assembly Conversion**: The ABC enhancer predictions and TADKB boundary databases are provided in hg19 coordinates. These must be converted to hg38 using liftOver before use in the workflow.  
 
