@@ -44,10 +44,10 @@ This workflow can be run from a specific conda environment with all dependencies
 
 ```bash
 # Clone this repository
-git clone <repository-url>
-cd <repository-name>
+git clone https://github.com/kal26/pcqtls.git
+cd pcqtls
 
-# Create the conda environment from the exported file
+# Create the conda environment 
 conda env create -f environment.yml
 
 # Activate the environment

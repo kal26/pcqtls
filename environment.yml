@@ -1,4 +1,4 @@
-name: tensorqtl_r
+name: pcqtl
 channels:
   - conda-forge
   - bioconda
@@ -733,4 +733,4 @@ dependencies:
       - urllib3==2.1.0
       - xarray==2023.1.0
       - zstandard==0.22.0
-prefix: /home/klawren/micromamba/envs/tensorqtl_r
+prefix: /home/klawren/micromamba/envs/pcqtl
