@@ -108,19 +108,17 @@ Tab-separated file with colocalizations between GWAS and QTLs:
 ## QTL Signal Groups (`coloc_output_dir/qtl_signal_groups/{TISSUE}.qtl_signal_groups.txt`):
 Tab-separated file with credible set groups for QTLs:
 - `signal_id`: Unique identifier for signal group (dash-separated list of credible set IDs)
+- `cluster_id`: Cluster identifier
 - `num_e_coloc`: Number of eQTL signals in the group
 - `num_pc_coloc`: Number of pcQTL signals in the group
 - `cluster_id`: Cluster identifier
-- `tissue_id`: Tissue identifier
 - `lead_var_set`: List of lead variants in the signal group
-- `var_set`: List of all variants in the signal group
 
 ## GWAS Signal Groups (`coloc_output_dir/gwas_signal_groups/{TISSUE}.{GWAS}.gwas_signal_groups.txt`):
 Tab-separated file with credible set groups for GWAS and QTLs:
 - `signal_id`: Unique identifier for signal group (dash-separated list of credible set IDs)
+- `cluster_id`: Cluster identifier
 - `num_qtl_coloc`: Number of QTL signals in the group
 - `num_gwas_coloc`: Number of GWAS signals in the group
 - `num_e_coloc`: Number of eQTL signals in the group
 - `num_pc_coloc`: Number of pcQTL signals in the group
-- `cluster_id`: Cluster identifier
-- `tissue_id`: Tissue identifier
