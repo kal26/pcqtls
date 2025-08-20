@@ -5,6 +5,7 @@ Signal Groups Analysis
 This script contains functions for analyzing signal groups from co-localization
 results, including QTL-QTL and QTL-GWAS signal group identification.
 """
+import sys; print(f"Using Python: {sys.executable}")
 
 import logging
 import sys
@@ -39,9 +40,9 @@ def setup_logging(level=logging.INFO):
     )
 
 
-def group_signals_tissue(pair_coloc, pc_susie_r, e_susie_r, coloc_cutoff=.75, get_variants=True):
+def group_qtl_signals(pair_coloc, pc_susie_r, e_susie_r, coloc_cutoff=.75, get_variants=False):
     """
-    Identify signal groups for a single tissue from co-localization results.
+    Group QTL signals for a single tissue.
     
     This function creates signal groups by connecting co-localized credible sets
     using network analysis to identify connected components.
@@ -51,10 +52,10 @@ def group_signals_tissue(pair_coloc, pc_susie_r, e_susie_r, coloc_cutoff=.75, ge
         pc_susie_r: DataFrame with pcQTL SuSiE results
         e_susie_r: DataFrame with eQTL SuSiE results
         coloc_cutoff: PP.H4 threshold for co-localization (default: 0.75)
-        get_variants: Whether to include variant sets in output (default: True)
+        get_variants: Whether to include variant sets in output (default: False)
     
     Returns:
-        DataFrame with signal groups and their properties
+        DataFrame with QTL signal groups
     """
     # Filter to coloc'd signals
     pair_coloc = pair_coloc[pair_coloc['PP.H4.abf'] > coloc_cutoff]
@@ -62,6 +63,10 @@ def group_signals_tissue(pair_coloc, pc_susie_r, e_susie_r, coloc_cutoff=.75, ge
     # Create an undirected graph
     G = nx.Graph()
 
+    # Create CS IDs for pairwise coloc data
+    pair_coloc['cs_id_1'] = pair_coloc['qtl1_id'] + '_cs_' + pair_coloc['idx1'].astype(int).astype(str)
+    pair_coloc['cs_id_2'] = pair_coloc['qtl2_id'] + '_cs_' + pair_coloc['idx2'].astype(int).astype(str)
+    
     # Add edges to the graph from the DataFrame
     for index, row in pair_coloc.iterrows():
         G.add_edge(row['cs_id_1'], row['cs_id_2'])
@@ -81,9 +86,23 @@ def group_signals_tissue(pair_coloc, pc_susie_r, e_susie_r, coloc_cutoff=.75, ge
             underlying_signals.append(credible_set_id)
 
     underlying_signals = pd.DataFrame({'signal_id': underlying_signals})
+    # Extract cluster_id from signal_id - extract from the first part before _cs_
+    def extract_cluster_id(signal_id):
+        # Split by dash and look for elements containing '_cs_'
+        parts = signal_id.split('-')
+        for part in parts:
+            if '_cs_' in part:
+                # Extract the part before _cs_ and then get cluster_id
+                base_id = part.split('_cs_')[0]
+                if '_e_' in base_id:
+                    return base_id.split('_e_')[0]
+                elif '_pc' in base_id:
+                    return base_id.split('_pc')[0]
+        return None
+    
+    underlying_signals['cluster_id'] = underlying_signals['signal_id'].apply(extract_cluster_id)
     underlying_signals['num_e_coloc'] = underlying_signals['signal_id'].astype(str).str.count('_e_')
     underlying_signals['num_pc_coloc'] = underlying_signals['signal_id'].astype(str).str.count('_pc')
-    underlying_signals['cluster_id'] = underlying_signals['signal_id'].str.split('_pc').str[0].str.split('_e').str[0]
 
     # Add the set of lead variants for all signals in the group
     def get_var_set(row, lead=True):
@@ -95,56 +114,21 @@ def group_signals_tissue(pair_coloc, pc_susie_r, e_susie_r, coloc_cutoff=.75, ge
             [var_ids.append(var) for var in pc_susie_r[pc_susie_r['cs_id'].isin(row['signal_id'].split('-'))]['variant_id'].values]
             [var_ids.append(var) for var in e_susie_r[e_susie_r['cs_id'].isin(row['signal_id'].split('-'))]['variant_id'].values]
         return list(set(var_ids))
-    
+    underlying_signals['lead_var_set'] = underlying_signals.apply(get_var_set, axis=1, args=(True,))
     if get_variants:
-        underlying_signals['lead_var_set'] = underlying_signals.apply(get_var_set, axis=1, args=(True,))
         underlying_signals['var_set'] = underlying_signals.apply(get_var_set, axis=1, args=(False,))
+
+    # Reorder columns to match specification
+    column_order = ['signal_id', 'cluster_id', 'num_e_coloc', 'num_pc_coloc', 'lead_var_set', 'var_set']
+    if get_variants:
+        underlying_signals = underlying_signals[column_order]
+    else:
+        underlying_signals = underlying_signals[column_order[:-1]]  # Remove variant columns if not requested
 
     return underlying_signals
 
 
-def group_qtl_signals(pair_coloc, pc_susie_r, e_susie_r, coloc_cutoff=.75):
-    """
-    Group QTL signals across multiple tissues.
-    
-    This function processes co-localization results across all tissues to identify
-    QTL signal groups for each tissue separately.
-    
-    Args:
-        pair_coloc: DataFrame with pairwise co-localization results
-        pc_susie_r: DataFrame with pcQTL SuSiE results
-        e_susie_r: DataFrame with eQTL SuSiE results
-        coloc_cutoff: PP.H4 threshold for co-localization (default: 0.75)
-    
-    Returns:
-        DataFrame with QTL signal groups for all tissues
-    """
-    # Ensure all inputs have 'tissue_id' column for grouping
-    if 'tissue_id' not in pair_coloc.columns or \
-       'tissue_id' not in pc_susie_r.columns or \
-       'tissue_id' not in e_susie_r.columns:
-        raise ValueError("All input DataFrames must have a 'tissue_id' column.")
 
-    # Group by tissue_id
-    results = []
-    tissue_groups = pair_coloc['tissue_id'].unique()
-
-    for tissue in tissue_groups:
-        # Filter the data for the current tissue_id
-        pair_coloc_group = pair_coloc[pair_coloc['tissue_id'] == tissue]
-        pc_susie_r_group = pc_susie_r[pc_susie_r['tissue_id'] == tissue]
-        e_susie_r_group = e_susie_r[e_susie_r['tissue_id'] == tissue]
-        
-        # Call group_signals_tissue for the current group
-        tissue_results = group_signals_tissue(pair_coloc_group, pc_susie_r_group, e_susie_r_group, coloc_cutoff=coloc_cutoff)
-        
-        # Add tissue_id to the results
-        tissue_results['tissue_id'] = tissue
-        results.append(tissue_results)
-
-    # Concatenate all results into a single DataFrame
-    final_results = pd.concat(results, ignore_index=True)
-    return final_results
 
 
 def load_gwas_coloc(config):
@@ -177,8 +161,6 @@ def load_gwas_coloc(config):
     for cluster_file in coloc_file_list:
         try:
             cluster_coloc = pd.read_csv(cluster_file, sep='\t')
-            tissue_id = cluster_file.split('/')[9]
-            cluster_coloc['tissue_id'] = tissue_id
             cluster_coloc['coloc_file'] = cluster_file
             cluster_colocs.append(cluster_coloc)
         except EmptyDataError as e:
@@ -204,9 +186,9 @@ def load_gwas_coloc(config):
     # Fill in nas with 0
     gwas_coloc[['PP.H0.abf', 'PP.H1.abf', 'PP.H2.abf', 'PP.H3.abf', 'PP.H4.abf']] = gwas_coloc[['PP.H0.abf', 'PP.H1.abf', 'PP.H2.abf', 'PP.H3.abf', 'PP.H4.abf']].fillna(0)
 
-    # Add tissue specific ids
-    gwas_coloc['gwas_tissue_cs_id'] = 'gwas_' + gwas_coloc['gwas_cs_id'] + '_tissue_' + gwas_coloc['tissue_id']
-    gwas_coloc['qtl_tissue_cs_id'] = 'qtl_' + gwas_coloc['qtl_cs_id'] + '_tissue_' + gwas_coloc['tissue_id']
+    # Add cs ids
+    gwas_coloc['gwas_cs_id'] = 'gwas_' + gwas_coloc['gwas_cs_id']
+    gwas_coloc['qtl_cs_id'] = 'qtl_' + gwas_coloc['qtl_cs_id']
     
     return gwas_coloc
 
@@ -225,20 +207,20 @@ def get_gwas_signals(gwas_coloc_hits, pair_coloc_hits):
     Returns:
         DataFrame with GWAS signal groups and their properties
     """
-    # Add in id with tissue and cluster
-    pair_coloc_hits['qtl_tissue_cs_id_1'] = 'qtl_' + pair_coloc_hits['cs_id_1'] + '_cluster_' + pair_coloc_hits['cluster_id'] + '_tissue_' + pair_coloc_hits['tissue_id']
-    pair_coloc_hits['qtl_tissue_cs_id_2'] = 'qtl_' + pair_coloc_hits['cs_id_2'] + '_cluster_' + pair_coloc_hits['cluster_id'] + '_tissue_' + pair_coloc_hits['tissue_id']
+    # Create CS IDs for pairwise coloc data
+    pair_coloc_hits['cs_id_1'] = pair_coloc_hits['qtl1_id'] + '_cs_' + pair_coloc_hits['idx1'].astype(int).astype(str)
+    pair_coloc_hits['cs_id_2'] = pair_coloc_hits['qtl2_id'] + '_cs_' + pair_coloc_hits['idx2'].astype(int).astype(str)
 
     # Create an undirected graph
     G = nx.Graph()
     
     # Add an edge for each gwas-qtl coloc
     for index, row in gwas_coloc_hits.iterrows():
-        G.add_edge(row['gwas_tissue_cs_id'], row['qtl_tissue_cs_id'])
+        G.add_edge(row['gwas_cs_id'], row['qtl_cs_id'])
 
     # Add an edge for each qtl-qtl coloc
     for index, row in pair_coloc_hits.iterrows():
-        G.add_edge(row['qtl_tissue_cs_id_1'], row['qtl_tissue_cs_id_2'])
+        G.add_edge(row['cs_id_1'], row['cs_id_2'])
 
     # Get the connected components of the graph
     connected_components = list(nx.connected_components(G))
@@ -248,12 +230,29 @@ def get_gwas_signals(gwas_coloc_hits, pair_coloc_hits):
 
     # Make a df
     underlying_signals = pd.DataFrame({'signal_id': underlying_signals})
+    # Extract cluster_id from signal_id - extract from the first part before _cs_
+    def extract_cluster_id(signal_id):
+        # Split by dash and look for elements containing '_cs_'
+        parts = signal_id.split('-')
+        for part in parts:
+            if '_cs_' in part:
+                # Extract the part before _cs_ and then get cluster_id
+                base_id = part.split('_cs_')[0]
+                if '_e_' in base_id:
+                    return base_id.split('_e_')[0]
+                elif '_pc' in base_id:
+                    return base_id.split('_pc')[0]
+        return None
+    
+    underlying_signals['cluster_id'] = underlying_signals['signal_id'].apply(extract_cluster_id)
     underlying_signals['num_qtl_coloc'] = underlying_signals['signal_id'].astype(str).str.count('qtl_')
     underlying_signals['num_gwas_coloc'] = underlying_signals['signal_id'].astype(str).str.count('gwas_')
     underlying_signals['num_e_coloc'] = underlying_signals['signal_id'].astype(str).str.count('_e_')
     underlying_signals['num_pc_coloc'] = underlying_signals['signal_id'].astype(str).str.count('_pc')
-    underlying_signals['cluster_id'] = underlying_signals['signal_id'].str.split('_cluster_').str[1].str.split('_tissue_').str[0]
-    underlying_signals['tissue_id'] = underlying_signals['signal_id'].str.split('_tissue_').str[1].str.split('-').str[0]
+    
+    # Reorder columns to match specification
+    column_order = ['signal_id', 'cluster_id', 'num_qtl_coloc', 'num_gwas_coloc', 'num_e_coloc', 'num_pc_coloc']
+    underlying_signals = underlying_signals[column_order]
     
     return underlying_signals
 

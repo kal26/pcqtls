@@ -30,7 +30,7 @@ parser$add_argument("--tissue-id", help="Tissue ID")
 parser$add_argument("--chr-id", help="Chromosome ID")
 parser$add_argument("--ld-path-head", help="Directory file path for SNP list and LD")
 parser$add_argument("--genotype-stem", help="Path to genotype stem")
-parser$add_argument("--annotated-cluster", help="Path to position annotated clusters")
+parser$add_argument("--clusters", help="Path to clusters file")
 parser$add_argument("--output", help="Output file path for coloc results")
 parser$add_argument("--coloc-temp-path-head", help="Tissue specific directory file path for susie and per chrom GWAS")
 
@@ -47,7 +47,7 @@ chr_id <- args$chr_id
 ld_path_head <- args$ld_path_head
 genotype_stem <- args$genotype_stem
 output_path <- args$output
-annotated_cluster_path <- args$annotated_cluster
+clusters_path <- args$clusters
 coloc_temp_path_head <- args$coloc_temp_path_head
 
 # =============================================================================
@@ -69,7 +69,7 @@ cat("LD and SNP list dir:", ld_path_head, "\n")
 cat("Tissue ID:", tissue_id, "\n")
 cat("Chromosome ID:", chr_id, "\n")
 cat("Output Path:", output_path, "\n")
-cat("Cluster Path:", annotated_cluster_path, "\n")
+cat("Cluster Path:", clusters_path, "\n")
 
 cat("Starting pair colocalizations\n")
 start <- Sys.time()
@@ -113,8 +113,8 @@ if (!file.exists(coloc_temp_path_head)) {
 # Load clusters and process chromosome
 # =============================================================================
 
-# Load annotated clusters
-cluster_df <- fread(annotated_cluster_path)
+# Load clusters
+cluster_df <- fread(clusters_path)
 
 # Process specified chromosome
 chr_id <- as.integer(sub("chr", "", chr_id))
@@ -123,7 +123,7 @@ chr_coloc_path <- paste(coloc_temp_path_head, tissue_id, ".v8.", 'chr_', chr_id,
 cat("Working on chromosome", chr_id, "\n")
 
 # Subset clusters to current chromosome
-cluster_df_chr <- cluster_df[cluster_df$Chromosome == chr_id]
+cluster_df_chr <- cluster_df[cluster_df$chr == paste0("chr", chr_id)]
 
 # Load eQTL and PCQTL data for current chromosome
 eqtl_chr <- get_eqtl_chr(eqtl_dir_path, chr_id, tissue_id)

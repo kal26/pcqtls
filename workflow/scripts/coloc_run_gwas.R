@@ -26,19 +26,19 @@ library(dplyr)
 # Create argument parser
 parser <- ArgumentParser()
 parser$add_argument("--code-dir", help="Directory containing R script functions", required=TRUE)
-parser$add_argument("--eqtl-dir", help="Folder for eQTL pairs")
-parser$add_argument("--pcqtl-dir", help="Folder for PCQTL pairs")
-parser$add_argument("--gwas-meta", help="Input file path for GWAS metadata, with sample size and quant vs cc")
+parser$add_argument("--eqtl-dir", help="Path for eQTL susie results")
+parser$add_argument("--pcqtl-dir", help="Path for PCQTL susie results")
+parser$add_argument("--gwas", help="Path for GWAS summary statistics")
+parser$add_argument("--gwas-meta", help="Input file path for GWAS metadata")
 parser$add_argument("--gtex-meta", help="Input file path for GTEX metadata with sample size")
 parser$add_argument("--tissue-id", help="Tissue ID")
 parser$add_argument("--ld-path-head", help="Directory file path for SNP list and LD")
 parser$add_argument("--coloc-temp-path-head", help="Tissue specific directory file path for susie and per chrom GWAS")
 parser$add_argument("--genotype-stem", help="Path to genotype stem")
-parser$add_argument("--gwas", help="Path to GWAS data")
-parser$add_argument("--gwas-id", help="GWAS ID")
-parser$add_argument("--annotated-cluster", help="Path to position annotated clusters")
+parser$add_argument("--clusters", help="Path to clusters file")
+parser$add_argument("--expression", help="Path to cluster expression file with coordinates")
 parser$add_argument("--output", help="Output file path for coloc results")
-parser$add_argument("--use-susie", help="Use SuSiE for multi-credible set colocalization?", default = FALSE)
+parser$add_argument("--use-susie", help="Whether to use SuSiE for fine-mapping", default="True")
 
 # Parse arguments
 args <- parser$parse_args()
@@ -47,17 +47,17 @@ args <- parser$parse_args()
 code_dir <- args$code_dir
 eqtl_dir_path <- args$eqtl_dir
 pcqtl_dir_path <- args$pcqtl_dir
+gwas_path <- args$gwas
 gwas_meta_path <- args$gwas_meta
 gtex_meta_path <- args$gtex_meta
 tissue_id <- args$tissue_id
 ld_path_head <- args$ld_path_head
 coloc_temp_path_head <- args$coloc_temp_path_head
 genotype_stem <- args$genotype_stem
-gwas_path <- args$gwas
 output_path <- args$output
-gwas_id <- args$gwas_id
-annotated_cluster_path <- args$annotated_cluster
-use_susie <- as.logical(args$use_susie)
+clusters_path <- args$clusters
+expression_path <- args$expression
+use_susie <- args$use_susie
 
 # =============================================================================
 # Source helper functions
@@ -79,10 +79,11 @@ cat("LD and SNP list dir:", ld_path_head, "\n")
 cat("Tissue ID:", tissue_id, "\n")
 cat("GWAS path:", gwas_path, "\n")
 cat("Output Path:", output_path, "\n")
-cat("Cluster Path:", annotated_cluster_path, "\n")
+cat("Cluster Path:", clusters_path, "\n")
+cat("Expression Path:", expression_path, "\n")
 cat("Use SuSiE:", use_susie, "\n")
 
-cat("Starting colocalizations for", gwas_id, "\n")
+cat("Starting colocalizations for", tissue_id, "\n")
 start <- Sys.time()
 
 # =============================================================================
@@ -95,7 +96,7 @@ num_gtex_samples <- gtex_meta[gtex_meta$tissue_id == tissue_id, 'sample_size']
 
 # Load GWAS metadata and data
 gwas_meta_df <- fread(gwas_meta_path)
-gwas_with_meta <- load_gwas_from_path(gwas_path, gwas_meta_df, gwas_id)
+gwas_with_meta <- load_gwas_from_path(gwas_path, gwas_meta_df, tissue_id)
 gwas_data <- gwas_with_meta$gwas_data
 cat("Total GWAS signals:", sum(gwas_data$pvalue < 1e-6), "\n")
 
@@ -131,12 +132,32 @@ if (!file.exists(coloc_temp_path_head)) {
 # Load clusters and process chromosomes
 # =============================================================================
 
-# Load annotated clusters
-cluster_df <- fread(annotated_cluster_path)
+# Load clusters
+cluster_df <- fread(clusters_path)
+
+# Load expression file to get coordinates
+expression_df <- fread(expression_path)
+
+# Add start and end coordinates to clusters
+cluster_df$start <- NA
+cluster_df$end <- NA
+cluster_df$Chromosome <- as.integer(sub("chr", "", cluster_df$chr))
+
+for (i in 1:nrow(cluster_df)) {
+  cluster_id <- cluster_df$cluster_id[i]
+  # Get genes in this cluster
+  cluster_genes <- strsplit(cluster_id, "_")[[1]]
+  # Get coordinates for these genes from expression file
+  cluster_expression <- expression_df[expression_df$gene_id %in% cluster_genes]
+  if (nrow(cluster_expression) > 0) {
+    cluster_df$start[i] <- min(cluster_expression$start)
+    cluster_df$end[i] <- max(cluster_expression$end)
+  }
+}
 
 # Process each chromosome
 for (chr_id in 1:22) {
-  chr_coloc_path <- paste(coloc_temp_path_head, tissue_id, ".v8.", gwas_id, '.susie_', use_susie, 'chr_', chr_id, '.gwas_coloc.txt', sep = "")
+  chr_coloc_path <- paste(coloc_temp_path_head, tissue_id, ".v8.", tissue_id, '.susie_', use_susie, 'chr_', chr_id, '.gwas_coloc.txt', sep = "")
   
   # Check if partial results exist
   if (file.exists(chr_coloc_path)) {

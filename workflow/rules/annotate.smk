@@ -30,18 +30,18 @@ rule annotate_clusters:
     output:
         annotated_clusters = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.clusters.annotated.txt'
     
+    params:
+        code_dir = config['code_dir']
+    
     resources:
         mem = "20G",
         time = "2:00:00"
     
     threads: 10
     
-    conda:
-        "tensorqtl_r"
-    
     shell:
         """
-        python scripts/annotate_clusters.py \
+        python {params.code_dir}/annotate_clusters.py \
             --tissue-id {wildcards.TISSUE} \
             --clusters {input.clusters} \
             --expression {input.expression} \
@@ -84,7 +84,8 @@ rule annotate_null_clusters:
         annotated_nulls = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.null_{CLUSTER_SIZE}genes.annotated.txt'
     
     params:
-        cluster_size = "{CLUSTER_SIZE}"
+        cluster_size = "{CLUSTER_SIZE}",
+        code_dir = config['code_dir']
     
     resources:
         mem = "20G",
@@ -92,12 +93,9 @@ rule annotate_null_clusters:
     
     threads: 10
     
-    conda:
-        "tensorqtl_r"
-    
     shell:
         """
-        python scripts/annotate_null_clusters.py \
+        python {params.code_dir}/annotate_null_clusters.py \
             --tissue-id {wildcards.TISSUE} \
             --clusters {input.clusters} \
             --expression {input.expression} \
@@ -126,15 +124,15 @@ rule annotate_pcs:
     input:
         pcs = config['pc_output_dir'] + '{TISSUE}.pcs.bed',
         filtered_normed_expression = config['filtered_expression_output_dir'] + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed',
-    conda:
-        'tensorqtl_r'
+    params:
+        code_dir = config['code_dir']
     resources:
         mem = "20G"
     output:
         pc_annotated = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs_annotated.txt'
     shell:
         """
-        python scripts/annotate_pcs.py \
+        python {params.code_dir}/annotate_pcs.py \
             --pcs {input.pcs} \
             --output {output.pc_annotated} \
             --tissue-id {wildcards.TISSUE}
@@ -155,18 +153,18 @@ rule convert_susie_to_vcf:
     output:
         vcf = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.v8.susie_R_vars.vcf'
     
+    params:
+        code_dir = config['code_dir']
+    
     resources:
         mem = "5G",
         time = "0:30:00"
     
     threads: 1
     
-    conda:
-        "tensorqtl_r"
-    
     shell:
         """
-        python scripts/susie_to_vcf.py \
+        python {params.code_dir}/susie_to_vcf.py \
             --e-susie {input.e_susie_results} \
             --pc-susie {input.pc_susie_results} \
             --output {output.vcf}
@@ -233,18 +231,18 @@ rule merge_susie_vep_annotations:
     output:
         annotated_susie = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.v8.susie_R_vars.annotated.csv'
     
+    params:
+        code_dir = config['code_dir']
+    
     resources:
         mem = "20G",
         time = "1:00:00"
     
     threads: 10
     
-    conda:
-        "tensorqtl_r"
-    
     shell:
         """
-        python scripts/annotate_susie.py \
+        python {params.code_dir}/annotate_susie.py \
             --e-susie {input.e_susie_results} \
             --pc-susie {input.pc_susie_results} \
             --vep {input.vep_results} \

@@ -15,7 +15,6 @@ from pathlib import Path
 tissue_ids = pd.read_csv(config['tissue_id_path'])['Tissue'].tolist()
 chr_list = pd.read_csv(config['chr_list_path'])['chr_id'].tolist()
 gwas_ids = pd.read_table(config['gwas_meta'])['Tag'].tolist()
-print(tissue_ids)
 
 # Analysis parameters
 NULL_SIZES = [2, 3, 4, 5]
@@ -33,9 +32,9 @@ rule all:
     """Main workflow target - defines all outputs to be generated."""
     input:
         # Core clustering and annotation
-        clusters = expand(config['clusters_dir'] + "{TISSUE}.clusters.txt", TISSUE=tissue_ids),
-        annotated_clusters = expand(config['annotations_output_dir'] + "{TISSUE}/{TISSUE}.clusters.annotated.txt", TISSUE=tissue_ids),
-        annotated_nulls = expand(config['annotations_output_dir'] + "{TISSUE}/{TISSUE}.null_{CLUSTER_SIZE}genes.annotated.txt", TISSUE=tissue_ids, CLUSTER_SIZE=NULL_SIZES),
+        # clusters = expand(config['clusters_dir'] + "{TISSUE}.clusters.txt", TISSUE=tissue_ids),
+        # annotated_clusters = expand(config['annotations_output_dir'] + "{TISSUE}/{TISSUE}.clusters.annotated.txt", TISSUE=tissue_ids),
+        # annotated_nulls = expand(config['annotations_output_dir'] + "{TISSUE}/{TISSUE}.null_{CLUSTER_SIZE}genes.annotated.txt", TISSUE=tissue_ids, CLUSTER_SIZE=NULL_SIZES),
         # eQTL analysis outputs
         # eqtl_susie = expand(config['eqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.cluster_genes.susie.txt", TISSUE=tissue_ids),
         # eqtl_permutation = expand(config['eqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.cluster_genes.cis_independent_qtl.txt.gz", TISSUE=tissue_ids),
@@ -55,7 +54,7 @@ rule all:
         # gwas_colocs = expand(config['coloc_output_dir'] + "gwas/{TISSUE}/{TISSUE}.v8.{GWAS}.susie_" + USE_SUSIE + ".gwas_coloc.txt", 
         #                     TISSUE=tissue_ids, GWAS=gwas_ids),
         # # Signal groups analysis
-        # qtl_signal_groups = expand(config['coloc_output_dir'] + "qtl_signal_groups/{TISSUE}.qtl_signal_groups.txt", TISSUE=tissue_ids),
+        qtl_signal_groups = expand(config['coloc_output_dir'] + "qtl_signal_groups/{TISSUE}.qtl_signal_groups.txt", TISSUE=tissue_ids),
         # gwas_signal_groups = expand(config['coloc_output_dir'] + "gwas_signal_groups/{TISSUE}.gwas_signal_groups.txt", 
         #                            TISSUE=tissue_ids)
 

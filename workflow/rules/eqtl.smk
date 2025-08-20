@@ -20,12 +20,12 @@ rule filter_expression_clusters:
     output:
         filtered_expression = config['filtered_expression_output_dir'] + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed'
     
-    conda:
-        "tensorqtl_r"
+    params:
+        code_dir = config['code_dir']
     
     shell:
         """
-        python scripts/filter_expression_clusters.py \
+        python {params.code_dir}/filter_expression_clusters.py \
             --clusters {input.clusters} \
             --expression {input.expression} \
             --covariates {input.covariates} \
@@ -52,7 +52,8 @@ rule run_eqtl_cis_nominal:
     params:
         genotype_stem = config['genotype_stem'],
         eqtl_output_dir = config['eqtl_output_dir'],
-        tissue = "{TISSUE}"
+        tissue = "{TISSUE}",
+        code_dir = config['code_dir']
     
     resources:
         mem = "30G",
@@ -60,12 +61,9 @@ rule run_eqtl_cis_nominal:
     
     threads: 10
     
-    conda:
-        "tensorqtl_r"
-    
     shell:
         """
-        python scripts/run_qtl_nominal.py \
+        python {params.code_dir}/run_qtl_nominal.py \
             --genotype-stem {params.genotype_stem} \
             --expression {input.expression} \
             --covariates {input.covariates} \
@@ -100,9 +98,6 @@ rule run_eqtl_cis:
     
     threads: 10
     
-    conda:
-        "tensorqtl_r"
-    
     shell:
         """
         python -m tensorqtl {params.genotype_stem} \
@@ -131,7 +126,8 @@ rule run_eqtl_cis_independent:
     
     params:
         genotype_stem = config['genotype_stem'],
-        tissue = "{TISSUE}"
+        tissue = "{TISSUE}",
+        code_dir = config['code_dir']
     
     resources:
         mem = "60G",
@@ -139,12 +135,9 @@ rule run_eqtl_cis_independent:
     
     threads: 20
     
-    conda:
-        "tensorqtl_r"
-    
     shell:
         """
-        python scripts/run_qtl_permutations.py \
+        python {params.code_dir}/run_qtl_permutations.py \
             --genotype-stem {params.genotype_stem} \
             --phenotype {input.expression} \
             --covariates {input.covariates} \
@@ -171,18 +164,16 @@ rule run_eqtl_susie:
     
     params:
         genotype_stem = config['genotype_stem'],
-        eqtl_output_dir = config['eqtl_output_dir']
+        eqtl_output_dir = config['eqtl_output_dir'],
+        code_dir = config['code_dir']
     
     resources:
         mem = "30G",
         time = "4:00:00"
     
-    conda:
-        "tensorqtl_r"
-    
     shell:
         """
-        python scripts/run_susie.py \
+        python {params.code_dir}/run_susie.py \
             --genotype-stem {params.genotype_stem} \
             --expression {input.expression} \
             --covariates {input.covariates} \

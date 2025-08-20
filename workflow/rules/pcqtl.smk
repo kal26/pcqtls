@@ -20,12 +20,12 @@ rule calculate_pcs:
     output:
         pcs = config['pc_output_dir'] + '{TISSUE}.pcs.bed'
     
-    conda:
-        "tensorqtl_r"
+    params:
+        code_dir = config['code_dir']
     
     shell:
         """
-        python scripts/get_pcs.py \
+        python {params.code_dir}/get_pcs.py \
             -cl {input.clusters} \
             -e {input.filtered_expression} \
             -co {input.covariates} \
@@ -52,7 +52,8 @@ rule run_pcqtl_cis_nominal:
     params:
         genotype_stem = config['genotype_stem'],
         pcqtl_output_dir = config['pcqtl_output_dir'],
-        tissue = "{TISSUE}"
+        tissue = "{TISSUE}",
+        code_dir = config['code_dir']
     
     resources:
         mem = "30G",
@@ -60,12 +61,9 @@ rule run_pcqtl_cis_nominal:
     
     threads: 10
     
-    conda:
-        "tensorqtl_r"
-    
     shell:
         """
-        python scripts/run_qtl_nominal.py \
+        python {params.code_dir}/run_qtl_nominal.py \
             --genotype-stem {params.genotype_stem} \
             --expression {input.pcs} \
             --covariates {input.covariates} \
@@ -100,9 +98,6 @@ rule run_pcqtl_cis:
     
     threads: 10
     
-    conda:
-        "tensorqtl_r"
-    
     shell:
         """
         python -m tensorqtl {params.genotype_stem} \
@@ -131,7 +126,8 @@ rule run_pcqtl_cis_independent:
     
     params:
         genotype_stem = config['genotype_stem'],
-        tissue = "{TISSUE}"
+        tissue = "{TISSUE}",
+        code_dir = config['code_dir']
     
     resources:
         mem = "60G",
@@ -139,12 +135,9 @@ rule run_pcqtl_cis_independent:
     
     threads: 20
     
-    conda:
-        "tensorqtl_r"
-    
     shell:
         """
-        python scripts/run_qtl_permutations.py \
+        python {params.code_dir}/run_qtl_permutations.py \
             --genotype-stem {params.genotype_stem} \
             --phenotype {input.pcs} \
             --covariates {input.covariates} \
@@ -174,7 +167,8 @@ rule run_pcqtl_susie:
     
     params:
         genotype_stem = config['genotype_stem'],
-        pcqtl_output_dir = config['pcqtl_output_dir']
+        pcqtl_output_dir = config['pcqtl_output_dir'],
+        code_dir = config['code_dir']
     
     resources:
         mem = "30G",
@@ -182,12 +176,9 @@ rule run_pcqtl_susie:
     
     threads: 10
     
-    conda:
-        "tensorqtl_r"
-    
     shell:
         """
-        python scripts/run_susie.py \
+        python {params.code_dir}/run_susie.py \
             --genotype-stem {params.genotype_stem} \
             --expression {input.pcs} \
             --covariates {input.covariates} \

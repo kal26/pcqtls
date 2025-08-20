@@ -157,6 +157,16 @@ def load_pc(config, tissue_id):
     """Load principal components for a tissue."""
     return pd.read_csv('{}/{}/{}.pcs.bed'.format(prefix, config['pc_output_dir'], tissue_id), sep='\t')
 
+def load_qtl_signal_groups(config, tissue_id):
+    """Load QTL signal groups for a tissue."""
+    qtl_signal_groups_path = '{}/{}/qtl_signal_groups/{}.qtl_signal_groups.txt'.format(prefix, config['coloc_output_dir'], tissue_id)
+    return pd.read_csv(qtl_signal_groups_path, sep='\t')
+
+def load_gwas_signal_groups(config, tissue_id):
+    """Load GWAS signal groups for a tissue."""
+    gwas_signal_groups_path = '{}/{}/gwas_signal_groups/{}.gwas_signal_groups.txt'.format(prefix, config['coloc_output_dir'], tissue_id)
+    return pd.read_csv(gwas_signal_groups_path, sep='\t')
+
 # Utility functions for data processing
 def var_pos(df, column='variant_id'):
     """Extract variant positions from variant IDs."""

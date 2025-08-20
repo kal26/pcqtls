@@ -24,7 +24,8 @@ rule call_clusters:
         min_cluster_size = 2,
         min_corr_cutoff = config['min_corr_cutoff'],
         percent_corr_cutoff = float(config['percent_corr_cutoff']),
-        cutoff_type = config['cutoff_type']
+        cutoff_type = config['cutoff_type'],
+        code_dir = config['code_dir']
     
     resources:
         mem = "80G",
@@ -32,12 +33,9 @@ rule call_clusters:
     
     threads: 20
     
-    conda:
-        "tensorqtl_r"
-    
     shell:
         """
-        python scripts/call_clusters.py \
+        python {params.code_dir}/call_clusters.py \
             -e {input.expression} \
             -co {input.covariates} \
             -o {output.clusters} \

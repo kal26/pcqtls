@@ -40,45 +40,19 @@ snakemake --configfile config/config_example.yaml --cores 10 --use-conda
 
 ### Environment Setup
 
-- Snakemake
-- Conda or Mamba 
-- Python 
-- R 
+This workflow can be run from a specific conda environment with all dependencies installed.
 
-Dependencies are:
+```bash
+# Clone this repository
+git clone <repository-url>
+cd <repository-name>
 
-**Python packages:**
-- tensorqtl==1.0.9
-- pandas==2.0.3
-- numpy==1.24.3
-- scipy==1.10.1
-- scikit-learn==1.3.2
-- pysam==0.21.0
-- statsmodels==0.14.1
-- rpy2==3.5.15
+# Create the conda environment from the exported file
+conda env create -f environment.yml
 
-**R packages:**
-- tidyverse==2.0.0
-- data.table==1.14.8
-- ggplot2==3.4.3
-- dplyr==1.1.3 
-- tidyr==1.3.0
-- readr==2.1.4 
-- readxl==1.4.3
-- lubridate==1.9.3
-- coloc==5.2.3
-- susieR==0.12.35
-- nanoparquet==0.4.2
-- Rfast==2.1.5.1
-- argparse==2.2.5
-
-**Additional tools:**
-- plink==1.90b7.7
-- snakemake==7.32.4
-- ensembl-vep==114.2
-
-The workflow assumes all packages are in a conda enviroment named `tensorqtl_r` . If your conda enviroment is named something else, simply change the conda parameter in the snakemake rules. If all packages are installed in a base enviroment, you can remove the conda parameter.
-
+# Activate the environment
+conda activate pcqtl
+```
 
 ### Workflow Components
 

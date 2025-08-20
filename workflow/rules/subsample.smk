@@ -23,7 +23,8 @@ rule get_subsample:
     
     params:
         use_scramble_order = False,
-        num_samples = None
+        num_samples = None,
+        code_dir = config['code_dir']
     
     resources:
         mem = "8G",
@@ -31,12 +32,9 @@ rule get_subsample:
     
     threads: 1
     
-    conda:
-        "tensorqtl_r"
-    
     shell:
         """
-        python scripts/make_subsamples.py \
+        python {params.code_dir}/make_subsamples.py \
             --expression {input.expression} \
             --covariates {input.covariates} \
             --output-expression {output.subsample_expression} \

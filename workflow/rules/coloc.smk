@@ -19,7 +19,7 @@ rule run_coloc_pairs:
         eqtl_nominal = config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet',
         pcqtl_nominal = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet',
         gtex_meta = config['gtex_meta'],
-        annotated_cluster = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.clusters.annotated.txt'
+        clusters = config['clusters_dir'] + '{TISSUE}.clusters.txt'
     
     output:
         coloc_pairs = config['coloc_output_dir'] + 'pairs/{TISSUE}.v8.pairs_coloc.{CHROM}.txt'
@@ -38,9 +38,6 @@ rule run_coloc_pairs:
     
     threads: 20
     
-    conda:
-        "tensorqtl_r"
-    
     shell:
         """
         Rscript scripts/coloc_run_pairs.R \
@@ -52,7 +49,7 @@ rule run_coloc_pairs:
             --chr-id {params.chrom} \
             --ld-path-head {params.ld_path_head} \
             --genotype-stem {params.genotype_stem} \
-            --annotated-cluster {input.annotated_cluster} \
+            --clusters {input.clusters} \
             --output {output.coloc_pairs} \
             --coloc-temp-path-head {params.coloc_temp_path_head}
         """
@@ -71,7 +68,8 @@ rule run_gwas_coloc:
         gwas_summary = config['gwas_folder'] + 'imputed_{GWAS}.txt.gz',
         gwas_meta = config['gwas_meta'],
         gtex_meta = config['gtex_meta'],
-        annotated_cluster = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.clusters.annotated.txt'
+        clusters = config['clusters_dir'] + '{TISSUE}.clusters.txt',
+        expression = config['filtered_expression_output_dir'] + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed'
     
     output:
         gwas_coloc = config['coloc_output_dir'] + 'gwas/{TISSUE}/{TISSUE}.v8.{GWAS}.susie_' + USE_SUSIE + '.gwas_coloc.txt'
@@ -91,24 +89,21 @@ rule run_gwas_coloc:
     
     threads: 40
     
-    conda:
-        "tensorqtl_r"
-    
     shell:
         """
         Rscript scripts/coloc_run_gwas.R \
             --code-dir {params.code_dir} \
             --eqtl-dir {input.eqtl_susie} \
             --pcqtl-dir {input.pcqtl_susie} \
+            --gwas {input.gwas_summary} \
             --gwas-meta {input.gwas_meta} \
             --gtex-meta {input.gtex_meta} \
             --tissue-id {params.tissue} \
             --ld-path-head {params.ld_path_head} \
             --coloc-temp-path-head {params.coloc_temp_path_head} \
             --genotype-stem {params.genotype_stem} \
-            --gwas {input.gwas_summary} \
-            --gwas-id {params.gwas} \
-            --annotated-cluster {input.annotated_cluster} \
+            --clusters {input.clusters} \
+            --expression {input.expression} \
             --output {output.gwas_coloc} \
             --use-susie {params.use_susie}
         """
@@ -131,7 +126,8 @@ rule group_qtl_signals:
     
     params:
         tissue = "{TISSUE}",
-        coloc_cutoff = 0.75
+        coloc_cutoff = 0.75,
+        code_dir = config['code_dir']
     
     resources:
         mem = "20G",
@@ -139,12 +135,9 @@ rule group_qtl_signals:
     
     threads: 10
     
-    conda:
-        "tensorqtl_r"
-    
     shell:
         """
-        python scripts/group_signals.py \
+        python {params.code_dir}/group_signals.py \
             --mode qtl \
             --pair-coloc {input.pair_coloc} \
             --pc-susie {input.pc_susie} \
@@ -170,7 +163,8 @@ rule group_gwas_signals:
     
     params:
         tissue = "{TISSUE}",
-        coloc_cutoff = 0.75
+        coloc_cutoff = 0.75,
+        code_dir = config['code_dir']
     
     resources:
         mem = "30G",
@@ -178,12 +172,9 @@ rule group_gwas_signals:
     
     threads: 15
     
-    conda:
-        "tensorqtl_r"
-    
     shell:
         """
-        python scripts/group_signals.py \
+        python {params.code_dir}/group_signals.py \
             --mode gwas \
             --gwas-coloc {input.gwas_coloc} \
             --pair-coloc {input.pair_coloc} \
