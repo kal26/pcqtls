@@ -33,12 +33,14 @@ except ImportError:
     from get_pcs import get_pc_bed
     from annotate_pcs import get_annotate_pcs
     from residualize import calculate_residual
+from typing import Dict, List, Optional, Union, Callable
+
 
 # Configuration - use environment variables with defaults
 PREFIX = os.getenv('PCQTL_PREFIX', '/home/klawren/oak/pcqtls')
 
 
-def setup_logging(level=logging.INFO):
+def setup_logging(level: int = logging.INFO) -> None:
     """Set up logging configuration."""
     logging.basicConfig(
         level=level,
@@ -49,7 +51,7 @@ def setup_logging(level=logging.INFO):
     )
 
 
-def get_null_clusters(expressed_gencode, cluster_size, cluster_df=None):
+def get_null_clusters(expressed_gencode: Any, cluster_size: Any, cluster_df: pd.DataFrame = None) -> pd.DataFrame:
     """
     Generate null clusters by sliding window across chromosomes.
     
@@ -123,7 +125,7 @@ def get_null_clusters(expressed_gencode, cluster_size, cluster_df=None):
     return null_df
 
 
-def resample_dist(target, candidate_pool, n, seed=126124):   
+def resample_dist(target: np.ndarray, candidate_pool: np.ndarray, n: int, seed: int = 126124) -> np.ndarray:   
     """
     Match a target distribution via weighted sampling from a candidate pool.
     
@@ -151,7 +153,7 @@ def resample_dist(target, candidate_pool, n, seed=126124):
     return rng.choice(candidate_pool.size, size=n, replace=True, p=pool_probability)
 
 
-def get_resamp_null_cluster(null_df, cluster_df, plot=False, number_null=5000):
+def get_resamp_null_cluster(null_df: pd.DataFrame, cluster_df: pd.DataFrame, plot: bool = False, number_null: int = 5000) -> pd.DataFrame:
     """
     Resample null clusters to match the size distribution of real clusters.
     
@@ -198,7 +200,7 @@ def get_resamp_null_cluster(null_df, cluster_df, plot=False, number_null=5000):
     return resamp_null_df
 
 
-def get_null_pcs_annotated(config, cluster_size, tissue_id):
+def get_null_pcs_annotated(config: Dict[str, str], cluster_size: int, tissue_id: str) -> pd.DataFrame:
     """
     Generate and annotate null principal components.
     
@@ -217,17 +219,17 @@ def get_null_pcs_annotated(config, cluster_size, tissue_id):
     logger.info(f'Generating annotated null PCs for tissue {tissue_id}, cluster size {cluster_size}')
     
     # Load data
-    gid_gencode, full_gencode = load_gencode()
-    expression_path = "{}/{}/{}.v8.normalized_expression.bed".format(PREFIX, config["expression_dir"], tissue_id)
+    gid_gencode = load_gencode()
+    expression_path = "{}/{}/{}.v8.normalized_expression.bed".format(config["working_dir"], config["expression_dir"], tissue_id)
     expression_df = pd.read_table(expression_path)
-            expressed_gencode = full_gencode[full_gencode['gene_id'].isin(expression_df['gene_id'])]
-    cluster_df = pd.read_csv('{}/{}/{}.clusters.txt'.format(PREFIX, config['clusters_dir'], tissue_id), index_col=0)
+    expressed_gencode = gid_gencode.reset_index()[gid_gencode.reset_index()['gene_id'].isin(expression_df['gene_id'])]
+    cluster_df = pd.read_csv('{}/{}/{}.clusters.txt'.format(config["working_dir"], config['clusters_dir'], tissue_id), index_col=0)
     
     # Generate null clusters
     null_clusters = get_null_clusters(expressed_gencode, cluster_size, cluster_df=cluster_df)
     
     # Load covariates and residualize expression
-    covariates_path = "{}/{}/{}.v8.covariates.txt".format(PREFIX, config["covariates_dir"], tissue_id)
+    covariates_path = "{}/{}/{}.v8.covariates.txt".format(config["working_dir"], config["covariates_dir"], tissue_id)
     covariates_df = pd.read_table(covariates_path, index_col=0).T
     residual_exp = calculate_residual(expression_df[covariates_df.index], covariates_df, center=True)
     residual_exp = pd.DataFrame(residual_exp, columns=covariates_df.index, index=expression_df['gene_id'])
@@ -263,7 +265,7 @@ def get_null_pcs_annotated(config, cluster_size, tissue_id):
     return annotated_null_pcs
 
 
-def main():
+def main() -> None:
     """
     Main function to generate and annotate null clusters.
     
@@ -336,9 +338,9 @@ def main():
         # Load expressed GENCODE (to make null clusters out of)
         # This assumes only protein coding genes
         logger.info('Loading GENCODE annotations...')
-        gid_gencode, full_gencode = load_gencode(args.gencode_path)
+        gid_gencode = load_gencode(args.gencode_path)
         expression_df = pd.read_table(args.expression_path)
-        expressed_gencode = full_gencode[full_gencode['gene_id'].isin(expression_df['gene_id'])]
+        expressed_gencode = gid_gencode.reset_index()[gid_gencode.reset_index()['gene_id'].isin(expression_df['gene_id'])]
         expressed_gencode = expressed_gencode.sort_values(['chr', 'start', 'end'])
         logger.info(f'Found {len(expressed_gencode)} expressed genes')
 

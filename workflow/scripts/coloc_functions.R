@@ -37,7 +37,7 @@ split_qtl_for_coloc <- function(cluster_qtl, ld_snp_set, cleaned_ld_matrix, num_
   phenotype_ids <- unique(qtl_filtered$phenotype_id)
   qtls_for_coloc <- list()
   
-  for (i in 1:length(phenotype_ids)) {
+  for (i in seq_len(length(phenotype_ids))) {
     phenotype_qtl <- qtl_filtered[qtl_filtered$phenotype_id == phenotype_ids[i], ]
     cat(paste("\tLooking for signals in", phenotype_ids[i]), "\n")
     cat(paste("\t\tQTL filtered to:", nrow(phenotype_qtl), "SNPs\n"))
@@ -212,15 +212,18 @@ runsusie_errorcatch <- function(dataset) {
 coloc_pairs_cluster <- function(eqtl_chr, pcqtl_chr, cluster_id, ld_path_head, genotype_stem, 
                                num_gtex_samples, coloc_temp_path_head) {
   start <- Sys.time()
+  cat("Processing cluster:", cluster_id, "\n")
   
   # Subset eQTL and PCQTL to this cluster
   cluster_eqtl <- eqtl_chr[eqtl_chr$cluster_id == cluster_id, ]
   cluster_pcqtl <- pcqtl_chr[pcqtl_chr$cluster_id == cluster_id, ]
   
   # Get SNP list and LD matrix
+  cat("Getting SNP list and LD matrix for cluster...\n")
   snp_list <- get_snp_list(cluster_eqtl, ld_path_head, cluster_id)
   cleaned_ld_matrix <- get_ld(ld_path_head, cluster_id, snp_list, genotype_stem)
   ld_snp_set <- rownames(cleaned_ld_matrix)
+  cat("LD matrix contains", length(ld_snp_set), "SNPs\n")
 
   # Clean the eQTL and PCQTL data for colocalization
   eqtls_for_coloc <- split_qtl_for_coloc(cluster_eqtl, ld_snp_set, cleaned_ld_matrix, num_gtex_samples)
@@ -240,7 +243,7 @@ coloc_pairs_cluster <- function(eqtl_chr, pcqtl_chr, cluster_id, ld_path_head, g
 
   # Run SuSiE on each QTL phenotype
   qtl_susies <- list()
-  for (i in 1:length(qtls_for_coloc)) {
+  for (i in seq_len(length(qtls_for_coloc))) {
     this_qtl_id <- qtls_for_coloc[[i]]$phenotype_id
     
     # Handle long QTL IDs
@@ -257,13 +260,11 @@ coloc_pairs_cluster <- function(eqtl_chr, pcqtl_chr, cluster_id, ld_path_head, g
       qtl_susies[[i]] <- readRDS(file = susie_path)
     } else {
       cat("Running SuSiE for", this_qtl_id, "\n")
-      cat("Time elapsed:", Sys.time() - start, "\n")
       
       this_qtl_susie <- runsusie_errorcatch(qtls_for_coloc[[i]])
       qtl_susies[[i]] <- this_qtl_susie
       
       cat("Fine-mapped", this_qtl_id, "\n")
-      cat("Time elapsed:", Sys.time() - start, "\n")
       cat("Saving SuSiE to", susie_path, "\n")
       saveRDS(this_qtl_susie, file = susie_path)
     } 
@@ -296,19 +297,16 @@ get_qtl_pairwise_coloc <- function(qtls_for_coloc, qtl_susies) {
   if (length(qtl_susies) > 1) {
     qtl_pair_idxs <- combn(seq_along(qtl_susies), 2, simplify = TRUE)
     
-    for (i in 1:ncol(qtl_pair_idxs)) {
+    for (i in seq_len(ncol(qtl_pair_idxs))) {
       qtl1 <- qtls_for_coloc[[qtl_pair_idxs[1, i]]]
       qtl2 <- qtls_for_coloc[[qtl_pair_idxs[2, i]]]
       susie1 <- qtl_susies[[qtl_pair_idxs[1, i]]]
       susie2 <- qtl_susies[[qtl_pair_idxs[2, i]]]
       
-      cat("Time elapsed:", Sys.time() - start, "\n")
       cat(paste("Colocalization for", qtl1$phenotype_id, "-", qtl2$phenotype_id), "\n")
       
       this_coloc <- coloc.susie(susie1, susie2)$summary
-      
-      cat("Time elapsed:", Sys.time() - start, "\n")
-      
+            
       if (!is.null(this_coloc)) {
         this_coloc$qtl1_id <- qtl1$phenotype_id
         this_coloc$qtl2_id <- qtl2$phenotype_id
@@ -382,7 +380,7 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
   if (use_susie) {
     # Run SuSiE on each QTL phenotype
     qtl_susies <- list()
-    for (i in 1:length(qtls_for_coloc)) {
+    for (i in seq_len(length(qtls_for_coloc))) {
       this_qtl_id <- qtls_for_coloc[[i]]$phenotype_id
       
       # Handle long QTL IDs
@@ -398,14 +396,12 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
         cat("SuSiE for", this_qtl_id, "already exists\n")
         qtl_susies[[i]] <- readRDS(file = susie_path)
       } else {
-        cat("Time elapsed:", Sys.time() - start, "\n")
         cat("Running SuSiE for", this_qtl_id, "\n")
         
         this_qtl_susie <- runsusie_errorcatch(qtls_for_coloc[[i]])
         qtl_susies[[i]] <- this_qtl_susie
         
         cat("Fine-mapped", this_qtl_id, "\n")
-        cat("Time elapsed:", Sys.time() - start, "\n")
         saveRDS(this_qtl_susie, file = susie_path)
       } 
     }
@@ -439,7 +435,6 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
         return(NULL)
       }
     } else {
-      cat("Time elapsed:", Sys.time() - start, "\n")
       cat("Running SuSiE on GWAS\n")
       
       gwas_susie <- runsusie_errorcatch(gwas_for_coloc)
@@ -458,34 +453,112 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
   gwas_coloc_results <- data.frame()
 
   if (use_susie) {
-    for (i in 1:length(qtl_susies)) {
+    for (i in seq_len(length(qtl_susies))) {
       this_qtl_id <- qtls_for_coloc[[i]]$phenotype_id
-      cat("Time elapsed:", Sys.time() - start, "\n")
       cat(paste("\t\t\tColocalization for", gwas_with_meta$gwas_id, "and", this_qtl_id, "\n"))
       cat("\t\t\t\tUsing SuSiE to colocalize", i, "out of", length(qtl_susies), "total\n")
       
       this_qtl_susie <- qtl_susies[[i]]
-      this_coloc <- coloc.susie(gwas_susie, this_qtl_susie)$summary
+      # Add error handling for coloc.susie
+      tryCatch({
+        this_coloc <- coloc.susie(gwas_susie, this_qtl_susie)$summary
+      }, error = function(e) {
+        cat("\t\t\t\tError in coloc.susie:", e$message, "\n")
+        this_coloc <- NULL
+      }, warning = function(w) {
+        cat("\t\t\t\tWarning in coloc.susie:", w$message, "\n")
+      })
       
-      if (!is.null(this_coloc)) {
-        this_coloc$gwas_id <- gwas_with_meta$gwas_id
-        this_coloc$qtl_id <- this_qtl_id
-        gwas_coloc_results <- bind_rows(gwas_coloc_results, this_coloc)
+      if (!is.null(this_coloc) && nrow(this_coloc) > 0) {
+        # Check if all values in each column are the same
+        pp_columns <- c("PP.H0.abf", "PP.H1.abf", "PP.H2.abf", "PP.H3.abf", "PP.H4.abf")
+        all_same <- TRUE
+        
+        for (col in pp_columns) {
+          if (length(unique(this_coloc[[col]])) > 1) {
+            all_same <- FALSE
+            cat("\t\t\t\tERROR: Values in", col, "are not all the same!\n")
+            cat("\t\t\t\tValues:", paste(this_coloc[[col]], collapse=", "), "\n")
+            cat("\t\t\t\tNumber of rows in this_coloc:", nrow(this_coloc), "\n")
+            cat("\t\t\t\tStructure of this_coloc:\n")
+            print(str(this_coloc))
+            stop("Colocalization results have different values - this needs investigation!")
+          }
+        }
+        
+        if (all_same) {
+          # All values are the same, just take the first row
+          this_coloc_row <- this_coloc[1, ]
+          cat("\t\t\t\tAll colocalization values are identical, using first row\n")
+        }
+        
+        # Add logging for co-localization results
+        cat("\t\t\t\tColocalization results:\n")
+        cat(paste("\t\t\t\t  PP.H0:", round(this_coloc_row$PP.H0.abf, 4), "\n"))
+        cat(paste("\t\t\t\t  PP.H1:", round(this_coloc_row$PP.H1.abf, 4), "\n"))
+        cat(paste("\t\t\t\t  PP.H2:", round(this_coloc_row$PP.H2.abf, 4), "\n"))
+        cat(paste("\t\t\t\t  PP.H3:", round(this_coloc_row$PP.H3.abf, 4), "\n"))
+        cat(paste("\t\t\t\t  PP.H4:", round(this_coloc_row$PP.H4.abf, 4), "\n"))
+        
+        # Add interpretation based on PP.H4
+        if (this_coloc_row$PP.H4.abf > 0.75) {
+          cat("\t\t\t\t  Interpretation: Strong evidence for colocalization (PP.H4 > 0.75)\n")
+        } else if (this_coloc_row$PP.H4.abf > 0.5) {
+          cat("\t\t\t\t  Interpretation: Moderate evidence for colocalization (PP.H4 > 0.5)\n")
+        } else {
+          cat("\t\t\t\t  Interpretation: Weak or no evidence for colocalization (PP.H4 ≤ 0.5)\n")
+        }
+        
+        this_coloc_row$gwas_id <- gwas_with_meta$gwas_id
+        this_coloc_row$qtl_id <- this_qtl_id
+        gwas_coloc_results <- bind_rows(gwas_coloc_results, this_coloc_row)
+      } else {
+        cat("\t\t\t\tNo colocalization results available\n")
       }
     }
   } else {
-    for (i in 1:length(qtls_for_coloc)) {
+    for (i in seq_len(length(qtls_for_coloc))) {
       this_qtl_id <- qtls_for_coloc[[i]]$phenotype_id
       cat(paste("\t\t\tColocalization for", gwas_with_meta$gwas_id, "and", this_qtl_id, "\n"))
       cat("\t\t\t\tUsing ABF to colocalize", i, "out of", length(qtls_for_coloc), "total\n")
       
-      this_coloc <- coloc.abf(gwas_for_coloc, qtls_for_coloc[[i]])$summary
+      # Add error handling for coloc.abf
+      tryCatch({
+        this_coloc <- coloc.abf(gwas_for_coloc, qtls_for_coloc[[i]])$summary
+      }, error = function(e) {
+        cat("\t\t\t\tError in coloc.abf:", e$message, "\n")
+        this_coloc <- NULL
+      }, warning = function(w) {
+        cat("\t\t\t\tWarning in coloc.abf:", w$message, "\n")
+      })
       
-      if (!is.null(this_coloc)) {
-        this_coloc$gwas_id <- gwas_with_meta$gwas_id
-        this_coloc$qtl_id <- this_qtl_id
+      if (!is.null(this_coloc) && nrow(this_coloc) > 0) {
+        # Check if all values in each column are the same
+        pp_columns <- c("PP.H0.abf", "PP.H1.abf", "PP.H2.abf", "PP.H3.abf", "PP.H4.abf")
+        all_same <- TRUE
+        
+        for (col in pp_columns) {
+          if (length(unique(this_coloc[[col]])) > 1) {
+            all_same <- FALSE
+            cat("\t\t\t\tERROR: Values in", col, "are not all the same!\n")
+            cat("\t\t\t\tValues:", paste(this_coloc[[col]], collapse=", "), "\n")
+            cat("\t\t\t\tNumber of rows in this_coloc:", nrow(this_coloc), "\n")
+            cat("\t\t\t\tStructure of this_coloc:\n")
+            print(str(this_coloc))
+            stop("Colocalization results have different values - this needs investigation!")
+          }
+        }
+        
+        if (all_same) {
+          # All values are the same, just take the first row
+          this_coloc_row <- this_coloc[1, ]
+          cat("\t\t\t\tAll colocalization values are identical, using first row\n")
+        }
+        
+        this_coloc_row$gwas_id <- gwas_with_meta$gwas_id
+        this_coloc_row$qtl_id <- this_qtl_id
+        gwas_coloc_results <- bind_rows(gwas_coloc_results, this_coloc_row)
       }
-      gwas_coloc_results <- bind_rows(gwas_coloc_results, this_coloc)
     }
   }
   
@@ -500,10 +573,45 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
 #' @param this_cluster Cluster information
 #' @return TRUE if GWAS has signal in cluster, FALSE otherwise
 check_gwas_cluster <- function(gwas_chr, this_cluster) {
-  # Check for GWAS signals within 1Mb of cluster boundaries
-  gwas_cluster <- gwas_chr[gwas_chr$position > this_cluster$start - 1e6, ] 
-  gwas_cluster <- gwas_cluster[gwas_cluster$position < this_cluster$end + 1e6, ]
-  return(sum(gwas_cluster$pvalue < 1e-6) > 0)
+  # Validate inputs
+  cluster_id <- if ("cluster_id" %in% names(this_cluster)) this_cluster$cluster_id else NA
+  
+  if (nrow(gwas_chr) == 0) {
+    cat("WARN: gwas_chr is empty for cluster:", cluster_id, "\n")
+    return(FALSE)
+  }
+  if (is.null(this_cluster$start) || is.null(this_cluster$end) || is.na(this_cluster$start) || is.na(this_cluster$end)) {
+    cat("WARN: Cluster has missing coordinates (start/end) for cluster:", cluster_id, 
+        " start=", this_cluster$start, " end=", this_cluster$end, "\n", sep = "")
+    cat("INFO: GWAS position range:", range(gwas_chr$position, na.rm = TRUE), "\n")
+    return(FALSE)
+  }
+
+  # Define 1Mb window around cluster boundarie
+  cat("INFO: Cluster coordinates - start:", this_cluster$start, " end:", this_cluster$end, "\n")
+  
+  window_start <- this_cluster$start - 1e6
+  window_end <- this_cluster$end + 1e6
+  cat("INFO: Checking GWAS signal for cluster:", cluster_id, " in window:", window_start, "-", window_end, "\n")
+  
+  total_rows <- nrow(gwas_chr)
+  cat("INFO: GWAS rows total:", total_rows, "; position range:", paste(range(gwas_chr$position, na.rm = TRUE), collapse = "-"), "\n")
+
+  # Subset to window
+  gwas_cluster <- gwas_chr[gwas_chr$position > window_start & gwas_chr$position < window_end, ]
+  cat("INFO: GWAS rows in window:", nrow(gwas_cluster), "\n")
+  
+  if (nrow(gwas_cluster) > 0) {
+    min_p <- min(gwas_cluster$pvalue, na.rm = TRUE)
+    sig_ct <- sum(gwas_cluster$pvalue < 1e-6, na.rm = TRUE)
+    cat("INFO: Min p-value in window:", min_p, "; significant (<1e-6):", sig_ct, "\n")
+  } else {
+    cat("INFO: No GWAS rows within window\n")
+  }
+  
+  has_signal <- sum(gwas_cluster$pvalue < 1e-6, na.rm = TRUE) > 0
+  cat("INFO: Has GWAS signal in cluster:", has_signal, "\n")
+  return(has_signal)
 }
 
 # =============================================================================
@@ -517,52 +625,88 @@ check_gwas_cluster <- function(gwas_chr, this_cluster) {
 #' @param snp_list List of SNPs
 #' @param genotype_stem Path to genotype files
 #' @return Cleaned LD matrix
+
 get_ld <- function(ld_path_head, cluster_id, snp_list, genotype_stem) {
+  cat("Getting LD matrix for cluster:", cluster_id, "\n")
+  
   if (nchar(cluster_id) > 150) {
     cluster_id <- get_short_cluster_id(cluster_id)
   }
   
-  # Check if LD matrix already exists
   ld_matrix_path <- paste(ld_path_head, cluster_id, '.ld', sep = "")
   
-  if (file.exists(ld_matrix_path)) {
-    cat("LD matrix already exists\n")
-  } else {    
-    cat("LD matrix does not exist, generating...\n")
+  # Function to safely read LD matrix
+  safe_read_ld <- function(path) {
+    # Check if file exists and has reasonable size
+    if (!file.exists(path)) {
+      return(NULL)
+    }
     
-    # Generate LD matrix using PLINK
-    ld_plink_path <- paste(ld_path_head, cluster_id, sep = "")
-    snp_path <- paste(ld_path_head, cluster_id, '.snp_list.txt', sep = "")
-    plink_command <- sprintf("plink --bfile %s --extract %s --r square --out %s --keep-allele-order", 
-                           genotype_stem, snp_path, ld_plink_path)
-    cat("PLINK command:", plink_command, "\n")
-    system(plink_command, intern = TRUE)
-    cat("Generated LD matrix\n")
+    file_size <- file.size(path)
+    if (file_size < 10) {  # File too small to be valid
+      cat("LD file too small, removing:", path, "\n")
+      unlink(path)
+      return(NULL)
+    }
+    
+    # Try reading with error handling
+    tryCatch({
+      # First try with fread
+      ld_matrix <- fread(path)
+      return(ld_matrix)
+    }, error = function(e) {
+      cat("fread failed with error:", e$message, "\n")
+      # Try with read.table as backup
+      tryCatch({
+        cat("Trying read.table instead...\n")
+        ld_matrix <- read.table(path, header = FALSE)
+        return(ld_matrix)
+      }, error = function(e2) {
+        cat("read.table also failed:", e2$message, "\n")
+        cat("Removing corrupted file:", path, "\n")
+        unlink(path)
+        return(NULL)
+      })
+    })
   }
   
-  # Load LD matrix with error handling
-  tryCatch({
-    ld_matrix <- fread(ld_matrix_path)
-  }, error = function(e) {
-    cat("Error reading LD matrix:", e$message, "\n")
-    cat("Regenerating the file...\n")
+  # Try to read existing file
+  ld_matrix <- safe_read_ld(ld_matrix_path)
+  
+  # If reading failed, regenerate
+  if (is.null(ld_matrix)) {
+    cat("Generating new LD matrix...\n")
     
     ld_plink_path <- paste(ld_path_head, cluster_id, sep = "")
     snp_path <- paste(ld_path_head, cluster_id, '.snp_list.txt', sep = "")
+    
+    # Check if SNP list exists
+    if (!file.exists(snp_path)) {
+      stop("SNP list file does not exist: ", snp_path)
+    }
+    
     plink_command <- sprintf("plink --bfile %s --extract %s --r square --out %s --keep-allele-order", 
                            genotype_stem, snp_path, ld_plink_path)
-    cat("PLINK command:", plink_command, "\n")
-    system(plink_command, intern = TRUE)
-    cat("Generated LD matrix\n")
-    ld_matrix <- fread(ld_matrix_path)
-  })
-
-  # Convert to data frame and set row/column names
+    cat("Running PLINK command:", plink_command, "\n")
+    
+    # Run PLINK and check exit status
+    exit_status <- system(plink_command)
+    if (exit_status != 0) {
+      stop("PLINK command failed with exit status: ", exit_status)
+    }
+    
+    # Try reading again
+    ld_matrix <- safe_read_ld(ld_matrix_path)
+    if (is.null(ld_matrix)) {
+      stop("Failed to generate valid LD matrix for cluster: ", cluster_id)
+    }
+  }
+  
+  # Rest of your function...
   ld_matrix <- data.frame(ld_matrix)
   rownames(ld_matrix) <- snp_list$variant_id
   colnames(ld_matrix) <- snp_list$variant_id
   
-  # Remove SNPs with missing values from LD matrix
   ld_missing_snps <- get_ld_missing_snps(ld_matrix)
   cleaned_ld_matrix <- ld_matrix[!rownames(ld_matrix) %in% ld_missing_snps, 
                                 !colnames(ld_matrix) %in% ld_missing_snps]
@@ -570,6 +714,62 @@ get_ld <- function(ld_path_head, cluster_id, snp_list, genotype_stem) {
   cat("Total working SNPs:", nrow(cleaned_ld_matrix), "\n")
   return(cleaned_ld_matrix)
 }
+
+# get_ld <- function(ld_path_head, cluster_id, snp_list, genotype_stem) {
+#   cat("Getting LD matrix for cluster:", cluster_id, "\n")
+  
+#   if (nchar(cluster_id) > 150) {
+#     cluster_id <- get_short_cluster_id(cluster_id)
+#   }
+  
+#   # Check if LD matrix already exists
+#   ld_matrix_path <- paste(ld_path_head, cluster_id, '.ld', sep = "")
+  
+#   if (file.exists(ld_matrix_path)) {
+#     cat("LD matrix already exists - loading from file\n")
+#   } else {    
+#     cat("LD matrix does not exist - generating with PLINK...\n")
+    
+#     # Generate LD matrix using PLINK
+#     ld_plink_path <- paste(ld_path_head, cluster_id, sep = "")
+#     snp_path <- paste(ld_path_head, cluster_id, '.snp_list.txt', sep = "")
+#     plink_command <- sprintf("plink --bfile %s --extract %s --r square --out %s --keep-allele-order", 
+#                            genotype_stem, snp_path, ld_plink_path)
+#     cat("Running PLINK command...\n")
+#     system(plink_command, intern = TRUE)
+#     cat("LD matrix generated successfully\n")
+#   }
+  
+#   # Load LD matrix with error handling
+#   tryCatch({
+#     ld_matrix <- fread(ld_matrix_path)
+#   }, error = function(e) {
+#     cat("Error reading LD matrix:", e$message, "\n")
+#     cat("Regenerating the file...\n")
+    
+#     ld_plink_path <- paste(ld_path_head, cluster_id, sep = "")
+#     snp_path <- paste(ld_path_head, cluster_id, '.snp_list.txt', sep = "")
+#     plink_command <- sprintf("plink --bfile %s --extract %s --r square --out %s --keep-allele-order", 
+#                            genotype_stem, snp_path, ld_plink_path)
+#     cat("PLINK command:", plink_command, "\n")
+#     system(plink_command, intern = TRUE)
+#     cat("Generated LD matrix\n")
+#     ld_matrix <- fread(ld_matrix_path)
+#   })
+
+#   # Convert to data frame and set row/column names
+#   ld_matrix <- data.frame(ld_matrix)
+#   rownames(ld_matrix) <- snp_list$variant_id
+#   colnames(ld_matrix) <- snp_list$variant_id
+  
+#   # Remove SNPs with missing values from LD matrix
+#   ld_missing_snps <- get_ld_missing_snps(ld_matrix)
+#   cleaned_ld_matrix <- ld_matrix[!rownames(ld_matrix) %in% ld_missing_snps, 
+#                                 !colnames(ld_matrix) %in% ld_missing_snps]
+  
+#   cat("Total working SNPs:", nrow(cleaned_ld_matrix), "\n")
+#   return(cleaned_ld_matrix)
+# }
 
 #' Get SNPs with missing values in LD matrix
 #' 
@@ -647,9 +847,12 @@ get_short_qtl_id <- function(long_qtl_id) {
 #' @param gwas_id GWAS ID
 #' @return List containing GWAS data and metadata
 load_gwas_from_path <- function(gwas_path, gwas_meta_df, gwas_id) {
+  cat("Loading GWAS data for ID:", gwas_id, "\n")
+  
   # Get GWAS metadata
   gwas_meta <- gwas_meta_df[gwas_meta_df$Tag == gwas_id, ]
   num_gwas_samples <- gwas_meta$Sample_Size
+  cat("GWAS sample size:", num_gwas_samples, "\n")
   
   # Determine GWAS type
   if (gwas_meta$Binary == 0) {
@@ -657,10 +860,11 @@ load_gwas_from_path <- function(gwas_path, gwas_meta_df, gwas_id) {
   } else {
     gwas_type <- 'cc'
   }
+  cat("GWAS type:", gwas_type, "\n")
   
-  cat(paste("\t\tReading GWAS:", Sys.time() - start), "\n")
+  cat("Reading GWAS summary statistics from:", gwas_path, "\n")
   gwas <- fread(gwas_path)
-  cat(paste("\t\tFinished reading GWAS:", Sys.time() - start), "\n")
+  cat("GWAS data loaded successfully -", nrow(gwas), "SNPs\n")
   
   return(list("gwas_data" = gwas, 
               "gwas_id" = gwas_id, 

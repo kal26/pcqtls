@@ -24,9 +24,11 @@ except ImportError:
     import sys
     sys.path.append(str(Path(__file__).parent))
     from annotate_qtls import load_and_annotate
+from typing import Dict, List, Optional, Union, Callable
 
 
-def setup_logging(level=logging.INFO):
+
+def setup_logging(level: int = logging.INFO) -> None:
     """Set up logging configuration."""
     logging.basicConfig(
         level=level,
@@ -37,7 +39,7 @@ def setup_logging(level=logging.INFO):
     )
 
 
-def load_susie_data(e_susie_path, pc_susie_path):
+def load_susie_data(e_susie_path: pd.DataFrame, pc_susie_path: pd.DataFrame) -> pd.DataFrame:
     """
     Load and combine eQTL and pcQTL SuSiE results.
     
@@ -70,7 +72,7 @@ def load_susie_data(e_susie_path, pc_susie_path):
     return combined_susie
 
 
-def load_nominal_data(e_nominal_path_list, pc_nominal_path_list):
+def load_nominal_data(e_nominal_path_list: List[str], pc_nominal_path_list: List[str]) -> pd.DataFrame:
     """
     Load nominal QTL data from multiple files.
     
@@ -93,10 +95,7 @@ def load_nominal_data(e_nominal_path_list, pc_nominal_path_list):
 
 
 
-def annotate_susie_results(e_susie_path, pc_susie_path, vep_path, annot_pc_path, 
-                          e_nominal_path_list, pc_nominal_path_list, tissue_id,
-                          gencode_path, full_abc_path, abc_match_path, ctcf_match_path,
-                          ctcf_dir, tad_path):
+def annotate_susie_results(e_susie_path: pd.DataFrame, pc_susie_path: pd.DataFrame, vep_path: str, annot_pc_path: str, e_nominal_path_list: List[str], pc_nominal_path_list: List[str], tissue_id: str, gencode_path: str, full_abc_path: str, abc_match_path: str, ctcf_match_path: str, ctcf_dir: str, tad_path: str) -> pd.DataFrame:
     """
     Annotate SuSiE fine-mapping results with VEP predictions and functional data.
     
@@ -239,7 +238,7 @@ def annotate_susie_results(e_susie_path, pc_susie_path, vep_path, annot_pc_path,
     return qtls
 
 
-def main():
+def main() -> None:
     """
     Main function to merge SuSiE results with VEP annotations.
     """

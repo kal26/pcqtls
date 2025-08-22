@@ -14,9 +14,11 @@ import torch
 import tensorqtl
 from tensorqtl import pgen, cis, genotypeio
 from pathlib import Path
+from typing import Dict, List, Optional, Union, Callable
 
 
-def setup_logging(level=logging.INFO):
+
+def setup_logging(level: int = logging.INFO) -> None:
     """Set up logging configuration."""
     logging.basicConfig(
         level=level,
@@ -27,7 +29,7 @@ def setup_logging(level=logging.INFO):
     )
 
 
-def main():
+def main() -> None:
     """
     Main function to run QTL permutation analysis.
     """

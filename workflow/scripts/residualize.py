@@ -1,8 +1,11 @@
 import numpy as np
+import pandas as pd
 from scipy import stats
 from sklearn.linear_model import LinearRegression
+from typing import Dict, List, Optional, Union, Callable
 
-def calculate_residual(phenotype_df, covariates_df, center=False):
+
+def calculate_residual(phenotype_df: pd.DataFrame, covariates_df: pd.DataFrame, center: bool = False) -> np.ndarray:
     """
     Calculate normalized residual phenotypes using linear regression.
     

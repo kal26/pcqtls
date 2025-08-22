@@ -27,6 +27,8 @@ except ImportError:
     sys.path.append(str(Path(__file__).parent))
     from utils import *
     from annotate_clusters import *
+from typing import Dict, List, Optional, Union, Callable
+
 
 # Configuration - use environment variables with defaults
 PREFIX = os.getenv('PCQTL_PREFIX', '/home/klawren/oak/pcqtls')
@@ -35,7 +37,7 @@ PREFIX = os.getenv('PCQTL_PREFIX', '/home/klawren/oak/pcqtls')
 BIDIRECTIONAL_PROMOTER_DISTANCE = 1000  # Base pairs
 
 
-def setup_logging(level=logging.INFO):
+def setup_logging(level: int = logging.INFO) -> None:
     """Set up logging configuration."""
     logging.basicConfig(
         level=level,
@@ -49,7 +51,7 @@ def setup_logging(level=logging.INFO):
 
 
 
-def annotate_enhancers_qtl(qtls, gene_enhancer_df):
+def annotate_enhancers_qtl(qtls: Any, gene_enhancer_df: pd.DataFrame) -> pd.DataFrame:
     """
     Annotate QTLs with ABC enhancer information.
     
@@ -77,7 +79,7 @@ def annotate_enhancers_qtl(qtls, gene_enhancer_df):
         qtls.loc[idx, 'qtl_matched_abc_genes'] = pd.Series(matched_enhancers.reset_index()['gene_id'].unique()).isin(qtl_row['cluster_id'].split('_')).sum()
 
 
-def annotate_ctcf_tad_qtl(qtls, ctcf_df, tad_df, gid_gencode):
+def annotate_ctcf_tad_qtl(qtls: Any, ctcf_df: pd.DataFrame, tad_df: pd.DataFrame, gid_gencode: Any) -> pd.DataFrame:
     """
     Annotate QTLs with CTCF binding sites and TAD boundary information.
     
@@ -116,7 +118,7 @@ def annotate_ctcf_tad_qtl(qtls, ctcf_df, tad_df, gid_gencode):
     qtls['qtl_in_tad_ctcf'] = qtls['qtl_in_tad'] & qtls['qtl_in_ctcf']
 
 
-def annotate_bidirectional_qtl(qtls, gid_gencode):
+def annotate_bidirectional_qtl(qtls: Any, gid_gencode: Any) -> pd.DataFrame:
     """
     Annotate QTLs with bidirectional and shared promoter information.
     
@@ -150,7 +152,7 @@ def annotate_bidirectional_qtl(qtls, gid_gencode):
                         qtls.loc[qtl_idx, 'in_shared_promoter'] = True
 
 
-def add_annotations_qtl(qtls, gid_gencode, gene_enhancer_df, ctcf_df, tad_df):
+def add_annotations_qtl(qtls: Any, gid_gencode: Any, gene_enhancer_df: pd.DataFrame, ctcf_df: pd.DataFrame, tad_df: pd.DataFrame) -> pd.DataFrame:
     """
     Add all QTL annotations to the DataFrame.
     
@@ -185,13 +187,7 @@ def add_annotations_qtl(qtls, gid_gencode, gene_enhancer_df, ctcf_df, tad_df):
     logger.info(f'Completed QTL annotation of {len(qtls)} associations')
 
 
-def load_and_annotate(qtls, my_tissue_id,
-                      gencode_path='data/references/gencode.v26.genes.txt', 
-                      full_abc_path='data/references/functional_annotations/ABC_predictions/AllPredictions.AvgHiC.ABC0.015.minus150.ForABCPaperV3.txt.gz', 
-                      abc_match_path='data/references/functional_annotations/ABC_predictions/ABC_matched_gtex.txt', 
-                      ctcf_match_path='data/references/functional_annotations/ctcf_chip/ctcf_matched_gtex.txt', 
-                      ctcf_dir='data/references/functional_annotations/ctcf_chip', 
-                      tad_path='data/references/TAD_annotations/TADs_hg38/converted_HiC_IMR90_DI_10kb.txt'):
+def load_and_annotate(qtls: Any, my_tissue_id: str, gencode_path: str = 'data/references/gencode.v26.genes.txt', full_abc_path: str = 'data/references/functional_annotations/ABC_predictions/AllPredictions.AvgHiC.ABC0.015.minus150.ForABCPaperV3.txt.gz', abc_match_path: str = 'data/references/functional_annotations/ABC_predictions/ABC_matched_gtex.txt', ctcf_match_path: str = 'data/references/functional_annotations/ctcf_chip/ctcf_matched_gtex.txt', ctcf_dir: str = 'data/references/functional_annotations/ctcf_chip', tad_path: str = 'data/references/TAD_annotations/TADs_hg38/converted_HiC_IMR90_DI_10kb.txt') -> pd.DataFrame:
     """
     Load all annotation data and annotate QTLs.
     
@@ -212,10 +208,10 @@ def load_and_annotate(qtls, my_tissue_id,
     # Load all annotation data
     
     logger.info('Loading GENCODE annotations...')
-    gid_gencode, full_gencode = load_gencode(f'{PREFIX}/{gencode_path}')
+    gid_gencode = load_gencode(f'{PREFIX}/{gencode_path}')
     
     logger.info('Loading ABC enhancer-gene connections...')
-    gene_enhancer_df = load_abc(my_tissue_id, full_gencode, f'{PREFIX}/{full_abc_path}', f'{PREFIX}/{abc_match_path}')
+    gene_enhancer_df = load_abc(my_tissue_id, gid_gencode, f'{PREFIX}/{full_abc_path}', f'{PREFIX}/{abc_match_path}')
     
     logger.info('Loading CTCF binding sites...')
     ctcf_df = load_ctcf(my_tissue_id, f'{PREFIX}/{ctcf_match_path}', f'{PREFIX}/{ctcf_dir}')
@@ -229,13 +225,13 @@ def load_and_annotate(qtls, my_tissue_id,
     add_annotations_qtl(qtls, gid_gencode, gene_enhancer_df, ctcf_df, tad_df)
 
 
-def annotate_distance(qtls, gid_gencode):
+def annotate_distance(qtls: Any, gid_gencode: Any) -> pd.DataFrame:
     qtls['position'] = qtls['variant_id'].str.split('_').str[1].astype(int)
     qtls['cluster_min_distance'] = qtls.apply(get_tss, axis=1, args=(gid_gencode,))
 
 
 # distance to whichever gene in the cluster is closest
-def get_tss(row, gid_gencode):
+def get_tss(row: Any, gid_gencode: Any) -> pd.DataFrame:
     cluster_gene_df = gid_gencode.loc[row['cluster_id'].split('_')]
     starts = cluster_gene_df['tss_start'].values
     distances = row['position'] - starts

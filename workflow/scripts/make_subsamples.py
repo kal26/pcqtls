@@ -12,9 +12,11 @@ import sys
 import numpy as np
 import pandas as pd
 from pathlib import Path
+from typing import Dict, List, Optional, Union, Callable
 
 
-def setup_logging(level=logging.INFO):
+
+def setup_logging(level: int = logging.INFO) -> None:
     """Set up logging configuration."""
     logging.basicConfig(
         level=level,
@@ -25,7 +27,7 @@ def setup_logging(level=logging.INFO):
     )
 
 
-def main():
+def main() -> None:
     """
     Main function to create subsamples of expression and covariate data.
     """

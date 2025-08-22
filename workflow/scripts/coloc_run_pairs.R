@@ -23,8 +23,8 @@ library(dplyr)
 # Create argument parser
 parser <- ArgumentParser()
 parser$add_argument("--code-dir", help="Directory containing R script functions", required=TRUE)
-parser$add_argument("--eqtl-dir", help="Path for eQTL pairs")
-parser$add_argument("--pcqtl-dir", help="Path for PCQTL pairs")
+parser$add_argument("--eqtl-nominal-dir", help="Path for eQTL pairs")
+parser$add_argument("--pcqtl-nominal-dir", help="Path for PCQTL pairs")
 parser$add_argument("--gtex-meta", help="Input file path for GTEX metadata with sample size")
 parser$add_argument("--tissue-id", help="Tissue ID")
 parser$add_argument("--chr-id", help="Chromosome ID")
@@ -39,8 +39,8 @@ args <- parser$parse_args()
 
 # Extract arguments
 code_dir <- args$code_dir
-eqtl_dir_path <- args$eqtl_dir
-pcqtl_dir_path <- args$pcqtl_dir
+eqtl_nominal_dir <- args$eqtl_nominal_dir
+pcqtl_nominal_dir <- args$pcqtl_nominal_dir
 gtex_meta_path <- args$gtex_meta
 tissue_id <- args$tissue_id
 chr_id <- args$chr_id
@@ -62,8 +62,8 @@ source(file.path(code_dir, "coloc_functions.R"))
 # =============================================================================
 
 cat("Code directory:", code_dir, "\n")
-cat("eQTL folder:", eqtl_dir_path, "\n")
-cat("PCQTL folder:", pcqtl_dir_path, "\n")
+cat("eQTL:", eqtl_nominal_dir, "\n")
+cat("PCQTL:", pcqtl_nominal_dir, "\n")
 cat("GTEX Metadata:", gtex_meta_path, "\n")
 cat("LD and SNP list dir:", ld_path_head, "\n")
 cat("Tissue ID:", tissue_id, "\n")
@@ -71,15 +71,17 @@ cat("Chromosome ID:", chr_id, "\n")
 cat("Output Path:", output_path, "\n")
 cat("Cluster Path:", clusters_path, "\n")
 
-cat("Starting pair colocalizations\n")
+cat("Starting pair colocalizations for", tissue_id, "chromosome", chr_id, "\n")
 start <- Sys.time()
 
 # =============================================================================
 # Load GTEX metadata for sample size
 # =============================================================================
 
+cat("Loading GTEX metadata for sample size...\n")
 gtex_meta <- read.table(gtex_meta_path, sep='\t', header = TRUE)
 num_gtex_samples <- gtex_meta[gtex_meta$tissue_id == tissue_id, 'sample_size']
+cat("GTEX sample size for", tissue_id, ":", num_gtex_samples, "\n")
 
 # =============================================================================
 # Initialize results
@@ -94,19 +96,20 @@ num_colocs <- 0
 # =============================================================================
 
 # Create LD directory if it doesn't exist
+cat("Setting up output directories...\n")
 if (!file.exists(ld_path_head)) {
   dir.create(ld_path_head, recursive = TRUE)
-  cat("Directory created:", ld_path_head, "\n")
+  cat("LD directory created:", ld_path_head, "\n")
 } else {
-  cat("Directory already exists:", ld_path_head, "\n")
+  cat("LD directory already exists:", ld_path_head, "\n")
 }
 
 # Create coloc temp directory if it doesn't exist
 if (!file.exists(coloc_temp_path_head)) {
   dir.create(coloc_temp_path_head, recursive = TRUE)
-  cat("Directory created:", coloc_temp_path_head, "\n")
+  cat("Coloc temp directory created:", coloc_temp_path_head, "\n")
 } else {
-  cat("Directory already exists:", coloc_temp_path_head, "\n")
+  cat("Coloc temp directory already exists:", coloc_temp_path_head, "\n")
 }
 
 # =============================================================================
@@ -114,7 +117,9 @@ if (!file.exists(coloc_temp_path_head)) {
 # =============================================================================
 
 # Load clusters
+cat("Loading cluster information...\n")
 cluster_df <- fread(clusters_path)
+cat("Loaded", nrow(cluster_df), "total clusters\n")
 
 # Process specified chromosome
 chr_id <- as.integer(sub("chr", "", chr_id))
@@ -124,19 +129,23 @@ cat("Working on chromosome", chr_id, "\n")
 
 # Subset clusters to current chromosome
 cluster_df_chr <- cluster_df[cluster_df$chr == paste0("chr", chr_id)]
+cat("Found", nrow(cluster_df_chr), "clusters on chromosome", chr_id, "\n")
 
 # Load eQTL and PCQTL data for current chromosome
-eqtl_chr <- get_eqtl_chr(eqtl_dir_path, chr_id, tissue_id)
-pcqtl_chr <- get_pcqtl_chr(pcqtl_dir_path, chr_id, tissue_id)
+cat("Loading QTL data for chromosome", chr_id, "...\n")
+eqtl_chr <- get_eqtl_chr(eqtl_nominal_dir, chr_id, tissue_id)
+pcqtl_chr <- get_pcqtl_chr(pcqtl_nominal_dir, chr_id, tissue_id)
+cat("Loaded", nrow(eqtl_chr), "eQTLs and", nrow(pcqtl_chr), "PCQTLs for chromosome", chr_id, "\n")
 
 # =============================================================================
 # Run colocalization for each cluster
 # =============================================================================
 
-for (i in 1:nrow(cluster_df_chr)) {
+cat("Starting colocalization analysis for", nrow(cluster_df_chr), "clusters...\n")
+for (i in seq_len(nrow(cluster_df_chr))) {
   this_cluster <- cluster_df_chr[i]
   cluster_id <- this_cluster$cluster_id
-  cat("Running colocalization on", cluster_id, "\n")
+  cat("Processing cluster", i, "of", nrow(cluster_df_chr), ":", cluster_id, "\n")
   
   num_colocs <- num_colocs + 1
   cluster_coloc <- coloc_pairs_cluster(eqtl_chr, pcqtl_chr, cluster_id, ld_path_head, 
@@ -149,6 +158,7 @@ for (i in 1:nrow(cluster_df_chr)) {
   if (is.null(cluster_coloc)) {
     cat("\tResult is null\n")
   } else {
+    cat("\tResult is not null\n")
     all_cluster_coloc_results <- bind_rows(all_cluster_coloc_results, cluster_coloc) 
     cat(num_colocs, "colocalizations completed so far\n")
   }

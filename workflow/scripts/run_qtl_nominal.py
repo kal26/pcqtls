@@ -15,9 +15,11 @@ import pandas as pd
 import subprocess
 import os
 from pathlib import Path
+from typing import Dict, List, Optional, Union, Callable
 
 
-def setup_logging(level=logging.INFO):
+
+def setup_logging(level: int = logging.INFO) -> None:
     """Set up logging configuration."""
     logging.basicConfig(
         level=level,
@@ -116,7 +118,7 @@ def create_missing_files(output_dir: str, tissue: str, phenotype_type: str) -> N
             logger.debug(f"File already exists for chromosome {chr_num}: {expected_file}")
 
 
-def main():
+def main() -> None:
     """
     Main function to run QTL nominal analysis.
     """

@@ -15,9 +15,11 @@ import tensorqtl
 import numpy as np
 import pandas as pd
 import argparse
+from typing import Dict, List, Optional, Union, Callable
 
 
-def setup_logging(level=logging.INFO):
+
+def setup_logging(level: int = logging.INFO) -> None:
     """Set up logging configuration."""
     logging.basicConfig(
         level=level,
@@ -28,7 +30,7 @@ def setup_logging(level=logging.INFO):
     )
 
 
-def validate_input_files(genotype_path, phenotype_path, covariates_path):
+def validate_input_files(genotype_path: str, phenotype_path: str, covariates_path: str) -> None:
     """Validate that input files exist and are readable."""
     files_to_check = [
         (genotype_path, "genotype"),
@@ -43,7 +45,7 @@ def validate_input_files(genotype_path, phenotype_path, covariates_path):
             raise ValueError(f"{file_type.capitalize()} path is not a file: {file_path}")
 
 
-def main():
+def main() -> None:
     """
     Main function to perform SuSiE fine-mapping on QTL data.
     

@@ -18,7 +18,7 @@ import numpy as np
 from residualize import calculate_residual
 
 
-def setup_logging(level=logging.INFO):
+def setup_logging(level: int = logging.INFO) -> None:
     """Set up logging configuration."""
     logging.basicConfig(
         level=level,
@@ -126,7 +126,7 @@ def create_cluster_expression_files(cluster_df: pd.DataFrame, expression_df_res:
     return out_df
 
 
-def main():
+def main() -> None:
     """Main function to process cluster expression data."""
     # Set up argument parser
     parser = argparse.ArgumentParser(

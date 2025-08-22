@@ -27,10 +27,12 @@ rule run_coloc_pairs:
     params:
         tissue = "{TISSUE}",
         chrom = "{CHROM}",
-        ld_path_head = config['coloc_output_dir'] + '{TISSUE}/temp/',
+        ld_path_head = config['coloc_output_dir'] + 'temp/ld/',
         genotype_stem = config['genotype_stem'],
-        coloc_temp_path_head = config['coloc_output_dir'] + '{TISSUE}/temp/',
-        code_dir = config['code_dir']
+        coloc_temp_path_head = config['coloc_output_dir'] + 'temp/{TISSUE}/',
+        code_dir = config['code_dir'],
+        eqtl_nominal_dir = config['eqtl_output_dir'] + '{TISSUE}/',
+        pcqtl_nominal_dir = config['pcqtl_output_dir'] + '{TISSUE}/'
     
     resources:
         mem = "50G",
@@ -40,10 +42,10 @@ rule run_coloc_pairs:
     
     shell:
         """
-        Rscript scripts/coloc_run_pairs.R \
+        Rscript {params.code_dir}/coloc_run_pairs.R \
             --code-dir {params.code_dir} \
-            --eqtl-dir {input.eqtl_nominal} \
-            --pcqtl-dir {input.pcqtl_nominal} \
+            --eqtl-nominal-dir {params.eqtl_nominal_dir} \
+            --pcqtl-nominal-dir {params.pcqtl_nominal_dir} \
             --gtex-meta {input.gtex_meta} \
             --tissue-id {params.tissue} \
             --chr-id {params.chrom} \
@@ -63,8 +65,8 @@ rule run_gwas_coloc:
     GWAS summary statistics to identify shared genetic signals.
     """
     input:
-        eqtl_susie = config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie.txt',
-        pcqtl_susie = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.susie.txt',
+        eqtl_nominal = expand(config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, allow_missing=True),
+        pcqtl_nominal = expand(config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, allow_missing=True),
         gwas_summary = config['gwas_folder'] + 'imputed_{GWAS}.txt.gz',
         gwas_meta = config['gwas_meta'],
         gtex_meta = config['gtex_meta'],
@@ -78,24 +80,27 @@ rule run_gwas_coloc:
         tissue = "{TISSUE}",
         gwas = "{GWAS}",
         use_susie = USE_SUSIE,
-        ld_path_head = config['coloc_output_dir'] + '{TISSUE}/temp/',
+        ld_path_head = config['coloc_output_dir'] + 'temp/ld/',
         genotype_stem = config['genotype_stem'],
-        coloc_temp_path_head = config['coloc_output_dir'] + '{TISSUE}/temp/',
-        code_dir = config['code_dir']
+        coloc_temp_path_head = config['coloc_output_dir'] + 'temp/{TISSUE}/',
+        code_dir = config['code_dir'],
+        eqtl_nominal_dir = config['eqtl_output_dir'] + '{TISSUE}/',
+        pcqtl_nominal_dir = config['pcqtl_output_dir'] + '{TISSUE}/'
     
     resources:
         mem = "100G",
-        time = "48:00:00"
+        time = "72:00:00"
     
     threads: 40
     
     shell:
         """
-        Rscript scripts/coloc_run_gwas.R \
+        Rscript {params.code_dir}/coloc_run_gwas.R \
             --code-dir {params.code_dir} \
-            --eqtl-dir {input.eqtl_susie} \
-            --pcqtl-dir {input.pcqtl_susie} \
+            --eqtl-nominal-dir {params.eqtl_nominal_dir} \
+            --pcqtl-nominal-dir {params.pcqtl_nominal_dir} \
             --gwas {input.gwas_summary} \
+            --gwas-id {params.gwas} \
             --gwas-meta {input.gwas_meta} \
             --gtex-meta {input.gtex_meta} \
             --tissue-id {params.tissue} \
@@ -181,6 +186,80 @@ rule group_gwas_signals:
             --output {output.gwas_signal_groups} \
             --coloc-cutoff {params.coloc_cutoff} \
             --verbose
+        """
+
+
+rule gather_eqtl_susie:
+    """
+    Combine eQTL SuSiE results into a similar format to tensorQTL.
+    
+    This rule combines eQTL SuSiE results from individual chromosomes into a single
+    file format similar to tensorQTL output for downstream analysis.
+    """
+    input:
+        eqtl_pairs = expand(config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, allow_missing=True),
+        coloc_pairs = expand(config['coloc_output_dir'] + 'pairs/{TISSUE}.v8.pairs_coloc.{CHROM}.txt', CHROM=chr_list, allow_missing=True)
+    
+    output:
+        eqtl_susie_pairs = config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie_R.txt'
+    
+    params:
+        eqtl_dir_path = config['eqtl_output_dir'] + '{TISSUE}',
+        coloc_temp_path_head = config['coloc_output_dir'] + 'temp/{TISSUE}/',
+        tissue = "{TISSUE}",
+        code_dir = config['code_dir']
+    
+    resources:
+        mem = "50G",
+        time = "4:00:00"
+    
+    threads: 10
+    
+    shell:
+        """
+        Rscript {params.code_dir}/combine_RDS_susie.R \
+            --qtl_dir_path {params.eqtl_dir_path} \
+            --output_path {output.eqtl_susie_pairs} \
+            --coloc_temp_path_head {params.coloc_temp_path_head} \
+            --qtl_type eqtl \
+            --tissue_id {params.tissue}
+        """
+
+
+rule gather_pcqtl_susie:
+    """
+    Combine pcQTL SuSiE results into a similar format to tensorQTL.
+    
+    This rule combines pcQTL SuSiE results from individual chromosomes into a single
+    file format similar to tensorQTL output for downstream analysis.
+    """
+    input:
+        pcqtl_pairs = expand(config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet', CHROM=chr_list, allow_missing=True),
+        coloc_pairs = expand(config['coloc_output_dir'] + 'pairs/{TISSUE}.v8.pairs_coloc.{CHROM}.txt', CHROM=chr_list, allow_missing=True)
+    
+    output:
+        pcqtl_susie_pairs = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.susie_R.txt'
+    
+    params:
+        pcqtl_dir_path = config['pcqtl_output_dir'] + '{TISSUE}',
+        coloc_temp_path_head = config['coloc_output_dir'] + 'temp/{TISSUE}/',
+        tissue = "{TISSUE}",
+        code_dir = config['code_dir']
+    
+    resources:
+        mem = "50G",
+        time = "4:00:00"
+    
+    threads: 10
+    
+    shell:
+        """
+        Rscript {params.code_dir}/combine_RDS_susie.R \
+            --qtl_dir_path {params.pcqtl_dir_path} \
+            --output_path {output.pcqtl_susie_pairs} \
+            --coloc_temp_path_head {params.coloc_temp_path_head} \
+            --qtl_type pcqtl \
+            --tissue_id {params.tissue}
         """
 
 

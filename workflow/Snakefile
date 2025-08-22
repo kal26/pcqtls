@@ -3,8 +3,8 @@
 PCQTL Analysis Workflow
 
 This Snakemake workflow performs principal component QTL (pcQTL) analysis on GTEx data,
-including gene expression clustering, QTL mapping, fine-mapping with SuSiE, and
-functional annotation of variants.
+including gene expression clustering, QTL mapping, fine-mapping with SuSiE, colocalization
+with GWAS, and functional annotation of variants.
 """
 
 import os
@@ -54,9 +54,9 @@ rule all:
         # gwas_colocs = expand(config['coloc_output_dir'] + "gwas/{TISSUE}/{TISSUE}.v8.{GWAS}.susie_" + USE_SUSIE + ".gwas_coloc.txt", 
         #                     TISSUE=tissue_ids, GWAS=gwas_ids),
         # # Signal groups analysis
-        qtl_signal_groups = expand(config['coloc_output_dir'] + "qtl_signal_groups/{TISSUE}.qtl_signal_groups.txt", TISSUE=tissue_ids),
-        # gwas_signal_groups = expand(config['coloc_output_dir'] + "gwas_signal_groups/{TISSUE}.gwas_signal_groups.txt", 
-        #                            TISSUE=tissue_ids)
+        # qtl_signal_groups = expand(config['coloc_output_dir'] + "qtl_signal_groups/{TISSUE}.qtl_signal_groups.txt", TISSUE=tissue_ids),
+        gwas_signal_groups = expand(config['coloc_output_dir'] + "gwas_signal_groups/{TISSUE}.gwas_signal_groups.txt", 
+                                    TISSUE=tissue_ids)
 
 # Development/testing target - uncomment for quick testing
 # rule test:

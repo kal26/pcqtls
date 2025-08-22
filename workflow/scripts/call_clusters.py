@@ -16,7 +16,7 @@ from scipy.stats import spearmanr
 import argparse
 
 
-def setup_logging(level=logging.INFO):
+def setup_logging(level: int = logging.INFO) -> None:
     """Set up logging configuration."""
     logging.basicConfig(
         level=level,
@@ -27,9 +27,11 @@ def setup_logging(level=logging.INFO):
     )
 
 
-def validate_input_files(expression_path, covariates_path):
+def validate_input_files(expression_path: str, covariates_path: str) -> None:
     """Validate that input files exist and are readable."""
     from pathlib import Path
+from typing import Dict, List, Optional, Union, Callable
+
     
     files_to_check = [
         (expression_path, "expression"),
@@ -43,9 +45,7 @@ def validate_input_files(expression_path, covariates_path):
             raise ValueError(f"{file_type.capitalize()} path is not a file: {file_path}")
 
 
-def get_clusters_chr(chr_id, expression_df, residual_exp, total_pairs, tissue_id, 
-                    min_cluster_size=2, max_cluster_size=50, min_corr_cutoff=.01, 
-                    percent_corr_cutoff=.7, cutoff_type='pvalue', trim=False):
+def get_clusters_chr(chr_id: int, expression_df: pd.DataFrame, residual_exp: Any, total_pairs: Any, tissue_id: str, min_cluster_size: Any = 2, max_cluster_size: Any = 50, min_corr_cutoff: Any = .01, percent_corr_cutoff: Any = .7, cutoff_type: Any = 'pvalue', trim: Any = False) -> pd.DataFrame:
     """
     Identify gene expression clusters on a per-chromosome basis.
     
@@ -190,9 +190,7 @@ def get_clusters_chr(chr_id, expression_df, residual_exp, total_pairs, tissue_id
     return out_df.sort_values('num_genes', ascending=False)
 
 
-def get_clusters_from_paths(expression_path, covariates_path, tissue_id, 
-                           min_cluster_size=2, max_cluster_size=50, min_corr_cutoff=0.1, 
-                           percent_corr_cutoff=.7, cutoff_type='pvalue', trim=True):
+def get_clusters_from_paths(expression_path: str, covariates_path: str, tissue_id: str, min_cluster_size: Any = 2, max_cluster_size: Any = 50, min_corr_cutoff: Any = 0.1, percent_corr_cutoff: Any = .7, cutoff_type: Any = 'pvalue', trim: Any = True) -> pd.DataFrame:
     """
     Load data from files and identify gene expression clusters.
     
@@ -232,9 +230,7 @@ def get_clusters_from_paths(expression_path, covariates_path, tissue_id,
                        cutoff_type=cutoff_type, trim=trim)
 
 
-def get_clusters(expression_df, residual_exp, tissue_id, min_cluster_size=2, 
-                max_cluster_size=50, min_corr_cutoff=0.1, percent_corr_cutoff=.7, 
-                cutoff_type='pvalue', trim=True):
+def get_clusters(expression_df: pd.DataFrame, residual_exp: Any, tissue_id: str, min_cluster_size: Any = 2, max_cluster_size: Any = 50, min_corr_cutoff: Any = 0.1, percent_corr_cutoff: Any = .7, cutoff_type: Any = 'pvalue', trim: Any = True) -> pd.DataFrame:
     """
     Identify gene expression clusters across all chromosomes.
     
@@ -278,7 +274,7 @@ def get_clusters(expression_df, residual_exp, tissue_id, min_cluster_size=2,
     return pd.concat(clusters_all_chr)
 
 
-def main():
+def main() -> None:
     """Main function to parse arguments and run cluster detection."""
     # Set up logging
     setup_logging()

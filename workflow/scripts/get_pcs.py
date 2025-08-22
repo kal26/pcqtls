@@ -16,12 +16,14 @@ import argparse
 from sklearn.decomposition import PCA
 import os
 from residualize import calculate_residual
+from typing import Dict, List, Optional, Union, Callable
+
 
 # Define BED format column order as a constant
 BED_COLUMNS = ['#chr', 'start', 'end', 'gene_id']
 
 
-def setup_logging(level=logging.INFO):
+def setup_logging(level: int = logging.INFO) -> None:
     """Set up logging configuration."""
     logging.basicConfig(
         level=level,
@@ -32,7 +34,7 @@ def setup_logging(level=logging.INFO):
     )
 
 
-def validate_input_files(cluster_path, expression_path, covariates_path):
+def validate_input_files(cluster_path: str, expression_path: str, covariates_path: str) -> None:
     """Validate that input files exist and are readable."""
     files_to_check = [
         (cluster_path, "cluster"),
@@ -47,7 +49,7 @@ def validate_input_files(cluster_path, expression_path, covariates_path):
             raise ValueError(f"{file_type.capitalize()} path is not a file: {file_path}")
 
 
-def make_bed_order(df):
+def make_bed_order(df: pd.DataFrame) -> pd.DataFrame:
     """
     Reorder DataFrame columns to match BED file format requirements.
     
@@ -70,7 +72,7 @@ def make_bed_order(df):
     return df[proper_order]
 
 
-def pc_bed_from_paths(cluster_path, expression_path, covariates_path, pc_out_path):
+def pc_bed_from_paths(cluster_path: str, expression_path: str, covariates_path: str, pc_out_path: str) -> None:
     """
     Generate principal components from cluster data and write to BED file.
     
@@ -111,7 +113,7 @@ def pc_bed_from_paths(cluster_path, expression_path, covariates_path, pc_out_pat
     logger.info(f'Successfully wrote {len(cluster_pcs_df)} PC phenotypes to {pc_out_path}')
 
 
-def get_pc_bed(cluster_df, expression_df, covariates_df):
+def get_pc_bed(cluster_df: pd.DataFrame, expression_df: pd.DataFrame, covariates_df: pd.DataFrame) -> pd.DataFrame:
     """
     Generate principal components from gene expression clusters.
     
@@ -218,7 +220,7 @@ def get_pc_bed(cluster_df, expression_df, covariates_df):
     return cluster_pcs_df
 
 
-def main():
+def main() -> None:
     """
     Main function to handle command-line interface and execute PC generation.
     
