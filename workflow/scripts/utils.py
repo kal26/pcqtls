@@ -45,7 +45,7 @@ def load_null_clusters_annotated(config: Dict[str, str], tissue_id: str, num_gen
 
 def load_cluster(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
     """Load cluster data for a tissue."""
-    cluster_df =  pd.read_csv('{}/{}/{}.clusters.txt'.format(config["working_dir"], config['clusters_dir'], tissue_id),index_col=0)
+    cluster_df =  pd.read_table('{}/{}/{}.clusters.txt'.format(config["working_dir"], config['clusters_dir'], tissue_id),index_col=0)
     return cluster_df
 
 def load_pc_cis(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:

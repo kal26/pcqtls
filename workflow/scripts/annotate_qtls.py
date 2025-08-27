@@ -27,7 +27,7 @@ except ImportError:
     sys.path.append(str(Path(__file__).parent))
     from utils import *
     from annotate_clusters import *
-from typing import Dict, List, Optional, Union, Callable
+from typing import Any, Dict, List, Optional, Union, Callable
 
 
 # Configuration - use environment variables with defaults

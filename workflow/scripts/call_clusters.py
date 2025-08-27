@@ -14,6 +14,7 @@ import numpy as np
 from residualize import calculate_residual
 from scipy.stats import spearmanr
 import argparse
+from typing import Any, Dict, List, Optional, Union, Callable
 
 
 def setup_logging(level: int = logging.INFO) -> None:
@@ -30,8 +31,6 @@ def setup_logging(level: int = logging.INFO) -> None:
 def validate_input_files(expression_path: str, covariates_path: str) -> None:
     """Validate that input files exist and are readable."""
     from pathlib import Path
-from typing import Dict, List, Optional, Union, Callable
-
     
     files_to_check = [
         (expression_path, "expression"),
@@ -43,6 +42,43 @@ from typing import Dict, List, Optional, Union, Callable
             raise FileNotFoundError(f"{file_type.capitalize()} file not found: {file_path}")
         if not Path(file_path).is_file():
             raise ValueError(f"{file_type.capitalize()} path is not a file: {file_path}")
+
+
+def calculate_chromosome_correlations(chr_id: int, expression_df: pd.DataFrame, residual_exp: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Calculate correlation matrix and p-values for genes on a specific chromosome.
+    
+    Args:
+        chr_id (int): Chromosome number
+        expression_df (pd.DataFrame): Expression data with gene_id and #chr columns
+        residual_exp (pd.DataFrame): Residualized expression data
+    
+    Returns:
+        tuple[pd.DataFrame, pd.DataFrame]: Correlation matrix and p-value matrix for the chromosome
+    """
+    logger = logging.getLogger(__name__)
+    logger.debug(f'Calculating correlations for chromosome {chr_id}')
+    
+    # Get genes on this chromosome
+    chr_gene_ids = expression_df[expression_df['#chr'] == f'chr{chr_id}']['gene_id']
+    chr_residual_exp = residual_exp.loc[chr_gene_ids]
+    
+    logger.debug(f'Chromosome {chr_id} contains {len(chr_gene_ids)} genes')
+
+    # Calculate correlation matrix and p-values
+    try:
+        chr_corr, chr_pvalue = spearmanr(chr_residual_exp, axis=1)
+    except IndexError:
+        # No genes on this chromosome
+        logger.warning(f'No genes found on chromosome {chr_id}')
+        return pd.DataFrame(), pd.DataFrame()
+    
+    chr_corr = pd.DataFrame(chr_corr, index=chr_residual_exp.index, columns=chr_residual_exp.index)
+    chr_pvalue = pd.DataFrame(chr_pvalue, index=chr_residual_exp.index, columns=chr_residual_exp.index)
+
+    logger.info(f'Calculated correlations for chromosome {chr_id}')
+    
+    return chr_corr, chr_pvalue
 
 
 def get_clusters_chr(chr_id: int, expression_df: pd.DataFrame, residual_exp: Any, total_pairs: Any, tissue_id: str, min_cluster_size: Any = 2, max_cluster_size: Any = 50, min_corr_cutoff: Any = .01, percent_corr_cutoff: Any = .7, cutoff_type: Any = 'pvalue', trim: Any = False) -> pd.DataFrame:
@@ -69,24 +105,12 @@ def get_clusters_chr(chr_id: int, expression_df: pd.DataFrame, residual_exp: Any
     logger = logging.getLogger(__name__)
     logger.debug(f'Processing chromosome {chr_id}')
     
-    # Get genes on this chromosome
-    chr_gene_ids = expression_df[expression_df['#chr'] == f'chr{chr_id}']['gene_id']
-    chr_residual_exp = residual_exp.loc[chr_gene_ids]
-    
-    logger.debug(f'Chromosome {chr_id} contains {len(chr_gene_ids)} genes')
-
     # Calculate correlation matrix and p-values
-    try:
-        chr_corr, chr_pvalue = spearmanr(chr_residual_exp, axis=1)
-    except IndexError:
-        # No genes on this chromosome
-        logger.warning(f'No genes found on chromosome {chr_id}')
-        return pd.DataFrame({})
+    chr_corr, chr_pvalue = calculate_chromosome_correlations(chr_id, expression_df, residual_exp)
     
-    chr_corr = pd.DataFrame(chr_corr, index=chr_residual_exp.index, columns=chr_residual_exp.index)
-    chr_pvalue = pd.DataFrame(chr_pvalue, index=chr_residual_exp.index, columns=chr_residual_exp.index)
-
-    logger.info(f'Calculated correlations for chromosome {chr_id}')
+    # Check if no genes were found
+    if chr_corr.empty:
+        return pd.DataFrame({})
 
     # Track transcripts already assigned to clusters
     transcript_blacklist = []
@@ -209,6 +233,7 @@ def get_clusters_from_paths(expression_path: str, covariates_path: str, tissue_i
         pd.DataFrame: DataFrame with columns: chr, cluster_id, tissue_id, num_genes, 
                      percent_correlated, mean_corr, mean_pos_corr, mean_neg_corr
     """
+    logger = logging.getLogger(__name__)
     # Load expression and covariates data
     expression_df = pd.read_table(expression_path)
     logger.info(f'Loaded expression data: {expression_df.shape}')
@@ -249,6 +274,7 @@ def get_clusters(expression_df: pd.DataFrame, residual_exp: Any, tissue_id: str,
         pd.DataFrame: DataFrame with columns: chr, cluster_id, tissue_id, num_genes, 
                      percent_correlated, mean_corr, mean_pos_corr, mean_neg_corr
     """
+    logger = logging.getLogger(__name__)
     # Calculate total number of pairs for Bonferroni correction
     total_pairs = 0
     for i in range(1, 23):
@@ -318,19 +344,19 @@ def main() -> None:
     try:
         # Validate input files
         logger.info("Validating input files...")
-        validate_input_files(args.expression_path, args.covariates_path)
+        validate_input_files(args.expression, args.covariates)
         
         logger.info('Starting gene expression cluster detection...')
         logger.info(f'Tissue: {args.tissue_id}')
-        logger.info(f'Expression file: {args.expression_path}')
-        logger.info(f'Covariates file: {args.covariates_path}')
-        logger.info(f'Output file: {args.out_path}')
+        logger.info(f'Expression file: {args.expression}')
+        logger.info(f'Covariates file: {args.covariates}')
+        logger.info(f'Output file: {args.output}')
         logger.info(f'Parameters: min_size={args.min_cluster_size}, max_size={args.max_cluster_size}, '
               f'cutoff_type={args.cutoff_type}, percent_cutoff={args.percent_corr_cutoff}')
 
         # Run cluster detection
         clusters_all_chr = get_clusters_from_paths(
-            args.expression_path, args.covariates_path, args.tissue_id, 
+            args.expression, args.covariates, args.tissue_id, 
             args.min_cluster_size, args.max_cluster_size, args.min_corr_cutoff, 
             args.percent_corr_cutoff, args.cutoff_type
         )
@@ -338,10 +364,10 @@ def main() -> None:
         clusters_all_chr.reset_index(drop=True, inplace=True)
         
         # Write results
-        logger.info(f'Writing {len(clusters_all_chr)} clusters to {args.out_path}')
-        clusters_all_chr.to_csv(args.out_path, index=False)
+        logger.info(f'Writing {len(clusters_all_chr)} clusters to {args.output}')
+        clusters_all_chr.to_csv(args.output, index=False)
         logger.info(f'Cluster detection complete! Found {len(clusters_all_chr)} total clusters')
-        logger.info(f'Results saved to: {args.out_path}')
+        logger.info(f'Results saved to: {args.output}')
         
     except FileNotFoundError as e:
         logger.error(f"File not found: {e}")

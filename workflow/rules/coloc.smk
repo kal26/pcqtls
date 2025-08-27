@@ -88,11 +88,10 @@ rule run_gwas_coloc:
         pcqtl_nominal_dir = config['pcqtl_output_dir'] + '{TISSUE}/'
     
     resources:
-        mem = "100G",
+        mem = "200G",
         time = "72:00:00"
     
-    threads: 40
-    
+    threads: 1
     shell:
         """
         Rscript {params.code_dir}/coloc_run_gwas.R \

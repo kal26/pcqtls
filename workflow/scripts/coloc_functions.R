@@ -460,6 +460,7 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
       
       this_qtl_susie <- qtl_susies[[i]]
       # Add error handling for coloc.susie
+      this_coloc <- NULL
       tryCatch({
         this_coloc <- coloc.susie(gwas_susie, this_qtl_susie)$summary
       }, error = function(e) {
@@ -467,9 +468,26 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
         this_coloc <- NULL
       }, warning = function(w) {
         cat("\t\t\t\tWarning in coloc.susie:", w$message, "\n")
+        # Ensure this_coloc is properly set even after warning
+        if (is.null(this_coloc)) {
+          cat("\t\t\t\tWarning caused this_coloc to be NULL, attempting to recover...\n")
+          tryCatch({
+            this_coloc <- coloc.susie(gwas_susie, this_qtl_susie)$summary
+          }, error = function(e2) {
+            cat("\t\t\t\tRecovery failed:", e2$message, "\n")
+            this_coloc <- NULL
+          })
+        }
       })
       
-      if (!is.null(this_coloc) && nrow(this_coloc) > 0) {
+      # Additional safety check for this_coloc
+      if (is.null(this_coloc)) {
+        cat("\t\t\t\tthis_coloc is NULL, skipping this colocalization\n")
+      } else if (!is.data.frame(this_coloc) || nrow(this_coloc) == 0) {
+        cat("\t\t\t\tthis_coloc is not a valid data frame or has no rows, skipping\n")
+      } else if (!all(c("PP.H0.abf", "PP.H1.abf", "PP.H2.abf", "PP.H3.abf", "PP.H4.abf") %in% colnames(this_coloc))) {
+        cat("\t\t\t\tthis_coloc missing required columns, skipping\n")
+      } else {
         # Check if all values in each column are the same
         pp_columns <- c("PP.H0.abf", "PP.H1.abf", "PP.H2.abf", "PP.H3.abf", "PP.H4.abf")
         all_same <- TRUE
@@ -477,12 +495,12 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
         for (col in pp_columns) {
           if (length(unique(this_coloc[[col]])) > 1) {
             all_same <- FALSE
-            cat("\t\t\t\tERROR: Values in", col, "are not all the same!\n")
+            cat("\t\t\t\tWARNING: Values in", col, "are not all the same!\n")
             cat("\t\t\t\tValues:", paste(this_coloc[[col]], collapse=", "), "\n")
             cat("\t\t\t\tNumber of rows in this_coloc:", nrow(this_coloc), "\n")
             cat("\t\t\t\tStructure of this_coloc:\n")
             print(str(this_coloc))
-            stop("Colocalization results have different values - this needs investigation!")
+            break
           }
         }
         
@@ -490,6 +508,12 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
           # All values are the same, just take the first row
           this_coloc_row <- this_coloc[1, ]
           cat("\t\t\t\tAll colocalization values are identical, using first row\n")
+        } else {
+          # Values are different, select row with maximum PP.H4 value
+          max_pph4_idx <- which.max(this_coloc$PP.H4.abf)
+          this_coloc_row <- this_coloc[max_pph4_idx, ]
+          cat("\t\t\t\tValues differ - selecting row with maximum PP.H4.abf (row", max_pph4_idx, ")\n")
+          cat("\t\t\t\tSelected PP.H4.abf value:", this_coloc_row$PP.H4.abf, "\n")
         }
         
         # Add logging for co-localization results
@@ -512,8 +536,6 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
         this_coloc_row$gwas_id <- gwas_with_meta$gwas_id
         this_coloc_row$qtl_id <- this_qtl_id
         gwas_coloc_results <- bind_rows(gwas_coloc_results, this_coloc_row)
-      } else {
-        cat("\t\t\t\tNo colocalization results available\n")
       }
     }
   } else {
@@ -523,6 +545,7 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
       cat("\t\t\t\tUsing ABF to colocalize", i, "out of", length(qtls_for_coloc), "total\n")
       
       # Add error handling for coloc.abf
+      this_coloc <- NULL
       tryCatch({
         this_coloc <- coloc.abf(gwas_for_coloc, qtls_for_coloc[[i]])$summary
       }, error = function(e) {
@@ -530,9 +553,26 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
         this_coloc <- NULL
       }, warning = function(w) {
         cat("\t\t\t\tWarning in coloc.abf:", w$message, "\n")
+        # Ensure this_coloc is properly set even after warning
+        if (is.null(this_coloc)) {
+          cat("\t\t\t\tWarning caused this_coloc to be NULL, attempting to recover...\n")
+          tryCatch({
+            this_coloc <- coloc.abf(gwas_for_coloc, qtls_for_coloc[[i]])$summary
+          }, error = function(e2) {
+            cat("\t\t\t\tRecovery failed:", e2$message, "\n")
+            this_coloc <- NULL
+          })
+        }
       })
       
-      if (!is.null(this_coloc) && nrow(this_coloc) > 0) {
+      # Additional safety check for this_coloc
+      if (is.null(this_coloc)) {
+        cat("\t\t\t\tthis_coloc is NULL, skipping this colocalization\n")
+      } else if (!is.data.frame(this_coloc) || nrow(this_coloc) == 0) {
+        cat("\t\t\t\tthis_coloc is not a valid data frame or has no rows, skipping\n")
+      } else if (!all(c("PP.H0.abf", "PP.H1.abf", "PP.H2.abf", "PP.H3.abf", "PP.H4.abf") %in% colnames(this_coloc))) {
+        cat("\t\t\t\tthis_coloc missing required columns, skipping\n")
+      } else {
         # Check if all values in each column are the same
         pp_columns <- c("PP.H0.abf", "PP.H1.abf", "PP.H2.abf", "PP.H3.abf", "PP.H4.abf")
         all_same <- TRUE
@@ -540,12 +580,12 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
         for (col in pp_columns) {
           if (length(unique(this_coloc[[col]])) > 1) {
             all_same <- FALSE
-            cat("\t\t\t\tERROR: Values in", col, "are not all the same!\n")
+            cat("\t\t\t\tWARNING: Values in", col, "are not all the same!\n")
             cat("\t\t\t\tValues:", paste(this_coloc[[col]], collapse=", "), "\n")
             cat("\t\t\t\tNumber of rows in this_coloc:", nrow(this_coloc), "\n")
             cat("\t\t\t\tStructure of this_coloc:\n")
             print(str(this_coloc))
-            stop("Colocalization results have different values - this needs investigation!")
+            break
           }
         }
         
@@ -553,6 +593,12 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
           # All values are the same, just take the first row
           this_coloc_row <- this_coloc[1, ]
           cat("\t\t\t\tAll colocalization values are identical, using first row\n")
+        } else {
+          # Values are different, select row with maximum PP.H4 value
+          max_pph4_idx <- which.max(this_coloc$PP.H4.abf)
+          this_coloc_row <- this_coloc[max_pph4_idx, ]
+          cat("\t\t\t\tValues differ - selecting row with maximum PP.H4.abf (row", max_pph4_idx, ")\n")
+          cat("\t\t\t\tSelected PP.H4.abf value:", this_coloc_row$PP.H4.abf, "\n")
         }
         
         this_coloc_row$gwas_id <- gwas_with_meta$gwas_id

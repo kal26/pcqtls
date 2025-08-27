@@ -33,7 +33,7 @@ except ImportError:
     from get_pcs import get_pc_bed
     from annotate_pcs import get_annotate_pcs
     from residualize import calculate_residual
-from typing import Dict, List, Optional, Union, Callable
+from typing import Any, Dict, List, Optional, Union, Callable
 
 
 # Configuration - use environment variables with defaults
