@@ -187,20 +187,19 @@ def add_annotations_qtl(qtls: Any, gid_gencode: Any, gene_enhancer_df: pd.DataFr
     logger.info(f'Completed QTL annotation of {len(qtls)} associations')
 
 
-def load_and_annotate(qtls: Any, my_tissue_id: str, gencode_path: str = 'data/references/gencode.v26.genes.txt', full_abc_path: str = 'data/references/functional_annotations/ABC_predictions/AllPredictions.AvgHiC.ABC0.015.minus150.ForABCPaperV3.txt.gz', abc_match_path: str = 'data/references/functional_annotations/ABC_predictions/ABC_matched_gtex.txt', ctcf_match_path: str = 'data/references/functional_annotations/ctcf_chip/ctcf_matched_gtex.txt', ctcf_dir: str = 'data/references/functional_annotations/ctcf_chip', tad_path: str = 'data/references/TAD_annotations/TADs_hg38/converted_HiC_IMR90_DI_10kb.txt') -> pd.DataFrame:
+def load_and_annotate(qtls: Any, my_tissue_id: str, gencode_path: str = 'data/references/gencode.v26.genes.txt', abc_path: str = 'data/references/functional_annotations/ABC_predictions/AllPredictions.AvgHiC.ABC0.015.minus150.ForABCPaperV3.txt.gz', abc_match_path: str = 'data/references/functional_annotation', ctcf_match_path: str = 'data/references/functional_annotations/CTCF/ctcf_gtex_match.csv', ctcf_dir: str = 'data/references/functional_annotations/CTCF', tad_path: str = 'data/references/functional_annotations/tads/KR_balanced_GSE63525_GM12878_insitu_primary_30.hic_chr_5kb_domains.bed') -> pd.DataFrame:
     """
-    Load all annotation data and annotate QTLs.
+    Load functional data and annotate QTLs.
     
     Args:
-        qtls (pd.DataFrame): QTL associations to annotate
-        my_tissue_id (str): GTEx tissue identifier
-        gencode_path (str): Path to GENCODE file
-        full_abc_path (str): Path to ABC predictions file
-        abc_match_path (str): Path to ABC-GTEx matching file
-        ctcf_match_path (str): Path to CTCF-GTEx matching file
-        ctcf_dir (str): Directory containing CTCF files
-        tad_path (str): Path to TAD boundaries file
-
+        qtls (Any): QTL results
+        my_tissue_id (str): Tissue identifier
+        gencode_path (str): Path to GENCODE annotation
+        abc_path (str): Path to ABC predictions file
+        abc_match_path (str): Path to ABC-GTEx mapping file
+        ctcf_match_path (str): Path to CTCF-GTEx mapping file
+        ctcf_dir (str): Directory with CTCF BED files
+        tad_path (str): TAD domains file
     """
     logger = logging.getLogger(__name__)
     logger.info(f'Loading annotation data for tissue: {my_tissue_id}')
@@ -211,7 +210,7 @@ def load_and_annotate(qtls: Any, my_tissue_id: str, gencode_path: str = 'data/re
     gid_gencode = load_gencode(f'{PREFIX}/{gencode_path}')
     
     logger.info('Loading ABC enhancer-gene connections...')
-    gene_enhancer_df = load_abc(my_tissue_id, gid_gencode, f'{PREFIX}/{full_abc_path}', f'{PREFIX}/{abc_match_path}')
+    gene_enhancer_df = load_abc(my_tissue_id, gid_gencode, f'{PREFIX}/{abc_path}', f'{PREFIX}/{abc_match_path}')
     
     logger.info('Loading CTCF binding sites...')
     ctcf_df = load_ctcf(my_tissue_id, f'{PREFIX}/{ctcf_match_path}', f'{PREFIX}/{ctcf_dir}')

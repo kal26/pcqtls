@@ -9,14 +9,13 @@ genotype_stem: "data/processed/genotypes/GTEx_Analysis_2017-06-05_v8_WholeGenome
 
 # for cluster annotation
 gencode_path: "data/references/gencode.v26.tss_annotated.genes.txt"
-full_abc_path: "data/references/functional_annotations/ABC_predictions/ABC.hg38.bed"
-abc_match_path: "data/references/functional_annotations/ABC_predictions/ABC_matched_gtex.txt"
-ctcf_match_path: "data/references/functional_annotations/ctcf_chip/ctcf_matched_gtex.txt"
-ctcf_dir: "data/references/functional_annotations/ctcf_chip"
-paralog_path: "/data/references/functional_annotations/paralogs_biomart_ensembl97.tsv.gz"
-go_path: "data/references/functional_annotations/go_biomart_ensembl97.tsv.gz"
-cross_map_path: "data/references/cross_mappability/cross_mappability_100_agg.csv"
-tad_path: "data/references/TAD_annotations/TADs_hg38/converted_HiC_IMR90_DI_10kb.txt"
+abc_path: "data/references/ABC.hg38.bed"
+ctcf_match_path: "data/references/ctcf_matched_gtex.txt"
+ctcf_dir: "data/references/ctcf_chip_dir"
+paralog_path: "/data/references/paralogs_biomart_ensembl97.tsv.gz"
+go_path: "data/references/go_biomart_ensembl97.tsv.gz"
+cross_map_path: "data/references/hg38_cross_mappability_strength_symmetric_mean_sorted.txt.gz"
+tad_path: "data/references/HiC_IMR90_DI_10kb.hg38.txt"
 
 # for coloc
 gwas_meta: "data/references/gwas_metadata.txt"

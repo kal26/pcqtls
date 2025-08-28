@@ -11,15 +11,14 @@ rule annotate_clusters:
     Annotate gene expression clusters with functional information.
     
     This rule adds functional annotations to gene clusters including ABC enhancer
-    connections, CTCF binding sites, TAD boundaries, and expression statistics.
+    connections, CTCF binding sites, TAD boundaries, and paralogs.
     """
     input:
         clusters = config['clusters_dir'] + '{TISSUE}.clusters.txt',
         expression = config['filtered_expression_output_dir'] + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed',
         covariates = config['covariates_dir'] + '{TISSUE}.v8.covariates.txt',
         gencode = config['gencode_path'],
-        abc = config['full_abc_path'],
-        abc_match = config['abc_match_path'],
+        abc = config['abc_path'],
         ctcf_match = config['ctcf_match_path'],
         ctcf_dir = config['ctcf_dir'],
         paralog = config['paralog_path'],
@@ -28,7 +27,7 @@ rule annotate_clusters:
         tad = config['tad_path']
     
     output:
-        annotated_clusters = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.clusters.annotated.txt'
+        annotated_clusters = config['annotations_output_dir'] + 'annotated_clusters/{TISSUE}.clusters.annotated.txt'
     
     params:
         code_dir = config['code_dir']
@@ -44,18 +43,17 @@ rule annotate_clusters:
         python {params.code_dir}/annotate_clusters.py \
             --tissue-id {wildcards.TISSUE} \
             --clusters {input.clusters} \
-            --expression {input.expression} \
-            --covariates {input.covariates} \
-            --output {output.annotated_clusters} \
             --gencode {input.gencode} \
-            --full-abc {input.abc} \
-            --abc-match {input.abc_match} \
+            --paralog {input.paralog} \
+            --abc {input.abc} \
+            --go {input.go} \
+            --tad {input.tad} \
             --ctcf-match {input.ctcf_match} \
             --ctcf-dir {input.ctcf_dir} \
-            --paralog {input.paralog} \
-            --go {input.go} \
             --cross-map {input.cross_map} \
-            --tad {input.tad}
+            --covariates {input.covariates} \
+            --expression {input.expression} \
+            --output {output.annotated_clusters}
         """
 
 
@@ -68,11 +66,10 @@ rule annotate_null_clusters:
     """
     input:
         clusters = config['clusters_dir'] + '{TISSUE}.clusters.txt',
-        expression = config['filtered_expression_output_dir'] + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed',
+        expression = config['expression_dir'] + '{TISSUE}.v8.normalized_expression.bed',
         covariates = config['covariates_dir'] + '{TISSUE}.v8.covariates.txt',
         gencode = config['gencode_path'],
-        abc = config['full_abc_path'],
-        abc_match = config['abc_match_path'],
+        abc = config['abc_path'],
         ctcf_match = config['ctcf_match_path'],
         ctcf_dir = config['ctcf_dir'],
         paralog = config['paralog_path'],
@@ -81,7 +78,7 @@ rule annotate_null_clusters:
         tad = config['tad_path']
     
     output:
-        annotated_nulls = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.null_{CLUSTER_SIZE}genes.annotated.txt'
+        annotated_nulls = config['annotations_output_dir'] + 'annotated_null_clusters/{TISSUE}.null.{CLUSTER_SIZE}genes.annotated.txt'
     
     params:
         cluster_size = "{CLUSTER_SIZE}",
@@ -98,19 +95,18 @@ rule annotate_null_clusters:
         python {params.code_dir}/annotate_null_clusters.py \
             --tissue-id {wildcards.TISSUE} \
             --clusters {input.clusters} \
-            --expression {input.expression} \
-            --covariates {input.covariates} \
-            --output {output.annotated_nulls} \
-            --cluster-size {params.cluster_size} \
             --gencode {input.gencode} \
-            --full-abc {input.abc} \
-            --abc-match {input.abc_match} \
+            --paralog {input.paralog} \
+            --abc {input.abc} \
+            --go {input.go} \
+            --tad {input.tad} \
             --ctcf-match {input.ctcf_match} \
             --ctcf-dir {input.ctcf_dir} \
-            --paralog {input.paralog} \
-            --go {input.go} \
             --cross-map {input.cross_map} \
-            --tad {input.tad}
+            --covariates {input.covariates} \
+            --expression {input.expression} \
+            --cluster-size {params.cluster_size} \
+            --output {output.annotated_nulls}
         """
 
 
@@ -222,8 +218,7 @@ rule merge_susie_vep_annotations:
         e_nominal = expand(config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.chr{chr}.parquet', chr=range(1, 23), allow_missing=True),
         pc_nominal = expand(config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.chr{chr}.parquet', chr=range(1, 23), allow_missing=True),
         gencode = config['gencode_path'],
-        abc = config['full_abc_path'],
-        abc_match = config['abc_match_path'],
+        abc = config['abc_path'],
         ctcf_match = config['ctcf_match_path'],
         ctcf_dir = config['ctcf_dir'],
         tad = config['tad_path']
@@ -251,8 +246,7 @@ rule merge_susie_vep_annotations:
             --pc-nominal {input.pc_nominal} \
             --tissue-id {wildcards.TISSUE} \
             --gencode {input.gencode} \
-            --full-abc {input.abc} \
-            --abc-match {input.abc_match} \
+            --abc {input.abc} \
             --ctcf-match {input.ctcf_match} \
             --ctcf-dir {input.ctcf_dir} \
             --tad {input.tad} \

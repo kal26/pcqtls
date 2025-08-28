@@ -183,16 +183,44 @@ clean_gwas <- function(gwas_filtered, cleaned_ld_matrix, gwas_type, num_gwas_sam
 #' @param dataset Dataset for SuSiE analysis
 #' @return SuSiE result or NULL if error occurs
 runsusie_errorcatch <- function(dataset) {
+  # First try a quick run with 100 iterations
+  cat("running max iterations: 100\n")
   start <- Sys.time()
   susie <- tryCatch({
-    runsusie(dataset, repeat_until_convergence = TRUE)
+    runsusie(dataset,
+             repeat_until_convergence = FALSE,
+             susie_args = list(max_iter = 100))
   }, error = function(e) {
     cat("An error occurred for QTL\n")
     cat("Error Message:", conditionMessage(e), "\n")
     NULL
   })
   cat("SuSiE runtime:", Sys.time() - start, "\n")
-  return(susie)
+  if (!is.null(susie) && !is.null(susie$converged) && isTRUE(susie$converged)) {
+    cat("\tconverged: TRUE\n")
+    return(susie)
+  }
+  cat("\tconverged: FALSE\n")
+
+  # Retry with 10000 iterations
+  cat("running max iterations: 10000\n")
+  start <- Sys.time()
+  susie2 <- tryCatch({
+    runsusie(dataset,
+             repeat_until_convergence = FALSE,
+             susie_args = list(max_iter = 10000))
+  }, error = function(e) {
+    cat("An error occurred for QTL on retry\n")
+    cat("Error Message:", conditionMessage(e), "\n")
+    NULL
+  })
+  cat("SuSiE runtime:", Sys.time() - start, "\n")
+  if (!is.null(susie2) && !is.null(susie2$converged) && isTRUE(susie2$converged)) {
+    cat("\tconverged: TRUE\n")
+    return(susie2)
+  }
+  cat("\tconverged: FALSE within max_iter=10000 — returning NULL\n")
+  return(NULL)
 }
 
 # =============================================================================

@@ -95,7 +95,7 @@ def load_nominal_data(e_nominal_path_list: List[str], pc_nominal_path_list: List
 
 
 
-def annotate_susie_results(e_susie_path: pd.DataFrame, pc_susie_path: pd.DataFrame, vep_path: str, annot_pc_path: str, e_nominal_path_list: List[str], pc_nominal_path_list: List[str], tissue_id: str, gencode_path: str, full_abc_path: str, abc_match_path: str, ctcf_match_path: str, ctcf_dir: str, tad_path: str) -> pd.DataFrame:
+def annotate_susie_results(e_susie_path: pd.DataFrame, pc_susie_path: pd.DataFrame, vep_path: str, annot_pc_path: str, e_nominal_path_list: List[str], pc_nominal_path_list: List[str], tissue_id: str, gencode_path: str, abc_path: str, abc_match_path: str, ctcf_match_path: str, ctcf_dir: str, tad_path: str) -> pd.DataFrame:
     """
     Annotate SuSiE fine-mapping results with VEP predictions and functional data.
     
@@ -112,7 +112,7 @@ def annotate_susie_results(e_susie_path: pd.DataFrame, pc_susie_path: pd.DataFra
         pc_nominal_path_list (list): List of pcQTL nominal result paths
         tissue_id (str): GTEx tissue identifier
         gencode_path (str): Path to GENCODE file
-        full_abc_path (str): Path to ABC predictions file
+        abc_path (str): Path to ABC predictions file
         abc_match_path (str): Path to ABC-GTEx matching file
         ctcf_match_path (str): Path to CTCF-GTEx matching file
         ctcf_dir (str): Directory containing CTCF files
@@ -231,7 +231,7 @@ def annotate_susie_results(e_susie_path: pd.DataFrame, pc_susie_path: pd.DataFra
     
     # Add additional QTL annotations using existing utilities
     logger.info('Adding genomic and functional annotations...')
-    load_and_annotate(qtls, tissue_id, gencode_path, full_abc_path, abc_match_path,
+    load_and_annotate(qtls, tissue_id, gencode_path, abc_path, abc_match_path,
                      ctcf_match_path, ctcf_dir, tad_path)
     
     logger.info(f'Completed SuSiE annotation with {len(qtls)} QTLs')
@@ -265,8 +265,8 @@ def main() -> None:
                        help='GTEx tissue identifier')
     parser.add_argument('--gencode', required=True,
                        help='Path to GENCODE annotation file')
-    parser.add_argument('--full-abc', required=True,
-                       help='Path to ABC predictions file')
+    parser.add_argument('--abc', required=True,
+                       help='ABC predictions file')
     parser.add_argument('--abc-match', required=True,
                        help='Path to ABC-GTEx tissue matching file')
     parser.add_argument('--ctcf-match', required=True,
@@ -307,7 +307,7 @@ def main() -> None:
             pc_nominal_path_list=args.pc_nominal,
             tissue_id=args.tissue_id,
             gencode_path=args.gencode,
-            full_abc_path=args.full_abc,
+            abc_path=args.abc,
             abc_match_path=args.abc_match,
             ctcf_match_path=args.ctcf_match,
             ctcf_dir=args.ctcf_dir,

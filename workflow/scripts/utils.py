@@ -32,16 +32,12 @@ def load_pc_annotated(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
 
 def load_clusters_annotated(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
     """Load annotated clusters for a tissue."""
-    annot_cluster = pd.read_csv('{}/{}/{}/{}.clusters.annotated.txt'.format(config["working_dir"], config['annotations_output_dir'], tissue_id, tissue_id), index_col=0)
-    annot_cluster['abs_cor'] = np.where(annot_cluster['mean_neg_corr'].isna(), annot_cluster['mean_pos_corr'], - annot_cluster['mean_neg_corr'])
-    annot_cluster['abs_cor'] = np.where(annot_cluster['abs_cor'] < annot_cluster['mean_pos_corr'], annot_cluster['mean_pos_corr'], annot_cluster['abs_cor'])
-    annot_cluster['max_pos_neg_cor'] = np.where(annot_cluster['mean_neg_corr'].isna(), annot_cluster['mean_pos_corr'], annot_cluster['mean_neg_corr'])
-    annot_cluster['max_pos_neg_cor'] = np.where(abs(annot_cluster['max_pos_neg_cor']) < annot_cluster['mean_pos_corr'], annot_cluster['mean_pos_corr'], annot_cluster['max_pos_neg_cor'])
+    annot_cluster = pd.read_table('{}/{}/annotated_clusters/{}.clusters.annotated.txt'.format(config["working_dir"], config['annotations_output_dir'], tissue_id))
     return annot_cluster
 
 def load_null_clusters_annotated(config: Dict[str, str], tissue_id: str, num_genes: int = 2) -> pd.DataFrame:
     """Load annotated null clusters for a tissue."""
-    return pd.read_csv('{}/{}/{}/{}.null_{}genes.annotated.txt'.format(config["working_dir"], config['annotations_output_dir'], tissue_id, tissue_id, num_genes), index_col=0)
+    return pd.read_table('{}/{}/annotated_null_clusters/{}.null.{}genes.annotated.txt'.format(config["working_dir"], config['annotations_output_dir'], tissue_id, num_genes))
 
 def load_cluster(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
     """Load cluster data for a tissue."""
@@ -248,4 +244,162 @@ def remove_cross_map(df: pd.DataFrame, cross_map_ids: Optional[List[str]] = None
     if cross_map_ids is not None:
         df = df[~df['gene_id'].isin(cross_map_ids)]
     
+    return df
+
+
+def calculate_enrichment_with_covariates(clusters_df, null_df, annotation_cols, min_group_size=10, min_expected_freq=5):
+    """
+    Calculate enrichment odds ratios with covariates using logistic regression
+    Skip only when sample sizes or expected frequencies are too small for reliable statistics
+    """
+    results = []
+    
+    # Combine datasets and add labels
+    clusters_df = clusters_df.copy()
+    null_df = null_df.copy()
+    
+    clusters_df['is_cluster'] = 1
+    null_df['is_cluster'] = 0
+    
+    combined_df = pd.concat([clusters_df, null_df], ignore_index=True)
+    
+    for annotation in annotation_cols:
+        try:
+            # Prepare data for logistic regression
+            # Remove rows with missing values for this annotation
+            analysis_df = combined_df.dropna(subset=[annotation, 'cluster_length', 'num_genes'])
+            
+            if len(analysis_df) == 0:
+                print(f"No data available for {annotation}")
+                results.append({
+                    'annotation': annotation,
+                    'odds_ratio': np.nan,
+                    'ci_lower': np.nan,
+                    'ci_upper': np.nan,
+                    'p_value': np.nan,
+                    'reason': 'no_data'
+                })
+                continue
+            
+            # Check group sizes
+            cluster_group = analysis_df[analysis_df['is_cluster'] == 1]
+            null_group = analysis_df[analysis_df['is_cluster'] == 0]
+            
+            if len(cluster_group) < min_group_size or len(null_group) < min_group_size:
+                print(f"Insufficient group sizes for {annotation}: clusters={len(cluster_group)}, null={len(null_group)}")
+                results.append({
+                    'annotation': annotation,
+                    'odds_ratio': np.nan,
+                    'ci_lower': np.nan,
+                    'ci_upper': np.nan,
+                    'p_value': np.nan,
+                    'reason': f'small_groups_clusters_{len(cluster_group)}_null_{len(null_group)}'
+                })
+                continue
+            
+            # Check expected frequencies for 2x2 table (Fisher's exact test assumptions)
+            cluster_pos = len(cluster_group[cluster_group[annotation] == 1])
+            cluster_neg = len(cluster_group[cluster_group[annotation] == 0])
+            null_pos = len(null_group[null_group[annotation] == 1])
+            null_neg = len(null_group[null_group[annotation] == 0])
+            
+            # Calculate expected frequencies under null hypothesis
+            total_pos = cluster_pos + null_pos
+            total_neg = cluster_neg + null_neg
+            total_cluster = len(cluster_group)
+            total_null = len(null_group)
+            total_all = len(analysis_df)
+            
+            exp_cluster_pos = (total_cluster * total_pos) / total_all
+            exp_cluster_neg = (total_cluster * total_neg) / total_all
+            exp_null_pos = (total_null * total_pos) / total_all
+            exp_null_neg = (total_null * total_neg) / total_all
+            
+            min_expected = min(exp_cluster_pos, exp_cluster_neg, exp_null_pos, exp_null_neg)
+            
+            if min_expected < min_expected_freq:
+                print(f"Low expected frequency for {annotation}: min_expected={min_expected:.2f}")
+                results.append({
+                    'annotation': annotation,
+                    'odds_ratio': np.nan,
+                    'ci_lower': np.nan,
+                    'ci_upper': np.nan,
+                    'p_value': np.nan,
+                    'reason': f'low_expected_freq_{min_expected:.2f}'
+                })
+                continue
+            
+            # Check for complete separation (all positive in one group, all negative in another)
+            if cluster_pos == 0 or cluster_neg == 0 or null_pos == 0 or null_neg == 0:
+                print(f"Complete or quasi-complete separation for {annotation}")
+                results.append({
+                    'annotation': annotation,
+                    'odds_ratio': np.nan,
+                    'ci_lower': np.nan,
+                    'ci_upper': np.nan,
+                    'p_value': np.nan,
+                    'reason': 'complete_separation'
+                })
+                continue
+                
+            # Define dependent and independent variables
+            y = analysis_df[annotation]
+            X = analysis_df[['is_cluster', 'cluster_length', 'num_genes']]
+            X = sm.add_constant(X)  # Add intercept
+            
+            # Fit logistic regression
+            model = sm.Logit(y, X)
+            result = model.fit(disp=0)
+            
+            # Check if model converged
+            if not result.mle_retvals['converged']:
+                print(f"Model did not converge for {annotation}")
+                results.append({
+                    'annotation': annotation,
+                    'odds_ratio': np.nan,
+                    'ci_lower': np.nan,
+                    'ci_upper': np.nan,
+                    'p_value': np.nan,
+                    'reason': 'no_convergence'
+                })
+                continue
+            
+            # Extract odds ratio and confidence interval for 'is_cluster'
+            coef = result.params['is_cluster']
+            odds_ratio = np.exp(coef)
+            conf_int = np.exp(result.conf_int().loc['is_cluster'])
+            
+            results.append({
+                'annotation': annotation,
+                'odds_ratio': odds_ratio,
+                'ci_lower': conf_int[0],
+                'ci_upper': conf_int[1],
+                'p_value': result.pvalues['is_cluster'],
+                'reason': 'success',
+                'contingency_table': f"cluster_pos:{cluster_pos}, cluster_neg:{cluster_neg}, null_pos:{null_pos}, null_neg:{null_neg}"
+            })
+            
+        except Exception as e:
+            print(f"Error calculating enrichment for {annotation}: {e}")
+            results.append({
+                'annotation': annotation,
+                'odds_ratio': np.nan,
+                'ci_lower': np.nan,
+                'ci_upper': np.nan,
+                'p_value': np.nan,
+                'reason': f'error_{str(e)[:50]}'
+            })
+            continue
+    return pd.DataFrame(results)
+
+def categorize_correlation_type(df):
+    """ Categorize clusters by correlation type """
+    df = df.copy()
+    conditions = [
+        df['mean_neg_corr'].isna() & df['mean_pos_corr'].notna(),
+        df['mean_pos_corr'].isna() & df['mean_neg_corr'].notna(),
+        df['mean_pos_corr'].notna() & df['mean_neg_corr'].notna()
+    ]
+    choices = ['positive_only', 'negative_only', 'both_corr']
+    df['corr_type'] = np.select(conditions, choices, default='unknown')
     return df
