@@ -38,8 +38,6 @@ rule run_coloc_pairs:
         mem = "50G",
         time = "10:00:00"
     
-    threads: 20
-    
     shell:
         """
         Rscript {params.code_dir}/coloc_run_pairs.R \
@@ -91,7 +89,6 @@ rule run_gwas_coloc:
         mem = "200G",
         time = "72:00:00"
     
-    threads: 1
     shell:
         """
         Rscript {params.code_dir}/coloc_run_gwas.R \
@@ -137,8 +134,6 @@ rule group_qtl_signals:
         mem = "20G",
         time = "2:00:00"
     
-    threads: 10
-    
     shell:
         """
         python {params.code_dir}/group_signals.py \
@@ -173,8 +168,6 @@ rule group_gwas_signals:
     resources:
         mem = "30G",
         time = "4:00:00"
-    
-    threads: 15
     
     shell:
         """
@@ -212,8 +205,6 @@ rule gather_eqtl_susie:
         mem = "50G",
         time = "4:00:00"
     
-    threads: 10
-    
     shell:
         """
         Rscript {params.code_dir}/combine_RDS_susie.R \
@@ -248,8 +239,6 @@ rule gather_pcqtl_susie:
     resources:
         mem = "50G",
         time = "4:00:00"
-    
-    threads: 10
     
     shell:
         """

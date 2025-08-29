@@ -36,8 +36,6 @@ rule annotate_clusters:
         mem = "20G",
         time = "2:00:00"
     
-    threads: 10
-    
     shell:
         """
         python {params.code_dir}/annotate_clusters.py \
@@ -87,8 +85,6 @@ rule annotate_null_clusters:
     resources:
         mem = "20G",
         time = "2:00:00"
-    
-    threads: 10
     
     shell:
         """
@@ -156,8 +152,6 @@ rule convert_susie_to_vcf:
         mem = "5G",
         time = "0:30:00"
     
-    threads: 1
-    
     shell:
         """
         python {params.code_dir}/susie_to_vcf.py \
@@ -183,8 +177,6 @@ rule run_vep:
     resources:
         mem = "30G",
         time = "4:00:00"
-    
-    threads: 10
     
     conda:
         "vep"
@@ -232,8 +224,6 @@ rule merge_susie_vep_annotations:
     resources:
         mem = "20G",
         time = "1:00:00"
-    
-    threads: 10
     
     shell:
         """

@@ -59,8 +59,6 @@ rule run_eqtl_cis_nominal:
         mem = "30G",
         time = "4:00:00"
     
-    threads: 10
-    
     shell:
         """
         python {params.code_dir}/run_qtl_nominal.py \
@@ -96,8 +94,6 @@ rule run_eqtl_cis:
         mem = "30G",
         time = "4:00:00"
     
-    threads: 10
-    
     shell:
         """
         python -m tensorqtl {params.genotype_stem} \
@@ -132,8 +128,6 @@ rule run_eqtl_cis_independent:
     resources:
         mem = "60G",
         time = "6:00:00"
-    
-    threads: 20
     
     shell:
         """

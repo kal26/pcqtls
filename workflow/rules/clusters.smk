@@ -31,8 +31,6 @@ rule call_clusters:
         mem = "80G",
         time = "2:00:00"
     
-    threads: 20
-    
     shell:
         """
         python {params.code_dir}/call_clusters.py \
