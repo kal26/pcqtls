@@ -21,7 +21,7 @@ tad_path: "data/references/HiC_IMR90_DI_10kb.hg38.txt"
 gwas_meta: "data/references/gwas_metadata.txt"
 gtex_meta: "data/references/gtex_sample_sizes.txt"
 gwas_folder: "data/references/gwas_summary_stats/"
-
+use_susie: "True"
 
 
 # outputs

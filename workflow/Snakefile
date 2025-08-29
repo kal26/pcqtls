@@ -18,7 +18,12 @@ gwas_ids = pd.read_table(config['gwas_meta'])['Tag'].tolist()
 
 # Analysis parameters
 NULL_SIZES = [2, 3, 4, 5]
-USE_SUSIE = "True"
+# Read USE_SUSIE flag from config; expect 'use_susie' key
+try:
+    USE_SUSIE = str(config['use_susie'])
+except KeyError:
+    USE_SUSIE = "True"
+print(f"USE_SUSIE: {USE_SUSIE}")
 
 # Include rule modules
 include: "rules/clusters.smk"
@@ -26,6 +31,7 @@ include: "rules/eqtl.smk"
 include: "rules/pcqtl.smk"
 include: "rules/annotate.smk"
 include: "rules/coloc.smk"
+include: "rules/afc.smk"
 
 # Main workflow targets
 rule all:
@@ -51,12 +57,12 @@ rule all:
         # # Co-localization analysis
         # coloc_pairs = expand(config['coloc_output_dir'] + "pairs/{TISSUE}.v8.pairs_coloc.{CHROM}.txt", 
         #                     CHROM=chr_list, TISSUE=tissue_ids),
-        # gwas_colocs = expand(config['coloc_output_dir'] + "gwas/{TISSUE}/{TISSUE}.v8.{GWAS}.susie_" + USE_SUSIE + ".gwas_coloc.txt", 
-        #                     TISSUE=tissue_ids, GWAS=gwas_ids),
+        gwas_colocs = expand(config['coloc_output_dir'] + "gwas_susie_" + USE_SUSIE + "/{TISSUE}/{TISSUE}.v8.{GWAS}.gwas_coloc.txt", 
+                             TISSUE=tissue_ids, GWAS=gwas_ids),
         # # Signal groups analysis
         # qtl_signal_groups = expand(config['coloc_output_dir'] + "qtl_signal_groups/{TISSUE}.qtl_signal_groups.txt", TISSUE=tissue_ids),
-        gwas_signal_groups = expand(config['coloc_output_dir'] + "gwas_signal_groups/{TISSUE}.gwas_signal_groups.txt", 
-                                    TISSUE=tissue_ids)
+        # gwas_signal_groups = expand(config['coloc_output_dir'] + "gwas_signal_groups_susie_" + USE_SUSIE + "/{TISSUE}.gwas_signal_groups.txt", 
+        #                             TISSUE=tissue_ids)
 
 # Development/testing target - uncomment for quick testing
 # rule test:

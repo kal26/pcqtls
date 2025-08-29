@@ -240,18 +240,18 @@ runsusie_errorcatch <- function(dataset) {
 coloc_pairs_cluster <- function(eqtl_chr, pcqtl_chr, cluster_id, ld_path_head, genotype_stem, 
                                num_gtex_samples, coloc_temp_path_head) {
   start <- Sys.time()
-  cat("Processing cluster:", cluster_id, "\n")
+  cat("\tProcessing cluster:", cluster_id, "\n")
   
   # Subset eQTL and PCQTL to this cluster
   cluster_eqtl <- eqtl_chr[eqtl_chr$cluster_id == cluster_id, ]
   cluster_pcqtl <- pcqtl_chr[pcqtl_chr$cluster_id == cluster_id, ]
   
   # Get SNP list and LD matrix
-  cat("Getting SNP list and LD matrix for cluster...\n")
+  cat("\tGetting SNP list and LD matrix for cluster...\n")
   snp_list <- get_snp_list(cluster_eqtl, ld_path_head, cluster_id)
   cleaned_ld_matrix <- get_ld(ld_path_head, cluster_id, snp_list, genotype_stem)
   ld_snp_set <- rownames(cleaned_ld_matrix)
-  cat("LD matrix contains", length(ld_snp_set), "SNPs\n")
+  cat("\tLD matrix contains", length(ld_snp_set), "SNPs\n")
 
   # Clean the eQTL and PCQTL data for colocalization
   eqtls_for_coloc <- split_qtl_for_coloc(cluster_eqtl, ld_snp_set, cleaned_ld_matrix, num_gtex_samples)
@@ -261,11 +261,11 @@ coloc_pairs_cluster <- function(eqtl_chr, pcqtl_chr, cluster_id, ld_path_head, g
   qtls_for_coloc <- c(eqtls_for_coloc, pcqtls_for_coloc)
   qtls_for_coloc <- qtls_for_coloc[!sapply(qtls_for_coloc, is.null)]
   
-  cat(length(qtls_for_coloc), "QTL phenotypes\n")
-  cat("Processing time:", Sys.time() - start, "\n")
+  cat("\t", length(qtls_for_coloc), "QTL phenotypes\n")
+  cat("\tProcessing time:", Sys.time() - start, "\n")
   
   if (length(qtls_for_coloc) == 0) {
-    cat("No pairs of QTL signals in this cluster\n")
+    cat("\tNo pairs of QTL signals in this cluster\n")
     return(NULL)
   }
 
@@ -292,8 +292,8 @@ coloc_pairs_cluster <- function(eqtl_chr, pcqtl_chr, cluster_id, ld_path_head, g
       this_qtl_susie <- runsusie_errorcatch(qtls_for_coloc[[i]])
       qtl_susies[[i]] <- this_qtl_susie
       
-      cat("Fine-mapped", this_qtl_id, "\n")
-      cat("Saving SuSiE to", susie_path, "\n")
+      cat("\tFine-mapped", this_qtl_id, "\n")
+      cat("\tSaving SuSiE to", susie_path, "\n")
       saveRDS(this_qtl_susie, file = susie_path)
     } 
   }
@@ -303,7 +303,7 @@ coloc_pairs_cluster <- function(eqtl_chr, pcqtl_chr, cluster_id, ld_path_head, g
   qtl_susies <- qtl_susies[!sapply(qtl_susies, is.null)]
   
   if (length(qtl_susies) < 2) {
-    cat("No pairs of QTL signals fine-mapped in this cluster\n")
+    cat("\tNo pairs of QTL signals fine-mapped in this cluster\n")
     return(NULL)
   } else {
     cat(length(qtl_susies), "SuSiE results found in this cluster\n")
@@ -487,82 +487,18 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
       cat("\t\t\t\tUsing SuSiE to colocalize", i, "out of", length(qtl_susies), "total\n")
       
       this_qtl_susie <- qtl_susies[[i]]
-      # Add error handling for coloc.susie
+      # Add error handling for coloc.susie (capture errors; let warnings print)
       this_coloc <- NULL
-      tryCatch({
-        this_coloc <- coloc.susie(gwas_susie, this_qtl_susie)$summary
+      this_coloc <- tryCatch({
+        log_warnings_with_prefix(coloc.susie(gwas_susie, this_qtl_susie), "\t\t\t\t[WARN coloc.susie]")
       }, error = function(e) {
         cat("\t\t\t\tError in coloc.susie:", e$message, "\n")
-        this_coloc <- NULL
-      }, warning = function(w) {
-        cat("\t\t\t\tWarning in coloc.susie:", w$message, "\n")
-        # Ensure this_coloc is properly set even after warning
-        if (is.null(this_coloc)) {
-          cat("\t\t\t\tWarning caused this_coloc to be NULL, attempting to recover...\n")
-          tryCatch({
-            this_coloc <- coloc.susie(gwas_susie, this_qtl_susie)$summary
-          }, error = function(e2) {
-            cat("\t\t\t\tRecovery failed:", e2$message, "\n")
-            this_coloc <- NULL
-          })
-        }
+        NULL
       })
       
-      # Additional safety check for this_coloc
-      if (is.null(this_coloc)) {
-        cat("\t\t\t\tthis_coloc is NULL, skipping this colocalization\n")
-      } else if (!is.data.frame(this_coloc) || nrow(this_coloc) == 0) {
-        cat("\t\t\t\tthis_coloc is not a valid data frame or has no rows, skipping\n")
-      } else if (!all(c("PP.H0.abf", "PP.H1.abf", "PP.H2.abf", "PP.H3.abf", "PP.H4.abf") %in% colnames(this_coloc))) {
-        cat("\t\t\t\tthis_coloc missing required columns, skipping\n")
-      } else {
-        # Check if all values in each column are the same
-        pp_columns <- c("PP.H0.abf", "PP.H1.abf", "PP.H2.abf", "PP.H3.abf", "PP.H4.abf")
-        all_same <- TRUE
-        
-        for (col in pp_columns) {
-          if (length(unique(this_coloc[[col]])) > 1) {
-            all_same <- FALSE
-            cat("\t\t\t\tWARNING: Values in", col, "are not all the same!\n")
-            cat("\t\t\t\tValues:", paste(this_coloc[[col]], collapse=", "), "\n")
-            cat("\t\t\t\tNumber of rows in this_coloc:", nrow(this_coloc), "\n")
-            cat("\t\t\t\tStructure of this_coloc:\n")
-            print(str(this_coloc))
-            break
-          }
-        }
-        
-        if (all_same) {
-          # All values are the same, just take the first row
-          this_coloc_row <- this_coloc[1, ]
-          cat("\t\t\t\tAll colocalization values are identical, using first row\n")
-        } else {
-          # Values are different, select row with maximum PP.H4 value
-          max_pph4_idx <- which.max(this_coloc$PP.H4.abf)
-          this_coloc_row <- this_coloc[max_pph4_idx, ]
-          cat("\t\t\t\tValues differ - selecting row with maximum PP.H4.abf (row", max_pph4_idx, ")\n")
-          cat("\t\t\t\tSelected PP.H4.abf value:", this_coloc_row$PP.H4.abf, "\n")
-        }
-        
-        # Add logging for co-localization results
-        cat("\t\t\t\tColocalization results:\n")
-        cat(paste("\t\t\t\t  PP.H0:", round(this_coloc_row$PP.H0.abf, 4), "\n"))
-        cat(paste("\t\t\t\t  PP.H1:", round(this_coloc_row$PP.H1.abf, 4), "\n"))
-        cat(paste("\t\t\t\t  PP.H2:", round(this_coloc_row$PP.H2.abf, 4), "\n"))
-        cat(paste("\t\t\t\t  PP.H3:", round(this_coloc_row$PP.H3.abf, 4), "\n"))
-        cat(paste("\t\t\t\t  PP.H4:", round(this_coloc_row$PP.H4.abf, 4), "\n"))
-        
-        # Add interpretation based on PP.H4
-        if (this_coloc_row$PP.H4.abf > 0.75) {
-          cat("\t\t\t\t  Interpretation: Strong evidence for colocalization (PP.H4 > 0.75)\n")
-        } else if (this_coloc_row$PP.H4.abf > 0.5) {
-          cat("\t\t\t\t  Interpretation: Moderate evidence for colocalization (PP.H4 > 0.5)\n")
-        } else {
-          cat("\t\t\t\t  Interpretation: Weak or no evidence for colocalization (PP.H4 ≤ 0.5)\n")
-        }
-        
-        this_coloc_row$gwas_id <- gwas_with_meta$gwas_id
-        this_coloc_row$qtl_id <- this_qtl_id
+      # Process coloc results
+      this_coloc_row <- process_coloc_result(this_coloc, gwas_with_meta$gwas_id, this_qtl_id, show_interpretation = TRUE)
+      if (!is.null(this_coloc_row)) {
         gwas_coloc_results <- bind_rows(gwas_coloc_results, this_coloc_row)
       }
     }
@@ -572,65 +508,18 @@ coloc_gwas_cluster <- function(gwas_with_meta, eqtl_chr, pcqtl_chr, cluster_id, 
       cat(paste("\t\t\tColocalization for", gwas_with_meta$gwas_id, "and", this_qtl_id, "\n"))
       cat("\t\t\t\tUsing ABF to colocalize", i, "out of", length(qtls_for_coloc), "total\n")
       
-      # Add error handling for coloc.abf
+      # Add error handling for coloc.abf (capture errors; let warnings print)
       this_coloc <- NULL
-      tryCatch({
-        this_coloc <- coloc.abf(gwas_for_coloc, qtls_for_coloc[[i]])$summary
+      this_coloc <- tryCatch({
+        log_warnings_with_prefix(coloc.abf(gwas_for_coloc, qtls_for_coloc[[i]]), "\t\t\t\t[WARN coloc.abf]")
       }, error = function(e) {
         cat("\t\t\t\tError in coloc.abf:", e$message, "\n")
-        this_coloc <- NULL
-      }, warning = function(w) {
-        cat("\t\t\t\tWarning in coloc.abf:", w$message, "\n")
-        # Ensure this_coloc is properly set even after warning
-        if (is.null(this_coloc)) {
-          cat("\t\t\t\tWarning caused this_coloc to be NULL, attempting to recover...\n")
-          tryCatch({
-            this_coloc <- coloc.abf(gwas_for_coloc, qtls_for_coloc[[i]])$summary
-          }, error = function(e2) {
-            cat("\t\t\t\tRecovery failed:", e2$message, "\n")
-            this_coloc <- NULL
-          })
-        }
+        NULL
       })
       
-      # Additional safety check for this_coloc
-      if (is.null(this_coloc)) {
-        cat("\t\t\t\tthis_coloc is NULL, skipping this colocalization\n")
-      } else if (!is.data.frame(this_coloc) || nrow(this_coloc) == 0) {
-        cat("\t\t\t\tthis_coloc is not a valid data frame or has no rows, skipping\n")
-      } else if (!all(c("PP.H0.abf", "PP.H1.abf", "PP.H2.abf", "PP.H3.abf", "PP.H4.abf") %in% colnames(this_coloc))) {
-        cat("\t\t\t\tthis_coloc missing required columns, skipping\n")
-      } else {
-        # Check if all values in each column are the same
-        pp_columns <- c("PP.H0.abf", "PP.H1.abf", "PP.H2.abf", "PP.H3.abf", "PP.H4.abf")
-        all_same <- TRUE
-        
-        for (col in pp_columns) {
-          if (length(unique(this_coloc[[col]])) > 1) {
-            all_same <- FALSE
-            cat("\t\t\t\tWARNING: Values in", col, "are not all the same!\n")
-            cat("\t\t\t\tValues:", paste(this_coloc[[col]], collapse=", "), "\n")
-            cat("\t\t\t\tNumber of rows in this_coloc:", nrow(this_coloc), "\n")
-            cat("\t\t\t\tStructure of this_coloc:\n")
-            print(str(this_coloc))
-            break
-          }
-        }
-        
-        if (all_same) {
-          # All values are the same, just take the first row
-          this_coloc_row <- this_coloc[1, ]
-          cat("\t\t\t\tAll colocalization values are identical, using first row\n")
-        } else {
-          # Values are different, select row with maximum PP.H4 value
-          max_pph4_idx <- which.max(this_coloc$PP.H4.abf)
-          this_coloc_row <- this_coloc[max_pph4_idx, ]
-          cat("\t\t\t\tValues differ - selecting row with maximum PP.H4.abf (row", max_pph4_idx, ")\n")
-          cat("\t\t\t\tSelected PP.H4.abf value:", this_coloc_row$PP.H4.abf, "\n")
-        }
-        
-        this_coloc_row$gwas_id <- gwas_with_meta$gwas_id
-        this_coloc_row$qtl_id <- this_qtl_id
+      # Process coloc results
+      this_coloc_row <- process_coloc_result(this_coloc, gwas_with_meta$gwas_id, this_qtl_id, show_interpretation = FALSE)
+      if (!is.null(this_coloc_row)) {
         gwas_coloc_results <- bind_rows(gwas_coloc_results, this_coloc_row)
       }
     }
@@ -662,29 +551,29 @@ check_gwas_cluster <- function(gwas_chr, this_cluster) {
   }
 
   # Define 1Mb window around cluster boundarie
-  cat("INFO: Cluster coordinates - start:", this_cluster$start, " end:", this_cluster$end, "\n")
+  cat("\tINFO: Cluster coordinates - start:", this_cluster$start, " end:", this_cluster$end, "\n")
   
   window_start <- this_cluster$start - 1e6
   window_end <- this_cluster$end + 1e6
-  cat("INFO: Checking GWAS signal for cluster:", cluster_id, " in window:", window_start, "-", window_end, "\n")
+  cat("\tINFO: Checking GWAS signal for cluster:", cluster_id, " in window:", window_start, "-", window_end, "\n")
   
   total_rows <- nrow(gwas_chr)
-  cat("INFO: GWAS rows total:", total_rows, "; position range:", paste(range(gwas_chr$position, na.rm = TRUE), collapse = "-"), "\n")
+  cat("\tINFO: GWAS rows total:", total_rows, "; position range:", paste(range(gwas_chr$position, na.rm = TRUE), collapse = "-"), "\n")
 
   # Subset to window
   gwas_cluster <- gwas_chr[gwas_chr$position > window_start & gwas_chr$position < window_end, ]
-  cat("INFO: GWAS rows in window:", nrow(gwas_cluster), "\n")
+  cat("\tINFO: GWAS rows in window:", nrow(gwas_cluster), "\n")
   
   if (nrow(gwas_cluster) > 0) {
     min_p <- min(gwas_cluster$pvalue, na.rm = TRUE)
     sig_ct <- sum(gwas_cluster$pvalue < 1e-6, na.rm = TRUE)
-    cat("INFO: Min p-value in window:", min_p, "; significant (<1e-6):", sig_ct, "\n")
+    cat("\tINFO: Min p-value in window:", min_p, "; significant (<1e-6):", sig_ct, "\n")
   } else {
-    cat("INFO: No GWAS rows within window\n")
+    cat("\tINFO: No GWAS rows within window\n")
   }
   
   has_signal <- sum(gwas_cluster$pvalue < 1e-6, na.rm = TRUE) > 0
-  cat("INFO: Has GWAS signal in cluster:", has_signal, "\n")
+  cat("\tINFO: Has GWAS signal in cluster:", has_signal, "\n")
   return(has_signal)
 }
 
@@ -701,7 +590,7 @@ check_gwas_cluster <- function(gwas_chr, this_cluster) {
 #' @return Cleaned LD matrix
 
 get_ld <- function(ld_path_head, cluster_id, snp_list, genotype_stem) {
-  cat("Getting LD matrix for cluster:", cluster_id, "\n")
+  cat("\tGetting LD matrix for cluster:", cluster_id, "\n")
   
   if (nchar(cluster_id) > 150) {
     cluster_id <- get_short_cluster_id(cluster_id)
@@ -718,7 +607,7 @@ get_ld <- function(ld_path_head, cluster_id, snp_list, genotype_stem) {
     
     file_size <- file.size(path)
     if (file_size < 10) {  # File too small to be valid
-      cat("LD file too small, removing:", path, "\n")
+      cat("\tLD file too small, removing:", path, "\n")
       unlink(path)
       return(NULL)
     }
@@ -729,15 +618,15 @@ get_ld <- function(ld_path_head, cluster_id, snp_list, genotype_stem) {
       ld_matrix <- fread(path)
       return(ld_matrix)
     }, error = function(e) {
-      cat("fread failed with error:", e$message, "\n")
+      cat("\tfread failed with error:", e$message, "\n")
       # Try with read.table as backup
       tryCatch({
-        cat("Trying read.table instead...\n")
+        cat("\tTrying read.table instead...\n")
         ld_matrix <- read.table(path, header = FALSE)
         return(ld_matrix)
       }, error = function(e2) {
-        cat("read.table also failed:", e2$message, "\n")
-        cat("Removing corrupted file:", path, "\n")
+        cat("\tread.table also failed:", e2$message, "\n")
+        cat("\tRemoving corrupted file:", path, "\n")
         unlink(path)
         return(NULL)
       })
@@ -749,7 +638,7 @@ get_ld <- function(ld_path_head, cluster_id, snp_list, genotype_stem) {
   
   # If reading failed, regenerate
   if (is.null(ld_matrix)) {
-    cat("Generating new LD matrix...\n")
+    cat("\tGenerating new LD matrix...\n")
     
     ld_plink_path <- paste(ld_path_head, cluster_id, sep = "")
     snp_path <- paste(ld_path_head, cluster_id, '.snp_list.txt', sep = "")
@@ -761,7 +650,7 @@ get_ld <- function(ld_path_head, cluster_id, snp_list, genotype_stem) {
     
     plink_command <- sprintf("plink --bfile %s --extract %s --r square --out %s --keep-allele-order", 
                            genotype_stem, snp_path, ld_plink_path)
-    cat("Running PLINK command:", plink_command, "\n")
+    cat("\tRunning PLINK command:", plink_command, "\n")
     
     # Run PLINK and check exit status
     exit_status <- system(plink_command)
@@ -785,65 +674,11 @@ get_ld <- function(ld_path_head, cluster_id, snp_list, genotype_stem) {
   cleaned_ld_matrix <- ld_matrix[!rownames(ld_matrix) %in% ld_missing_snps, 
                                 !colnames(ld_matrix) %in% ld_missing_snps]
   
-  cat("Total working SNPs:", nrow(cleaned_ld_matrix), "\n")
+  cat("\tTotal working SNPs:", nrow(cleaned_ld_matrix), "\n")
   return(cleaned_ld_matrix)
 }
 
-# get_ld <- function(ld_path_head, cluster_id, snp_list, genotype_stem) {
-#   cat("Getting LD matrix for cluster:", cluster_id, "\n")
-  
-#   if (nchar(cluster_id) > 150) {
-#     cluster_id <- get_short_cluster_id(cluster_id)
-#   }
-  
-#   # Check if LD matrix already exists
-#   ld_matrix_path <- paste(ld_path_head, cluster_id, '.ld', sep = "")
-  
-#   if (file.exists(ld_matrix_path)) {
-#     cat("LD matrix already exists - loading from file\n")
-#   } else {    
-#     cat("LD matrix does not exist - generating with PLINK...\n")
-    
-#     # Generate LD matrix using PLINK
-#     ld_plink_path <- paste(ld_path_head, cluster_id, sep = "")
-#     snp_path <- paste(ld_path_head, cluster_id, '.snp_list.txt', sep = "")
-#     plink_command <- sprintf("plink --bfile %s --extract %s --r square --out %s --keep-allele-order", 
-#                            genotype_stem, snp_path, ld_plink_path)
-#     cat("Running PLINK command...\n")
-#     system(plink_command, intern = TRUE)
-#     cat("LD matrix generated successfully\n")
-#   }
-  
-#   # Load LD matrix with error handling
-#   tryCatch({
-#     ld_matrix <- fread(ld_matrix_path)
-#   }, error = function(e) {
-#     cat("Error reading LD matrix:", e$message, "\n")
-#     cat("Regenerating the file...\n")
-    
-#     ld_plink_path <- paste(ld_path_head, cluster_id, sep = "")
-#     snp_path <- paste(ld_path_head, cluster_id, '.snp_list.txt', sep = "")
-#     plink_command <- sprintf("plink --bfile %s --extract %s --r square --out %s --keep-allele-order", 
-#                            genotype_stem, snp_path, ld_plink_path)
-#     cat("PLINK command:", plink_command, "\n")
-#     system(plink_command, intern = TRUE)
-#     cat("Generated LD matrix\n")
-#     ld_matrix <- fread(ld_matrix_path)
-#   })
 
-#   # Convert to data frame and set row/column names
-#   ld_matrix <- data.frame(ld_matrix)
-#   rownames(ld_matrix) <- snp_list$variant_id
-#   colnames(ld_matrix) <- snp_list$variant_id
-  
-#   # Remove SNPs with missing values from LD matrix
-#   ld_missing_snps <- get_ld_missing_snps(ld_matrix)
-#   cleaned_ld_matrix <- ld_matrix[!rownames(ld_matrix) %in% ld_missing_snps, 
-#                                 !colnames(ld_matrix) %in% ld_missing_snps]
-  
-#   cat("Total working SNPs:", nrow(cleaned_ld_matrix), "\n")
-#   return(cleaned_ld_matrix)
-# }
 
 #' Get SNPs with missing values in LD matrix
 #' 
@@ -871,10 +706,10 @@ get_snp_list <- function(cluster_eqtl, ld_path_head, cluster_id) {
   
   # Generate SNP list if it doesn't exist
   if (file.exists(snp_path)) {
-    cat("SNP list already exists\n")
+    cat("\tSNP list already exists\n")
   } else {
     snp_list <- unique(cluster_eqtl$variant_id)
-    cat("Generated SNP list with", length(snp_list), "SNPs\n")
+          cat("\tGenerated SNP list with", length(snp_list), "SNPs\n")
     write.table(snp_list, file = snp_path, row.names = FALSE, sep = "\t", 
                 col.names = FALSE, quote = FALSE)
   }
@@ -882,13 +717,86 @@ get_snp_list <- function(cluster_eqtl, ld_path_head, cluster_id) {
   # Read SNP list
   snp_list <- read.table(snp_path, header = FALSE, sep = "\t")
   colnames(snp_list) <- "variant_id"
-  cat(nrow(snp_list), "SNPs found for this cluster\n")
+  cat("\t", nrow(snp_list), "SNPs found for this cluster\n")
   return(snp_list)
 }
 
 # =============================================================================
 # Utility functions
 # =============================================================================
+
+#' Log warnings with a consistent prefix and still return the evaluated result
+#' 
+#' @param expr An expression to evaluate
+#' @param prefix A character prefix to prepend to warning messages
+#' @return The value of expr, with warnings reprinted using the prefix
+log_warnings_with_prefix <- function(expr, prefix) {
+  withCallingHandlers(
+    expr,
+    warning = function(w) {
+      cat(prefix, conditionMessage(w), "\n")
+      invokeRestart("muffleWarning")
+    }
+  )
+}
+
+#' Process coloc results and add to results dataframe
+#' 
+#' @param this_coloc Coloc result object
+#' @param gwas_id GWAS ID
+#' @param qtl_id QTL ID
+#' @param show_interpretation Whether to show PP.H4 interpretation (for SuSiE)
+#' @return Processed coloc row or NULL if failed
+process_coloc_result <- function(this_coloc, gwas_id, qtl_id, show_interpretation = FALSE) {
+  if (is.null(this_coloc)) {
+    cat("\t\t\tthis_coloc is NULL, skipping this colocalization\n")
+    return(NULL)
+  }
+  
+  # Handle different return formats from coloc functions
+  if (is.data.frame(this_coloc$summary)) {
+    # SuSiE format: summary is a data frame
+    cat("\t\t\tSuSiE summary has", nrow(this_coloc$summary), "rows\n")
+    max_pph4_idx <- which.max(this_coloc$summary$PP.H4.abf)
+    this_coloc_row <- this_coloc$summary[max_pph4_idx, ]
+    cat("\t\t\tSelected row with maximum PP.H4.abf (row", max_pph4_idx, "):", this_coloc_row$PP.H4.abf, "\n")
+  } else {
+    # ABF format: summary is a vector, convert to data frame
+    cat("\t\t\tABF summary is a vector, converting to data frame\n")
+    this_coloc_row <- data.frame(
+      PP.H0.abf = this_coloc$summary["PP.H0.abf"],
+      PP.H1.abf = this_coloc$summary["PP.H1.abf"], 
+      PP.H2.abf = this_coloc$summary["PP.H2.abf"],
+      PP.H3.abf = this_coloc$summary["PP.H3.abf"],
+      PP.H4.abf = this_coloc$summary["PP.H4.abf"]
+    )
+    cat("\t\t\tABF PP.H4.abf value:", this_coloc_row$PP.H4.abf, "\n")
+  }
+  
+  if (show_interpretation) {
+    # Add logging for co-localization results
+    cat("\t\t\tColocalization results:\n")
+    cat(paste("\t\t\t  PP.H0:", round(this_coloc_row$PP.H0.abf, 4), "\n"))
+    cat(paste("\t\t\t  PP.H1:", round(this_coloc_row$PP.H1.abf, 4), "\n"))
+    cat(paste("\t\t\t  PP.H2:", round(this_coloc_row$PP.H2.abf, 4), "\n"))
+    cat(paste("\t\t\t  PP.H3:", round(this_coloc_row$PP.H3.abf, 4), "\n"))
+    cat(paste("\t\t\t  PP.H4:", round(this_coloc_row$PP.H4.abf, 4), "\n"))
+    
+    # Add interpretation based on PP.H4
+    if (this_coloc_row$PP.H4.abf > 0.75) {
+      cat("\t\t\t  Interpretation: Strong evidence for colocalization (PP.H4 > 0.75)\n")
+    } else if (this_coloc_row$PP.H4.abf > 0.5) {
+      cat("\t\t\t  Interpretation: Moderate evidence for colocalization (PP.H4 > 0.5)\n")
+    } else {
+      cat("\t\t\t  Interpretation: Weak or no evidence for colocalization (PP.H4 ≤ 0.5)\n")
+    }
+  }
+  
+  this_coloc_row$gwas_id <- gwas_id
+  this_coloc_row$qtl_id <- qtl_id
+  cat("\t\t\tAdded colocalization result\n")
+  return(this_coloc_row)
+}
 
 #' Get shortened cluster ID for file naming
 #' 
