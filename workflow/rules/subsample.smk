@@ -30,8 +30,6 @@ rule get_subsample:
         mem = "8G",
         time = "0:30:00"
     
-    threads: 1
-    
     shell:
         """
         python {params.code_dir}/make_subsamples.py \

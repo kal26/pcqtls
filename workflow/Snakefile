@@ -33,8 +33,8 @@ rule all:
     input:
         # Core clustering and annotation
         # clusters = expand(config['clusters_dir'] + "{TISSUE}.clusters.txt", TISSUE=tissue_ids),
-        annotated_clusters = expand(config['annotations_output_dir'] + "annotated_clusters/{TISSUE}.clusters.annotated.txt", TISSUE=tissue_ids),
-        annotated_nulls = expand(config['annotations_output_dir'] + "annotated_null_clusters/{TISSUE}.null.{CLUSTER_SIZE}genes.annotated.txt", TISSUE=tissue_ids, CLUSTER_SIZE=NULL_SIZES)
+        # annotated_clusters = expand(config['annotations_output_dir'] + "annotated_clusters/{TISSUE}.clusters.annotated.txt", TISSUE=tissue_ids),
+        # annotated_nulls = expand(config['annotations_output_dir'] + "annotated_null_clusters/{TISSUE}.null.{CLUSTER_SIZE}genes.annotated.txt", TISSUE=tissue_ids, CLUSTER_SIZE=NULL_SIZES)
         # eQTL analysis outputs
         # eqtl_susie = expand(config['eqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.cluster_genes.susie.txt", TISSUE=tissue_ids),
         # eqtl_permutation = expand(config['eqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.cluster_genes.cis_independent_qtl.txt.gz", TISSUE=tissue_ids),
@@ -55,8 +55,8 @@ rule all:
         #                     TISSUE=tissue_ids, GWAS=gwas_ids),
         # # Signal groups analysis
         # qtl_signal_groups = expand(config['coloc_output_dir'] + "qtl_signal_groups/{TISSUE}.qtl_signal_groups.txt", TISSUE=tissue_ids),
-        # gwas_signal_groups = expand(config['coloc_output_dir'] + "gwas_signal_groups/{TISSUE}.gwas_signal_groups.txt", 
-        #                            TISSUE=tissue_ids)
+        gwas_signal_groups = expand(config['coloc_output_dir'] + "gwas_signal_groups/{TISSUE}.gwas_signal_groups.txt", 
+                                    TISSUE=tissue_ids)
 
 # Development/testing target - uncomment for quick testing
 # rule test:
