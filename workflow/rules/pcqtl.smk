@@ -176,3 +176,62 @@ rule run_pcqtl_susie:
             --covariates {input.covariates} \
             --output {output.susie_results}
         """
+
+
+rule concatenate_expression_pcs:
+    """
+    Concatenate eQTL and pcQTL expression BED files for combined analysis.
+    
+    This rule combines individual gene expression data with principal component
+    data to create a unified phenotype file for combined QTL analysis.
+    """
+    input:
+        expression = config['filtered_expression_output_dir'] + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed',
+        pcs = config['pc_output_dir'] + '{TISSUE}.pcs.bed'
+    
+    output:
+        combined_phenotypes = config['filtered_expression_output_dir'] + '{TISSUE}.v8.normalized_residualized_expression.combined.bed'
+    
+    params:
+        code_dir = config['code_dir']
+    
+    shell:
+        """
+        python {params.code_dir}/concatenate_expression_pcs.py \
+            --expression {input.expression} \
+            --pcs {input.pcs} \
+            --output {output.combined_phenotypes}
+        """
+
+
+rule run_qtl_combined:
+    """
+    Run combined QTL analysis on eQTL and pcQTL phenotypes.
+    
+    This rule performs permutation-based QTL analysis on a combined dataset
+    containing both individual gene expression and principal component phenotypes.
+    """
+    input:
+        genotypes = config['genotype_stem'] + '.fam',
+        expression = config['filtered_expression_output_dir'] + '{TISSUE}.v8.normalized_residualized_expression.combined.bed',
+        covariates = config['covariates_dir'] + '{TISSUE}.v8.covariates.txt'
+    
+    output:
+        combined_qtl_results = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.combined.cis_qtl.txt.gz'
+    
+    params:
+        genotype_stem = config['genotype_stem'],
+        pcqtl_output_dir = config['pcqtl_output_dir']
+    
+    resources:
+        mem = "30G",
+        time = "4:00:00"
+    
+    shell:
+        """
+        python -m tensorqtl {params.genotype_stem} \
+            {input.expression} \
+            {params.pcqtl_output_dir}{wildcards.TISSUE}/{wildcards.TISSUE}.v8.combined \
+            --covariates {input.covariates} \
+            --mode cis
+        """

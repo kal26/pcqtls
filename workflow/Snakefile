@@ -18,12 +18,7 @@ gwas_ids = pd.read_table(config['gwas_meta'])['Tag'].tolist()
 
 # Analysis parameters
 NULL_SIZES = [2, 3, 4, 5]
-# Read USE_SUSIE flag from config; expect 'use_susie' key
-try:
-    USE_SUSIE = str(config['use_susie'])
-except KeyError:
-    USE_SUSIE = "True"
-print(f"USE_SUSIE: {USE_SUSIE}")
+
 
 # Include rule modules
 include: "rules/clusters.smk"
@@ -37,33 +32,39 @@ include: "rules/afc.smk"
 rule all:
     """Main workflow target - defines all outputs to be generated."""
     input:
-        # Core clustering and annotation
+        ########## CORE CLUSTERING AND ANNOTATION ##########
         # clusters = expand(config['clusters_dir'] + "{TISSUE}.clusters.txt", TISSUE=tissue_ids),
         # annotated_clusters = expand(config['annotations_output_dir'] + "annotated_clusters/{TISSUE}.clusters.annotated.txt", TISSUE=tissue_ids),
         # annotated_nulls = expand(config['annotations_output_dir'] + "annotated_null_clusters/{TISSUE}.null.{CLUSTER_SIZE}genes.annotated.txt", TISSUE=tissue_ids, CLUSTER_SIZE=NULL_SIZES)
-        # eQTL analysis outputs
+        ########## eQTL ANALYSIS OUTPUTS ##########
         # eqtl_susie = expand(config['eqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.cluster_genes.susie.txt", TISSUE=tissue_ids),
-        # eqtl_permutation = expand(config['eqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.cluster_genes.cis_independent_qtl.txt.gz", TISSUE=tissue_ids),
+        eqtl_permutation = expand(config['eqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.cluster_genes.cis_independent_qtl.txt.gz", TISSUE=tissue_ids),
         # eqtl_nominal = expand(config['eqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet", 
         #                      CHROM=chr_list, TISSUE=tissue_ids),
-        # # pcQTL analysis outputs  
+        ########## pcQTL ANALYSIS OUTPUTS ##########
         # pcqtl_susie = expand(config['pcqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.pcs.susie.txt", TISSUE=tissue_ids),
-        # pcqtl_permutation = expand(config['pcqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.pcs.cis_independent_qtl.txt.gz", TISSUE=tissue_ids),
+        pcqtl_permutation = expand(config['pcqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.pcs.cis_independent_qtl.txt.gz", TISSUE=tissue_ids),
         # pcqtl_nominal = expand(config['pcqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet", 
         #                       CHROM=chr_list, TISSUE=tissue_ids),
-        # # Annotated outputs
+        ########## COMBINED QTL ANALYSIS OUTPUTS ##########
+        combined_qtl = expand(config['pcqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.combined.cis_qtl.txt.gz", TISSUE=tissue_ids),
+        ########## ANNOTATED OUTPUTS ##########
         # susie_annotated = expand(config['annotations_output_dir'] + "{TISSUE}/{TISSUE}.v8.susie_R_vars.annotated.csv", TISSUE=tissue_ids),
         # pc_annotated = expand(config['annotations_output_dir'] + "{TISSUE}/{TISSUE}.v8.pcs_annotated.txt", TISSUE=tissue_ids),
-        # # Co-localization analysis
+        ########## CO-LOCALIZATION ANALYSIS ##########
         # coloc_pairs = expand(config['coloc_output_dir'] + "pairs/{TISSUE}.v8.pairs_coloc.{CHROM}.txt", 
         #                     CHROM=chr_list, TISSUE=tissue_ids),
-        # gwas_colocs = expand(config['coloc_output_dir'] + "gwas_susie_" + USE_SUSIE + "/{TISSUE}/{TISSUE}.v8.{GWAS}.gwas_coloc.txt", 
+        # gwas_colocs = expand(config['coloc_output_dir'] + "gwas_susie_True/{TISSUE}/{TISSUE}.v8.{GWAS}.gwas_coloc.txt", 
         #                      TISSUE=tissue_ids, GWAS=gwas_ids),
-        # # # Signal groups analysis
-        # # qtl_signal_groups = expand(config['coloc_output_dir'] + "qtl_signal_groups/{TISSUE}.qtl_signal_groups.txt", TISSUE=tissue_ids),
-        # gwas_signal_groups = expand(config['coloc_output_dir'] + "gwas_signal_groups_susie_" + USE_SUSIE + "/{TISSUE}.gwas_signal_groups.txt", 
+        # gwas_colocs = expand(config['coloc_output_dir'] + "gwas_susie_False/{TISSUE}/{TISSUE}.v8.{GWAS}.gwas_coloc.txt", 
+        #                      TISSUE=tissue_ids, GWAS=gwas_ids),
+        ########## SIGNAL GROUPS ANALYSIS ##########
+        # qtl_signal_groups = expand(config['coloc_output_dir'] + "qtl_signal_groups/{TISSUE}.qtl_signal_groups.txt", TISSUE=tissue_ids),
+        # gwas_signal_groups = expand(config['coloc_output_dir'] + "gwas_signal_groups_susie_True/{TISSUE}.gwas_signal_groups.txt", 
         #                             TISSUE=tissue_ids),
-        # Log AFC outputs
+        # gwas_signal_groups = expand(config['coloc_output_dir'] + "gwas_signal_groups_susie_False/{TISSUE}.gwas_signal_groups.txt", 
+        #                             TISSUE=tissue_ids),   
+        ########## LOG AFC OUTPUTS ##########
         eqtl_afc = expand(config['eqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.cluster_genes.afc.txt", TISSUE=tissue_ids),
         pcqtl_afc = expand(config['pcqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.pcs.afc.txt", TISSUE=tissue_ids)
 

@@ -173,3 +173,5 @@ rule run_eqtl_susie:
             --covariates {input.covariates} \
             --output {output.susie_results}
         """
+
+

@@ -40,7 +40,7 @@ def main() -> None:
 		sub = df_explode[["pid", "variant_id"]].drop_duplicates().rename(columns={"variant_id": "sid"})
 		parts = sub["sid"].astype(str).str.split("_", expand=True)
 		if parts.shape[1] >= 2:
-			sub["sid_chr"] = parts[0]
+			sub["sid_chr"] = parts[0].str.replace("chr", "")
 			sub["sid_pos"] = pd.to_numeric(parts[1], errors="coerce")
 		out = sub
 
