@@ -26,7 +26,7 @@ This repository contains a Snakemake workflow for performing pcQTL analysis. To 
 3. Run the workflow with your configuration:
 
 ```bash
-snakemake --configfile config/config_example.yaml --cores 10 --use-conda
+snakemake --configfile config/config_example.yaml
 ```
 
 ### Repository Structure
@@ -67,9 +67,7 @@ The workflow performs the following analyses:
 
 ## Required Datasets
 
-The workflow requires several input datasets. Below is a comprehensive list of required files and their sources:
-
-### Core Analysis Data
+### QTL Analysis Data
 
 | Dataset | Description | Source | Expected Location in Config |
 |---------|-------------|---------|---------------------------|
@@ -119,7 +117,9 @@ For detailed descriptions of the output file formats and their contents, refer t
 ### Results Availability
 
 * Clusters of neighboring correlated genes 
-* Summary stats for pcQTL mapping [ZENODO](https://doi.org/10.5281/zenodo.15605351)
+* Summary stats for pcQTL mapping 
+
+[ZENODO](https://doi.org/10.5281/zenodo.15605351)
 
 
 ## Acknowledgments

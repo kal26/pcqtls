@@ -215,11 +215,15 @@ def _prepare_gwas_coloc_data(gwas_coloc: pd.DataFrame) -> pd.DataFrame:
     if gwas_coloc.empty:
         return gwas_coloc
     
-    # Validate required columns
-    required_cols = ['gwas_id', 'qtl_id', 'idx1', 'idx2']
-    missing_cols = [col for col in required_cols if col not in gwas_coloc.columns]
-    if missing_cols:
-        raise ValueError(f"Missing required columns: {missing_cols}. Available columns: {list(gwas_coloc.columns)}")
+    # Check if we have credible set indices (SuSiE) or just posterior probabilities (ABF)
+    has_credible_sets = 'idx1' in gwas_coloc.columns and 'idx2' in gwas_coloc.columns
+    
+    if not has_credible_sets:
+        # For ABF results without SuSiE, create dummy credible set indices
+        # Each row represents one credible set, so we can assign sequential indices
+        gwas_coloc = gwas_coloc.copy()
+        gwas_coloc['idx1'] = 1  # Single GWAS credible set
+        gwas_coloc['idx2'] = 1  # Single QTL credible set
     
     # Drop duplicate rows from intermediate write outs
     gwas_coloc = gwas_coloc.drop_duplicates()
@@ -228,6 +232,7 @@ def _prepare_gwas_coloc_data(gwas_coloc: pd.DataFrame) -> pd.DataFrame:
     gwas_coloc['cluster_id'] = np.where(gwas_coloc['qtl_id'].str.contains('_e'), 
                                        gwas_coloc['qtl_id'].str.split('_e').str[0], 
                                        gwas_coloc['qtl_id'].str.split('_pc').str[0])
+    gwas_coloc['cluster_id'] = gwas_coloc['cluster_id'].str.split('qtl_').str[1]
     
     # Make ids for each credible set in the qtl and gwas
     gwas_coloc['gwas_cs_id'] = gwas_coloc['gwas_id'] + '_cs_' + gwas_coloc['idx1'].astype(int).astype(str) + '_cluster_' + gwas_coloc['cluster_id']
@@ -236,8 +241,10 @@ def _prepare_gwas_coloc_data(gwas_coloc: pd.DataFrame) -> pd.DataFrame:
     # Set type as pcqtl or eqtl
     gwas_coloc['type'] = np.where(gwas_coloc['qtl_cs_id'].str.contains('_pc'), 'pcqtl', 'eqtl')
     
-    # Fill in nas with 0
-    gwas_coloc[DEFAULT_COLUMNS] = gwas_coloc[DEFAULT_COLUMNS].fillna(0)
+    # Fill in nas with 0 for posterior probability columns
+    pp_columns = [col for col in DEFAULT_COLUMNS if col in gwas_coloc.columns]
+    if pp_columns:
+        gwas_coloc[pp_columns] = gwas_coloc[pp_columns].fillna(0)
 
     # Add cs ids
     gwas_coloc['gwas_cs_id'] = 'gwas_' + gwas_coloc['gwas_cs_id']
@@ -331,7 +338,7 @@ def load_gwas_coloc(config: Dict[str, str]) -> pd.DataFrame:
                         file_list.append(os.path.join(root, file))
         return file_list
     
-    coloc_file_list = get_files(f'{config["working_dir"]}/{config["coloc_output_dir"]}gwas')
+    coloc_file_list = get_files(f'{config["working_dir"]}/{config["coloc_output_dir"]}gwas_susie_{config["use_susie"]}')
 
     # Load each file into a DataFrame and concatenate them
     cluster_colocs = []
@@ -345,6 +352,7 @@ def load_gwas_coloc(config: Dict[str, str]) -> pd.DataFrame:
 
     # Concatenate all DataFrames into a single DataFrame
     gwas_coloc = pd.concat(cluster_colocs, ignore_index=True)
+    gwas_coloc['tissue_id'] = gwas_coloc['coloc_file'].str.split('/').str[-1].str.split('.').str[0]
     
     # Use the helper function to prepare the data
     return _prepare_gwas_coloc_data(gwas_coloc)

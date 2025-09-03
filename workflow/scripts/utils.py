@@ -186,9 +186,12 @@ def load_qtl_signal_groups(config: Dict[str, str], tissue_id: str) -> pd.DataFra
     qtl_signal_groups_path = '{}/{}/qtl_signal_groups/{}.qtl_signal_groups.txt'.format(config["working_dir"], config['coloc_output_dir'], tissue_id)
     return pd.read_csv(qtl_signal_groups_path, sep='\t')
 
-def load_gwas_signal_groups(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
+def load_gwas_signal_groups(config: Dict[str, str], tissue_id: str, use_susie: bool = True) -> pd.DataFrame:
     """Load GWAS signal groups for a tissue."""
-    gwas_signal_groups_path = '{}/{}/gwas_signal_groups/{}.gwas_signal_groups.txt'.format(config["working_dir"], config['coloc_output_dir'], tissue_id)
+    if use_susie:
+        gwas_signal_groups_path = '{}/{}/gwas_signal_groups_susie_True/{}.gwas_signal_groups.txt'.format(config["working_dir"], config['coloc_output_dir'], tissue_id)
+    else:
+        gwas_signal_groups_path = '{}/{}/gwas_signal_groups_susie_False/{}.gwas_signal_groups.txt'.format(config["working_dir"], config['coloc_output_dir'], tissue_id)
     return pd.read_csv(gwas_signal_groups_path, sep='\t')
 
 # Utility functions for data processing

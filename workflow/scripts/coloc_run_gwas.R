@@ -135,6 +135,15 @@ if (!file.exists(coloc_temp_path_head)) {
   cat("Directory already exists:", coloc_temp_path_head, "\n")
 }
 
+# Create output directory if it doesn't exist
+output_dir <- dirname(output_path)
+if (!file.exists(output_dir)) {
+  dir.create(output_dir, recursive = TRUE)
+  cat("Output directory created:", output_dir, "\n")
+} else {
+  cat("Output directory already exists:", output_dir, "\n")
+}
+
 # =============================================================================
 # Load clusters and process chromosomes
 # =============================================================================
@@ -185,7 +194,7 @@ if (length(missing_coords) > 0) {
 # Process each chromosome
 cat("Starting chromosome-by-chromosome processing...\n")
 for (chr_id in 1:22) {
-  chr_coloc_path <- paste(coloc_temp_path_head, tissue_id, ".v8.", tissue_id, '.susie_', use_susie, 'chr_', chr_id, '.gwas_coloc.txt', sep = "")
+  chr_coloc_path <- paste(coloc_temp_path_head, tissue_id, ".v8.", gwas_id, '.susie_', use_susie, 'chr_', chr_id, '.gwas_coloc.txt', sep = "")
   
   # Check if partial results exist
   if (file.exists(chr_coloc_path)) {

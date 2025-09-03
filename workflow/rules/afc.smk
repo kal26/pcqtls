@@ -20,51 +20,42 @@ rule convert_plink_to_vcf:
         bed = config['genotype_stem'] + '.bed',
         bim = config['genotype_stem'] + '.bim',
         fam = config['genotype_stem'] + '.fam'
+    params:
+        genotype_stem = config['genotype_stem'],
     output:
         vcf = config['genotype_stem'] + '.vcf.gz',
         tbi = config['genotype_stem'] + '.vcf.gz.tbi'
+    resources:
+        mem = "30G",
+        time = "4:00:00"
     shell:
         """
-        plink2 --bfile {config['genotype_stem']} \
+        plink --bfile {params.genotype_stem} \
             --recode vcf \
-            --out {config['genotype_stem']}
+            --out {params.genotype_stem}
         
-        bgzip {config['genotype_stem']}.vcf
+        bgzip {params.genotype_stem}.vcf
         tabix -p vcf {output.vcf}
         """
 
 
-rule bgzip_eqtl_pheno:
+rule bgzip_pheno:
     """
-    Bgzip and tabix index the eQTL phenotype BED for a tissue.
+    Bgzip and tabix index the phenotype BED for a tissue.
     """
     input:
-        bed = config['filtered_expression_output_dir'] + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed'
+        bed = config['expression_dir'] + '{TISSUE}.v8.normalized_expression.bed'
     output:
-        bed_gz = config['filtered_expression_output_dir'] + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed.gz',
-        tbi = config['filtered_expression_output_dir'] + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed.gz.tbi'
+        bed_gz = config['expression_dir'] + '{TISSUE}.v8.normalized_expression.bed.gz',
+        tbi = config['expression_dir'] + '{TISSUE}.v8.normalized_expression.bed.gz.tbi'
+    resources:
+        mem = "30G",
+        time = "4:00:00"
     shell:
         """
         bgzip -c {input.bed} > {output.bed_gz}
         tabix -p bed {output.bed_gz}
         """
-
-
-rule bgzip_pc_pheno:
-    """
-    Bgzip and tabix index the pcQTL phenotype BED (PCs) for a tissue.
-    """
-    input:
-        bed = config['pc_output_dir'] + '{TISSUE}.pcs.bed'
-    output:
-        bed_gz = config['pc_output_dir'] + '{TISSUE}.pcs.bed.gz',
-        tbi = config['pc_output_dir'] + '{TISSUE}.pcs.bed.gz.tbi'
-    shell:
-        """
-        bgzip -c {input.bed} > {output.bed_gz}
-        tabix -p bed {output.bed_gz}
-        """
-
 
 rule calculate_eqtl_afc:
     """
@@ -76,26 +67,25 @@ rule calculate_eqtl_afc:
     input:
         vcf = config['genotype_stem'] + '.vcf.gz',
         vcf_tbi = config['genotype_stem'] + '.vcf.gz.tbi',
-        pheno = config['filtered_expression_output_dir'] + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed.gz',
-        pheno_tbi = config['filtered_expression_output_dir'] + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed.gz.tbi',
-        covariates = config['covariates_dir'] + '{TISSUE}.v8.covariates.txt',
+        pheno = config['expression_dir'] + '{TISSUE}.v8.normalized_expression.bed.gz',
+        pheno_tbi = config['expression_dir'] + '{TISSUE}.v8.normalized_expression.bed.gz.tbi',
         qtl = config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie_for_afc.tsv'
     output:
-        afc = config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.afc.tsv'
+        afc = config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.afc.txt'
     params:
         code_dir = config['code_dir'],
-        log_xform = config.get('afc_log_xform', 1),
-        chr = config.get('afc_chr_limit', '')
+    resources:
+        mem = "30G",
+        time = "4:00:00"
     shell:
         """
         python {params.code_dir}/calculate_afc.py \
             --vcf {input.vcf} \
             --pheno {input.pheno} \
             --qtl {input.qtl} \
-            --log_xform {params.log_xform} \
+            --log_xform 1 \
+            --log_base 2 \
             --boot 0 \
-            --cov {input.covariates} \
-            {('--chr ' + params.chr) if len(params.chr) > 0 else ''} \
             --output {output.afc}
         """
 
@@ -110,66 +100,70 @@ rule calculate_pcqtl_afc:
     input:
         vcf = config['genotype_stem'] + '.vcf.gz',
         vcf_tbi = config['genotype_stem'] + '.vcf.gz.tbi',
-        pheno = config['pc_output_dir'] + '{TISSUE}.pcs.bed.gz',
-        pheno_tbi = config['pc_output_dir'] + '{TISSUE}.pcs.bed.gz.tbi',
+        pheno = config['expression_dir'] + '{TISSUE}.v8.normalized_expression.bed.gz',
+        pheno_tbi = config['expression_dir'] + '{TISSUE}.v8.normalized_expression.bed.gz.tbi',
         qtl = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.susie_for_afc.tsv'
     output:
-        afc = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.afc.tsv'
+        afc = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.afc.txt'
     params:
         code_dir = config['code_dir'],
-        log_xform = config.get('afc_log_xform', 1),
-        chr = config.get('afc_chr_limit', '')
+    resources:
+        mem = "30G",
+        time = "4:00:00"
     shell:
         """
         python {params.code_dir}/calculate_afc.py \
             --vcf {input.vcf} \
             --pheno {input.pheno} \
             --qtl {input.qtl} \
-            --log_xform {params.log_xform} \
+            --log_xform 1 \
+            --log_base 2 \
             --boot 0 \
-            --cov {input.covariates} \
-            {('--chr ' + params.chr) if len(params.chr) > 0 else ''} \
             --output {output.afc}
         """
 
 
-rule make_eqtl_qtl_for_afc_from_susie:
+rule make_eqtl_for_afc_from_susie:
     """
     Build eQTL qtl_for_afc table from SuSiE credible set variants.
     Produces columns: pid, sid, sid_chr, sid_pos.
     """
     input:
-        susie = config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie.txt'
+        susie = config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie_R.txt'
     output:
         tsv = config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie_for_afc.tsv'
     params:
         code_dir = config['code_dir'],
-        min_pip = config.get('susie_min_pip', 0.0)
+    resources:
+        mem = "30G",
+        time = "4:00:00"
     shell:
         """
         python {params.code_dir}/make_qtl_for_afc_from_susie.py \
             --susie {input.susie} \
             --output {output.tsv} \
-            --min-pip {params.min_pip}
+            --qtl_type eqtl \
         """
 
 
-rule make_pcqtl_qtl_for_afc_from_susie:
+rule make_pcqtl_for_afc_from_susie:
     """
     Build pcQTL qtl_for_afc table from SuSiE credible set variants.
     Produces columns: pid, sid, sid_chr, sid_pos.
     """
     input:
-        susie = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.susie.txt'
+        susie = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.susie_R.txt'
     output:
         tsv = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.susie_for_afc.tsv'
     params:
         code_dir = config['code_dir'],
-        min_pip = config.get('susie_min_pip', 0.0)
+    resources:
+        mem = "30G",
+        time = "4:00:00"
     shell:
         """
         python {params.code_dir}/make_qtl_for_afc_from_susie.py \
             --susie {input.susie} \
             --output {output.tsv} \
-            --min-pip {params.min_pip}
+            --qtl_type pcqtl \
         """ 
