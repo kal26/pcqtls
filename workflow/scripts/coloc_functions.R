@@ -757,12 +757,49 @@ process_coloc_result <- function(this_coloc, gwas_id, qtl_id, show_interpretatio
   if (is.data.frame(this_coloc$summary)) {
     # SuSiE format: summary is a data frame
     cat("\t\t\tSuSiE summary has", nrow(this_coloc$summary), "rows\n")
+    
+    # Check if PP.H4.abf column exists and has valid values
+    if (!"PP.H4.abf" %in% colnames(this_coloc$summary)) {
+      cat("\t\t\tPP.H4.abf column missing from summary, skipping this colocalization\n")
+      return(NULL)
+    }
+    
+    # Check if all values are NA or missing
+    if (all(is.na(this_coloc$summary$PP.H4.abf)) || length(this_coloc$summary$PP.H4.abf) == 0) {
+      cat("\t\t\tAll PP.H4.abf values are missing, skipping this colocalization\n")
+      return(NULL)
+    }
+    
     max_pph4_idx <- which.max(this_coloc$summary$PP.H4.abf)
+    
+    # Check if which.max returned empty result
+    if (length(max_pph4_idx) == 0) {
+      cat("\t\t\tNo valid PP.H4.abf values found, skipping this colocalization\n")
+      return(NULL)
+    }
+    
     this_coloc_row <- this_coloc$summary[max_pph4_idx, ]
+    
+    # Check if the selected row has valid values
+    if (is.na(this_coloc_row$PP.H4.abf) || length(this_coloc_row$PP.H4.abf) == 0) {
+      cat("\t\t\tSelected row has missing PP.H4.abf value, skipping this colocalization\n")
+      return(NULL)
+    }
+    
     cat("\t\t\tSelected row with maximum PP.H4.abf (row", max_pph4_idx, "):", this_coloc_row$PP.H4.abf, "\n")
   } else {
     # ABF format: summary is a vector, convert to data frame
-    cat("\t\t\tABF summary is a vector, converting to data frame\n")
+    cat("\t\t\tSummary is a vector, converting to data frame\n")
+    
+    # Check if required elements exist in the summary vector
+    required_elements <- c("PP.H0.abf", "PP.H1.abf", "PP.H2.abf", "PP.H3.abf", "PP.H4.abf")
+    missing_elements <- required_elements[!required_elements %in% names(this_coloc$summary)]
+    
+    if (length(missing_elements) > 0) {
+      cat("\t\t\tMissing required elements in summary:", paste(missing_elements, collapse = ", "), ", skipping this colocalization\n")
+      return(NULL)
+    }
+    
     this_coloc_row <- data.frame(
       PP.H0.abf = this_coloc$summary["PP.H0.abf"],
       PP.H1.abf = this_coloc$summary["PP.H1.abf"], 
@@ -770,6 +807,13 @@ process_coloc_result <- function(this_coloc, gwas_id, qtl_id, show_interpretatio
       PP.H3.abf = this_coloc$summary["PP.H3.abf"],
       PP.H4.abf = this_coloc$summary["PP.H4.abf"]
     )
+    
+    # Check if PP.H4.abf is valid
+    if (is.na(this_coloc_row$PP.H4.abf) || length(this_coloc_row$PP.H4.abf) == 0) {
+      cat("\t\t\tPP.H4.abf value is missing, skipping this colocalization\n")
+      return(NULL)
+    }
+    
     cat("\t\t\tABF PP.H4.abf value:", this_coloc_row$PP.H4.abf, "\n")
   }
   

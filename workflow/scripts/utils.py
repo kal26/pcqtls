@@ -49,7 +49,7 @@ def load_pc_cis(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
     pc_cis_path = '{}/{}/{}/{}.v8.pcs.cis_qtl.txt.gz'.format(config["working_dir"], config['pcqtl_output_dir'], tissue_id, tissue_id)
     pc_cis_df = pd.read_table(pc_cis_path)
     pc_cis_df['cluster_id'] = pc_cis_df['phenotype_id'].str.split('_pc').str[0]
-    annotate_pc_order(pc_cis_df)
+    #annotate_pc_order(pc_cis_df)
     return pc_cis_df
 
 def load_e_cis(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
@@ -58,6 +58,12 @@ def load_e_cis(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
     e_cis_df = pd.read_table(e_cis_path)
     e_cis_df['cluster_id'] = e_cis_df['phenotype_id'].str.split('_e').str[0]
     return e_cis_df
+
+def load_combined_cis(config, tissue_id):
+    combined_cis_path = f"{config['working_dir']}/{config['pcqtl_output_dir']}/{tissue_id}/{tissue_id}.v8.combined.cis_qtl.txt.gz"
+    combined_cis_df = pd.read_table(combined_cis_path)
+    combined_cis_df['cluster_id'] = combined_cis_df['phenotype_id'].str.split('_pc').str[0].str.split('_e').str[0]
+    return combined_cis_df
 
 def load_e_nominal(config: Dict[str, str], tissue_id: str, chr_id: int = 22, get_var_position: bool = False) -> pd.DataFrame:
     """Load eQTL nominal results for a tissue and chromosome."""
@@ -97,6 +103,14 @@ def load_pc_susie(config: Dict[str, str], tissue_id: str, use_r: bool = False) -
 def load_e_susie_r(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
     """Load eQTL SuSiE R results for a tissue."""
     return pd.read_csv('{}/{}/{}/{}.v8.cluster_genes.susie_R.txt'.format(config["working_dir"], config['eqtl_output_dir'], tissue_id, tissue_id), sep='\t')
+
+def load_pc_afc(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
+    """Load pcQTL AFC results for a tissue."""
+    return pd.read_table('{}/{}/{}/{}.v8.pcs.afc.txt'.format(config["working_dir"], config['pcqtl_output_dir'], tissue_id, tissue_id))
+
+def load_e_afc(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
+    """Load eQTL AFC results for a tissue."""
+    return pd.read_table('{}/{}/{}/{}.v8.cluster_genes.afc.txt'.format(config["working_dir"], config['eqtl_output_dir'], tissue_id, tissue_id))
 
 def load_e_susie(config: Dict[str, str], tissue_id: str, use_r: bool = False) -> pd.DataFrame:
     """Load eQTL SuSiE results for a tissue."""

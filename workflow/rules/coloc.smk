@@ -72,12 +72,12 @@ rule run_gwas_coloc:
         expression = config['filtered_expression_output_dir'] + '{TISSUE}.v8.normalized_residualized_expression.cluster_genes.bed'
     
     output:
-        gwas_coloc = config['coloc_output_dir'] + 'gwas_susie_' + USE_SUSIE + '/{TISSUE}/{TISSUE}.v8.{GWAS}.gwas_coloc.txt'
+        gwas_coloc = config['coloc_output_dir'] + 'gwas_susie_' + config['use_susie'] + '/{TISSUE}/{TISSUE}.v8.{GWAS}.gwas_coloc.txt'
     
     params:
         tissue = "{TISSUE}",
         gwas = "{GWAS}",
-        use_susie = USE_SUSIE,
+        use_susie = config['use_susie'],
         ld_path_head = config['coloc_output_dir'] + 'temp/ld/',
         genotype_stem = config['genotype_stem'],
         coloc_temp_path_head = config['coloc_output_dir'] + 'temp/{TISSUE}/',
@@ -106,7 +106,7 @@ rule run_gwas_coloc:
             --clusters {input.clusters} \
             --expression {input.expression} \
             --output {output.gwas_coloc} \
-            --use-susie {params.use_susie}
+            --use-susie {params.use_susie} \
         """
 
 
@@ -154,11 +154,11 @@ rule group_gwas_signals:
     This rule identifies signal groups that include a QTL-GWAS co-localization.
     """
     input:
-        gwas_coloc = expand(config['coloc_output_dir'] + 'gwas_susie_' + USE_SUSIE + '/{TISSUE}/{TISSUE}.v8.{GWAS}.gwas_coloc.txt', GWAS=gwas_ids, allow_missing=True),
+        gwas_coloc = expand(config['coloc_output_dir'] + 'gwas_susie_' + config['use_susie'] + '/{TISSUE}/{TISSUE}.v8.{GWAS}.gwas_coloc.txt', GWAS=gwas_ids, allow_missing=True),
         pair_coloc = expand(config['coloc_output_dir'] + 'pairs/{TISSUE}.v8.pairs_coloc.{CHROM}.txt', CHROM=chr_list, allow_missing=True)
     
     output:
-        gwas_signal_groups = config['coloc_output_dir'] + 'gwas_signal_groups_susie_' + USE_SUSIE + '/{TISSUE}.gwas_signal_groups.txt'
+        gwas_signal_groups = config['coloc_output_dir'] + 'gwas_signal_groups_susie_' + config['use_susie'] + '/{TISSUE}.gwas_signal_groups.txt'
     
     params:
         tissue = "{TISSUE}",

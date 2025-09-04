@@ -225,7 +225,7 @@ rule run_qtl_combined:
     
     resources:
         mem = "30G",
-        time = "4:00:00"
+        time = "10:00:00"
     
     shell:
         """

@@ -12,33 +12,15 @@ Requirements:
 """
 
 
-rule harmonize_vcf_sample_ids:
-    """
-    Harmonize VCF sample IDs by removing '0_' prefix to match phenotype file format.
-    This resolves sample ID mismatches between VCF and phenotype files.
-    """
-    input:
-        vcf = config['genotype_stem'] + '.vcf.gz',
-        vcf_tbi = config['genotype_stem'] + '.vcf.gz.tbi'
-    output:
-        vcf_harmonized = config['genotype_stem'] + '_harmonized.vcf.gz',
-        vcf_harmonized_tbi = config['genotype_stem'] + '_harmonized.vcf.gz.tbi'
-    params:
-        code_dir = config['code_dir'],
-    resources:
-        mem = "30G",
-        time = "4:00:00"
-    shell:
-        """
-        python {params.code_dir}/harmonize_vcf_sample_ids.py \
-            {input.vcf} \
-            {output.vcf_harmonized}
-        """
+
 
 
 rule convert_plink_to_vcf:
     """
     Convert PLINK genotype files to VCF format for aFC calculation.
+    
+    This rule preserves the original sample IDs from the .fam file without
+    adding the '0_' prefix that PLINK normally adds during VCF conversion.
     """
     input:
         bed = config['genotype_stem'] + '.bed',
@@ -54,11 +36,22 @@ rule convert_plink_to_vcf:
         time = "4:00:00"
     shell:
         """
+        # Convert PLINK to VCF format
         plink --bfile {params.genotype_stem} \
             --recode vcf \
             --out {params.genotype_stem}
         
-        bgzip {params.genotype_stem}.vcf
+        # Fix sample IDs by removing '0_' prefix to match phenotype file format
+        # This preserves the original sample IDs from the .fam file
+        sed 's/\\t0_/\\t/g' {params.genotype_stem}.vcf > {params.genotype_stem}_fixed.vcf
+        
+        # Compress the fixed VCF file
+        bgzip -c {params.genotype_stem}_fixed.vcf > {output.vcf}
+        
+        # Clean up intermediate files
+        rm {params.genotype_stem}.vcf {params.genotype_stem}_fixed.vcf
+        
+        # Create tabix index
         tabix -p vcf {output.vcf}
         """
 
@@ -89,8 +82,8 @@ rule calculate_eqtl_afc:
     expression BED, and genotype VCF.
     """
     input:
-        vcf = config['genotype_stem'] + '_harmonized.vcf.gz',
-        vcf_tbi = config['genotype_stem'] + '_harmonized.vcf.gz.tbi',
+        vcf = config['genotype_stem'] + '.vcf.gz',
+        vcf_tbi = config['genotype_stem'] + '.vcf.gz.tbi',
         pheno = config['expression_dir'] + '{TISSUE}.v8.normalized_expression.bed.gz',
         pheno_tbi = config['expression_dir'] + '{TISSUE}.v8.normalized_expression.bed.gz.tbi',
         qtl = config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie_for_afc.tsv'
@@ -122,8 +115,8 @@ rule calculate_pcqtl_afc:
     and genotype VCF.
     """
     input:
-        vcf = config['genotype_stem'] + '_harmonized.vcf.gz',
-        vcf_tbi = config['genotype_stem'] + '_harmonized.vcf.gz.tbi',
+        vcf = config['genotype_stem'] + '.vcf.gz',
+        vcf_tbi = config['genotype_stem'] + '.vcf.gz.tbi',
         pheno = config['expression_dir'] + '{TISSUE}.v8.normalized_expression.bed.gz',
         pheno_tbi = config['expression_dir'] + '{TISSUE}.v8.normalized_expression.bed.gz.tbi',
         qtl = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.susie_for_afc.tsv'
