@@ -643,10 +643,26 @@ get_ld <- function(ld_path_head, cluster_id, snp_list, genotype_stem) {
     ld_plink_path <- paste(ld_path_head, cluster_id, sep = "")
     snp_path <- paste(ld_path_head, cluster_id, '.snp_list.txt', sep = "")
     
-    # Check if SNP list exists
+    # Check if SNP list exists and is not empty
     if (!file.exists(snp_path)) {
       stop("SNP list file does not exist: ", snp_path)
     }
+    
+    # Check if SNP list file is empty
+    file_size <- file.size(snp_path)
+    if (file_size < 1) {
+      stop("SNP list file is empty: ", snp_path)
+    }
+    
+    # Try to read SNP list to verify it has content
+    tryCatch({
+      test_snp_list <- read.table(snp_path, header = FALSE, sep = "\t", nrows = 1)
+      if (nrow(test_snp_list) == 0) {
+        stop("SNP list file has no content: ", snp_path)
+      }
+    }, error = function(e) {
+      stop("SNP list file is corrupted: ", snp_path, " Error: ", e$message)
+    })
     
     plink_command <- sprintf("plink --bfile %s --extract %s --r square --out %s --keep-allele-order", 
                            genotype_stem, snp_path, ld_plink_path)
@@ -704,14 +720,38 @@ get_snp_list <- function(cluster_eqtl, ld_path_head, cluster_id) {
   
   snp_path <- paste(ld_path_head, cluster_id, '.snp_list.txt', sep = "")
   
-  # Generate SNP list if it doesn't exist
-  if (file.exists(snp_path)) {
-    cat("\tSNP list already exists\n")
-  } else {
+  # Check if file exists and is not empty
+  file_exists <- file.exists(snp_path)
+  file_is_empty <- FALSE
+  
+  if (file_exists) {
+    file_size <- file.size(snp_path)
+    if (file_size < 1) {  # File is empty or too small
+      file_is_empty <- TRUE
+      cat("\tSNP list file exists but is empty, regenerating...\n")
+    } else {
+      # Try to read the file to check if it has valid content
+      tryCatch({
+        test_read <- read.table(snp_path, header = FALSE, sep = "\t", nrows = 1)
+        if (nrow(test_read) == 0) {
+          file_is_empty <- TRUE
+          cat("\tSNP list file exists but has no content, regenerating...\n")
+        }
+      }, error = function(e) {
+        file_is_empty <- TRUE
+        cat("\tSNP list file exists but is corrupted, regenerating...\n")
+      })
+    }
+  }
+  
+  # Generate SNP list if it doesn't exist or is empty
+  if (!file_exists || file_is_empty) {
     snp_list <- unique(cluster_eqtl$variant_id)
-          cat("\tGenerated SNP list with", length(snp_list), "SNPs\n")
+    cat("\tGenerated SNP list with", length(snp_list), "SNPs\n")
     write.table(snp_list, file = snp_path, row.names = FALSE, sep = "\t", 
                 col.names = FALSE, quote = FALSE)
+  } else {
+    cat("\tSNP list already exists and is valid\n")
   }
   
   # Read SNP list

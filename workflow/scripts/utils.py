@@ -2,12 +2,51 @@
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
-import matplotlib.pyplot as plt 
 import seaborn as sns 
 import networkx as nx
 import os
 from typing import Dict, List, Optional, Union, Callable
-from pandas.errors import EmptyDataError 
+from pandas.errors import EmptyDataError
+from matplotlib.colors import LinearSegmentedColormap
+import seaborn as sns 
+
+
+# colors for plots
+qtl_palette = {'pcQTL only':'#620059', 'eQTL only':'#6FA287', 'Both':'#007C92', 'Neither':'grey'}
+qtl_colors = {'eQTL': '#6FA287', 'pcQTL': '#620059'}
+
+gtex_tissue_dict = {
+    "Adipose_Subcutaneous": "#FFA54F",
+    "Adipose_Visceral_Omentum": "#EE9A00",
+    "Artery_Tibial": "#FF0000",
+    "Cells_Cultured_fibroblasts": "#9AC0CD",
+    "Esophagus_Mucosa": "#8B7355",
+    "Esophagus_Muscularis": "#CDAA7D",
+    "Lung": "#9ACD32",
+    "Muscle_Skeletal": "#7A67EE",
+    "Nerve_Tibial": "#FFD700",
+    "Skin_Not_Sun_Exposed_Suprapubic": "#3A5FCD",
+    "Skin_Sun_Exposed_Lower_leg": "#1E90FF",
+    "Thyroid": "#008B45",
+    "Whole_Blood": "#FF00FF"
+}
+gtex_tissue_abbrev = ['ADPSBQ',
+                      'ADPVSC',
+                      'ARTTBL',
+                      'CELLS',
+                      'ESPMCS',
+                      'ESPMSL',
+                      'LUNG',
+                      'MSCLSK',
+                      'NERVET',
+                      'SKINNS',
+                      'SKINS',
+                      'THYROID',
+                      'WHLBLD']
+gtex_tissue_pal = sns.color_palette(list(gtex_tissue_dict.values()))
+gtex_tissue_pal_df = pd.DataFrame(pd.Series(gtex_tissue_dict), columns=['hex']).reset_index(names=['tissue_id'])
+
+corr_cmap = LinearSegmentedColormap.from_list('corr', [(0, '#69AED1'), (.5, 'white'), (1, '#B83A4B')])
 
 
 
@@ -121,7 +160,13 @@ def load_e_susie(config: Dict[str, str], tissue_id: str, use_r: bool = False) ->
 
 def load_pairwise_coloc(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
     """Load pairwise co-localization results for a tissue."""
-    return pd.read_csv('{}/{}/pairs/{}.v8.pairs_coloc.txt'.format(config["working_dir"], config['coloc_output_dir'], tissue_id), sep='\t')
+    colocs = []
+    for i in range(1, 23):
+        try:
+            colocs.append(pd.read_csv('{}/{}/pairs/{}.v8.pairs_coloc.chr{}.txt'.format(config["working_dir"], config['coloc_output_dir'], tissue_id, i), sep='\t'))
+        except FileNotFoundError:
+            continue
+    return pd.concat(colocs, ignore_index=True)
 
 def load_tissue_ids(config: Dict[str, str]) -> pd.DataFrame:
     """Load tissue IDs from configuration."""
@@ -200,12 +245,9 @@ def load_qtl_signal_groups(config: Dict[str, str], tissue_id: str) -> pd.DataFra
     qtl_signal_groups_path = '{}/{}/qtl_signal_groups/{}.qtl_signal_groups.txt'.format(config["working_dir"], config['coloc_output_dir'], tissue_id)
     return pd.read_csv(qtl_signal_groups_path, sep='\t')
 
-def load_gwas_signal_groups(config: Dict[str, str], tissue_id: str, use_susie: bool = True) -> pd.DataFrame:
+def load_gwas_signal_groups(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
     """Load GWAS signal groups for a tissue."""
-    if use_susie:
-        gwas_signal_groups_path = '{}/{}/gwas_signal_groups_susie_True/{}.gwas_signal_groups.txt'.format(config["working_dir"], config['coloc_output_dir'], tissue_id)
-    else:
-        gwas_signal_groups_path = '{}/{}/gwas_signal_groups_susie_False/{}.gwas_signal_groups.txt'.format(config["working_dir"], config['coloc_output_dir'], tissue_id)
+    gwas_signal_groups_path = '{}/{}/gwas_signal_groups_susie_{}/{}.gwas_signal_groups.txt'.format(config["working_dir"], config['coloc_output_dir'], config['use_susie'], tissue_id)
     return pd.read_csv(gwas_signal_groups_path, sep='\t')
 
 # Utility functions for data processing
@@ -264,7 +306,7 @@ def remove_cross_map(df: pd.DataFrame, cross_map_ids: Optional[List[str]] = None
     return df
 
 
-def calculate_enrichment_with_covariates(clusters_df, null_df, annotation_cols, min_group_size=10, min_expected_freq=5):
+def calculate_enrichment_with_covariates(clusters_df, null_df, annotation_cols, covar_cols = ['cluster_length', 'num_genes'], min_group_size=10, min_expected_freq=5):
     """
     Calculate enrichment odds ratios with covariates using logistic regression
     Skip only when sample sizes or expected frequencies are too small for reliable statistics
@@ -284,7 +326,7 @@ def calculate_enrichment_with_covariates(clusters_df, null_df, annotation_cols, 
         try:
             # Prepare data for logistic regression
             # Remove rows with missing values for this annotation
-            analysis_df = combined_df.dropna(subset=[annotation, 'cluster_length', 'num_genes'])
+            analysis_df = combined_df.dropna(subset=[annotation, *covar_cols])
             
             if len(analysis_df) == 0:
                 print(f"No data available for {annotation}")
@@ -361,7 +403,7 @@ def calculate_enrichment_with_covariates(clusters_df, null_df, annotation_cols, 
                 
             # Define dependent and independent variables
             y = analysis_df[annotation]
-            X = analysis_df[['is_cluster', 'cluster_length', 'num_genes']]
+            X = analysis_df[['is_cluster', *covar_cols]]
             X = sm.add_constant(X)  # Add intercept
             
             # Fit logistic regression
@@ -420,3 +462,52 @@ def categorize_correlation_type(df):
     choices = ['positive_only', 'negative_only', 'both_corr']
     df['corr_type'] = np.select(conditions, choices, default='unknown')
     return df
+
+def add_statistical_significance(ax, data, x_col, y_col, palette=None):
+    """
+    Add statistical significance indicators using Mann-Whitney U test
+    """
+    from scipy.stats import mannwhitneyu
+    
+    groups = data[x_col].unique()
+    
+    # Perform pairwise Mann-Whitney U tests between all groups
+    for i, group1 in enumerate(groups):
+        for j, group2 in enumerate(groups[i+1:], i+1):
+            group1_data = data[data[x_col] == group1][y_col].dropna()
+            group2_data = data[data[x_col] == group2][y_col].dropna()
+            
+            if len(group1_data) > 0 and len(group2_data) > 0:
+                stat, pval = mannwhitneyu(group1_data, group2_data, alternative='two-sided')
+                
+                # Add significance bar
+                y_max = data[y_col].max()
+                y_pos = y_max * 1.1 + (j-i-1) * (y_max * 0.1)  # Stack bars vertically
+                
+                x1, x2 = i+.02, j-.02
+                ax.plot([x1, x2], [y_pos, y_pos], 'k-', linewidth=1)
+                ax.plot([x1, x1], [y_pos, y_pos*0.95], 'k-', linewidth=1)
+                ax.plot([x2, x2], [y_pos, y_pos*0.95], 'k-', linewidth=1)
+                
+                # Add p-value text
+                if pval < 0.001:
+                    sig_text = '***'
+                elif pval < 0.01:
+                    sig_text = '**'
+                elif pval < 0.05:
+                    sig_text = '*'
+                else:
+                    sig_text = 'ns'
+                
+                ax.text((x1+x2)/2, y_pos*.99, sig_text, ha='center', va='bottom', 
+                       fontweight='bold')
+                print(f'{group1}, {group2} p={pval:.2e}')
+
+
+def get_gene_name(gene_id, config=None, gencode=None):
+    if gencode is None:
+        gencode = pd.read_table(f'{config['working_dir']}/{config['gencode_path']}')
+    try:
+        return gencode[gencode['gene_id'] == gene_id]['gene_name'].iloc[0]
+    except IndexError:
+        return gene_id

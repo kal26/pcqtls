@@ -96,11 +96,11 @@ Tab-separated file with colocalizations between GWAS and QTLs:
 - `nsnps`: Number of SNPs in the region
 - `hit1`: Lead variant ID of GWAS (format: `{chr}_{pos}_{ref}_{alt}`)
 - `hit2`: Lead variant ID of QTL (format: `{chr}_{pos}_{ref}_{alt}`)
-- `PP.H0.abf`: Posterior probability of no association
-- `PP.H1.abf`: Posterior probability of association with QTL only
-- `PP.H2.abf`: Posterior probability of association with GWAS only
-- `PP.H3.abf`: Posterior probability of association with both, different causal variants
-- `PP.H4.abf`: Posterior probability of association with both, same causal variant (colocalization)
+- `PP.H0`: Posterior probability of no association
+- `PP.H1`: Posterior probability of association with QTL only
+- `PP.H2`: Posterior probability of association with GWAS only
+- `PP.H3`: Posterior probability of association with both, different causal variants
+- `PP.H4`: Posterior probability of association with both, same causal variant (colocalization)
 - `idx1`: Credible set ID of first phenotype
 - `idx2`: Credible set ID of second phenotype
 

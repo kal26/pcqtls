@@ -232,24 +232,22 @@ def _prepare_gwas_coloc_data(gwas_coloc: pd.DataFrame) -> pd.DataFrame:
     gwas_coloc['cluster_id'] = np.where(gwas_coloc['qtl_id'].str.contains('_e'), 
                                        gwas_coloc['qtl_id'].str.split('_e').str[0], 
                                        gwas_coloc['qtl_id'].str.split('_pc').str[0])
-    gwas_coloc['cluster_id'] = gwas_coloc['cluster_id'].str.split('qtl_').str[1]
     
-    # Make ids for each credible set in the qtl and gwas
-    gwas_coloc['gwas_cs_id'] = gwas_coloc['gwas_id'] + '_cs_' + gwas_coloc['idx1'].astype(int).astype(str) + '_cluster_' + gwas_coloc['cluster_id']
-    gwas_coloc['qtl_cs_id'] = gwas_coloc['qtl_id'] + '_cs_' + gwas_coloc['idx2'].astype(int).astype(str) + '_cluster_' + gwas_coloc['cluster_id']
-    
+    # Make ids for each credible set/cluster/tissue for the gwas
+    gwas_coloc['tissue_cluster_gwas_cs_id'] =  gwas_coloc['tissue_id'] + '_cluster_' + gwas_coloc['cluster_id']+ "_gwas_" + gwas_coloc['gwas_id'] + '_cs_' + gwas_coloc['idx1'].astype(str) 
+
     # Set type as pcqtl or eqtl
-    gwas_coloc['type'] = np.where(gwas_coloc['qtl_cs_id'].str.contains('_pc'), 'pcqtl', 'eqtl')
+    gwas_coloc['type'] = np.where(gwas_coloc['qtl_id'].str.contains('_pc'), 'pcqtl', 'eqtl')
     
     # Fill in nas with 0 for posterior probability columns
     pp_columns = [col for col in DEFAULT_COLUMNS if col in gwas_coloc.columns]
     if pp_columns:
         gwas_coloc[pp_columns] = gwas_coloc[pp_columns].fillna(0)
 
-    # Add cs ids
-    gwas_coloc['gwas_cs_id'] = 'gwas_' + gwas_coloc['gwas_cs_id']
-    gwas_coloc['qtl_cs_id'] = 'qtl_' + gwas_coloc['qtl_cs_id']
-    
+    # Add pheotype-cs ids
+    gwas_coloc['gwas_cs_id'] = 'gwas_' + gwas_coloc['gwas_id'] + '_cluster_' + gwas_coloc['cluster_id'] + '_cs_' + gwas_coloc['idx1'].astype(int).astype(str)
+    gwas_coloc['qtl_cs_id'] = gwas_coloc['qtl_id'] + '_cs_' + gwas_coloc['idx2'].astype(int).astype(str) 
+
     return gwas_coloc
 
 
@@ -290,6 +288,8 @@ def _load_data_files(file_paths: Union[str, List[str]], logger: logging.Logger, 
                 try:
                     df = pd.read_csv(file_path, sep='\t')
                     if not df.empty:
+                        # Add file path information for tissue_id extraction
+                        df['coloc_file'] = file_path
                         data_dfs.append(df)
                     else:
                         empty_files.append(file_path)
@@ -305,14 +305,15 @@ def _load_data_files(file_paths: Union[str, List[str]], logger: logging.Logger, 
         if data_dfs:
             data = pd.concat(data_dfs, ignore_index=True)
             logger.info(f'Combined {len(data_dfs)} {file_type} files into {len(data)} rows')
+            
+            # Extract tissue_id for GWAS coloc files
+            if file_type == "gwas_coloc" and 'coloc_file' in data.columns:
+                data['tissue_id'] = data['coloc_file'].str.split('/').str[-1].str.split('.').str[0]
         else:
             logger.warning(f"No valid {file_type} files found with data")
             data = pd.DataFrame()
     
     return data
-
-
-
 
 
 def load_gwas_coloc(config: Dict[str, str]) -> pd.DataFrame:
@@ -331,14 +332,15 @@ def load_gwas_coloc(config: Dict[str, str]) -> pd.DataFrame:
     # Recursively get list of files ending with .qtl_gwas.txt
     def get_files(directory: str) -> List[str]:
         file_list = []
+        print(f"getting files in directory: {directory}")
         for root, directories, files in os.walk(directory):
-            if not 'temp' in root:
-                for file in files:
-                    if "susie_True" in file:
-                        file_list.append(os.path.join(root, file))
+            for file in files:
+                if "gwas_coloc" in file:
+                    file_list.append(os.path.join(root, file))
         return file_list
     
     coloc_file_list = get_files(f'{config["working_dir"]}/{config["coloc_output_dir"]}gwas_susie_{config["use_susie"]}')
+    print(f"found {len(coloc_file_list)} files")
 
     # Load each file into a DataFrame and concatenate them
     cluster_colocs = []
@@ -390,8 +392,8 @@ def group_gwas_signals(gwas_coloc: pd.DataFrame, pair_coloc: pd.DataFrame, coloc
     if not pair_coloc.empty:
         pair_coloc_hits = pair_coloc[pair_coloc['PP.H4.abf'] > coloc_cutoff].copy()
         # Create CS IDs for pairwise coloc data
-        pair_coloc_hits['cs_id_1'] = pair_coloc_hits['qtl1_id'] + '_cs_' + pair_coloc_hits['idx1'].astype(int).astype(str)
-        pair_coloc_hits['cs_id_2'] = pair_coloc_hits['qtl2_id'] + '_cs_' + pair_coloc_hits['idx2'].astype(int).astype(str)
+        pair_coloc_hits['qtl_cs_id_1'] = pair_coloc_hits['qtl1_id'] + '_cs_' + pair_coloc_hits['idx1'].astype(int).astype(str)
+        pair_coloc_hits['qtl_cs_id_2'] = pair_coloc_hits['qtl2_id'] + '_cs_' + pair_coloc_hits['idx2'].astype(int).astype(str)
     else:
         pair_coloc_hits = pd.DataFrame()
 
@@ -406,7 +408,7 @@ def group_gwas_signals(gwas_coloc: pd.DataFrame, pair_coloc: pd.DataFrame, coloc
     # Add an edge for each qtl-qtl coloc
     if not pair_coloc_hits.empty:
         for index, row in pair_coloc_hits.iterrows():
-            G.add_edge(row['cs_id_1'], row['cs_id_2'])
+            G.add_edge(row['qtl_cs_id_1'], row['qtl_cs_id_2'])
 
     # Get the connected components of the graph
     connected_components = list(nx.connected_components(G))
@@ -431,13 +433,12 @@ def group_gwas_signals(gwas_coloc: pd.DataFrame, pair_coloc: pd.DataFrame, coloc
         return None
     
     underlying_signals['cluster_id'] = underlying_signals['signal_id'].apply(extract_cluster_id)
-    underlying_signals['num_qtl_coloc'] = underlying_signals['signal_id'].astype(str).str.count('qtl_')
     underlying_signals['num_gwas_coloc'] = underlying_signals['signal_id'].astype(str).str.count('gwas_')
     underlying_signals['num_e_coloc'] = underlying_signals['signal_id'].astype(str).str.count('_e_')
     underlying_signals['num_pc_coloc'] = underlying_signals['signal_id'].astype(str).str.count('_pc')
     
     # Reorder columns to match specification
-    column_order = ['signal_id', 'cluster_id', 'num_qtl_coloc', 'num_gwas_coloc', 'num_e_coloc', 'num_pc_coloc']
+    column_order = ['signal_id', 'cluster_id', 'num_gwas_coloc', 'num_e_coloc', 'num_pc_coloc']
     underlying_signals = underlying_signals[column_order]
     
     return underlying_signals
