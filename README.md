@@ -117,7 +117,8 @@ For detailed descriptions of the output file formats and their contents, refer t
 ### Results Availability
 
 * Clusters of neighboring correlated genes 
-* Summary stats for pcQTL mapping 
+* Summary stats for pcQTL mapping
+* pcQTL-GWAS colocalizations 
 
 [ZENODO](https://doi.org/10.5281/zenodo.15605351)
 
