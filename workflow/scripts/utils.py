@@ -506,7 +506,7 @@ def add_statistical_significance(ax, data, x_col, y_col, palette=None):
 
 def get_gene_name(gene_id, config=None, gencode=None):
     if gencode is None:
-        gencode = pd.read_table(f'{config['working_dir']}/{config['gencode_path']}')
+        gencode = pd.read_table(f'{config["working_dir"]}/{config["gencode_path"]}')
     try:
         return gencode[gencode['gene_id'] == gene_id]['gene_name'].iloc[0]
     except IndexError:
