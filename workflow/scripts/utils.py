@@ -58,7 +58,7 @@ def load_vep(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
 
 def load_susie_annotated(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
     """Load SuSiE annotated results for a tissue."""
-    qtl_path = '{}/{}{}/{}.v8.susie_R_vars.annotated.csv'.format(config["working_dir"], config['annotations_output_dir'], tissue_id, tissue_id)
+    qtl_path = '{}/{}{}/{}.v8.susie_vars.annotated.csv'.format(config["working_dir"], config['annotations_output_dir'], tissue_id, tissue_id)
     susie_annotated = pd.read_table(qtl_path)
     susie_annotated['cs_num'] = susie_annotated['cs_id'] 
     susie_annotated['cs_id'] = susie_annotated['phenotype_id'] + '_cs_' + susie_annotated['cs_id'].astype(str)
@@ -128,20 +128,13 @@ def load_pc_nominal(config: Dict[str, str], tissue_id: str, chr_id: int = 22, ge
     pc_nominal_df['pc_num'] = pc_nominal_df['phenotype_id'].str.split('_pc').str[-1].astype(int)
     return pc_nominal_df
 
-def load_pc_susie_r(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
-    """Load pcQTL SuSiE R results for a tissue."""
-    return pd.read_csv('{}/{}/{}/{}.v8.pcs.susie_R.txt'.format(config["working_dir"], config['pcqtl_output_dir'], tissue_id, tissue_id), sep='\t')
-
-def load_pc_susie(config: Dict[str, str], tissue_id: str, use_r: bool = False) -> pd.DataFrame:
+def load_pc_susie(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
     """Load pcQTL SuSiE results for a tissue."""
-    if use_r:
-        return load_pc_susie_r(config, tissue_id)
-    else:
-        return pd.read_csv('{}/{}/{}/{}.v8.pcs.susie.txt'.format(config["working_dir"], config['pcqtl_output_dir'], tissue_id, tissue_id), sep='\t')
+    return pd.read_csv('{}/{}/{}/{}.v8.pcs.susie.txt'.format(config["working_dir"], config['pcqtl_output_dir'], tissue_id, tissue_id), sep='\t')
 
-def load_e_susie_r(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
-    """Load eQTL SuSiE R results for a tissue."""
-    return pd.read_csv('{}/{}/{}/{}.v8.cluster_genes.susie_R.txt'.format(config["working_dir"], config['eqtl_output_dir'], tissue_id, tissue_id), sep='\t')
+def load_e_susie(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
+    """Load eQTL SuSiE results for a tissue."""
+    return pd.read_csv('{}/{}/{}/{}.v8.cluster_genes.susie.txt'.format(config["working_dir"], config['eqtl_output_dir'], tissue_id, tissue_id), sep='\t')
 
 def load_pc_afc(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
     """Load pcQTL AFC results for a tissue."""
@@ -150,13 +143,6 @@ def load_pc_afc(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
 def load_e_afc(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
     """Load eQTL AFC results for a tissue."""
     return pd.read_table('{}/{}/{}/{}.v8.cluster_genes.afc.txt'.format(config["working_dir"], config['eqtl_output_dir'], tissue_id, tissue_id))
-
-def load_e_susie(config: Dict[str, str], tissue_id: str, use_r: bool = False) -> pd.DataFrame:
-    """Load eQTL SuSiE results for a tissue."""
-    if use_r:
-        return load_e_susie_r(config, tissue_id)
-    else:
-        return pd.read_csv('{}/{}/{}/{}.v8.cluster_genes.susie.txt'.format(config["working_dir"], config['eqtl_output_dir'], tissue_id, tissue_id), sep='\t')
 
 def load_pairwise_coloc(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
     """Load pairwise co-localization results for a tissue."""

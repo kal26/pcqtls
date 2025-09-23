@@ -33,40 +33,28 @@ rule all:
     """Main workflow target - defines all outputs to be generated."""
     input:
         ########## CORE CLUSTERING AND ANNOTATION ##########
-        # clusters = expand(config['clusters_dir'] + "{TISSUE}.clusters.txt", TISSUE=tissue_ids),
-        # annotated_clusters = expand(config['annotations_output_dir'] + "annotated_clusters/{TISSUE}.clusters.annotated.txt", TISSUE=tissue_ids),
-        # annotated_nulls = expand(config['annotations_output_dir'] + "annotated_null_clusters/{TISSUE}.null.{CLUSTER_SIZE}genes.annotated.txt", TISSUE=tissue_ids, CLUSTER_SIZE=NULL_SIZES)
+        clusters = expand(config['clusters_dir'] + "{TISSUE}.clusters.txt", TISSUE=tissue_ids),
+        annotated_clusters = expand(config['annotations_output_dir'] + "annotated_clusters/{TISSUE}.clusters.annotated.txt", TISSUE=tissue_ids),
+        annotated_nulls = expand(config['annotations_output_dir'] + "annotated_null_clusters/{TISSUE}.null.{CLUSTER_SIZE}genes.annotated.txt", TISSUE=tissue_ids, CLUSTER_SIZE=NULL_SIZES)
         ########## eQTL ANALYSIS OUTPUTS ##########
-        # eqtl_susie = expand(config['eqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.cluster_genes.susie.txt", TISSUE=tissue_ids),
+        eqtl_susie = expand(config['eqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.cluster_genes.susie.txt", TISSUE=tissue_ids),
         eqtl_permutation = expand(config['eqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl.txt.gz", TISSUE=tissue_ids),
-        # eqtl_nominal = expand(config['eqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet", 
-        #                      CHROM=chr_list, TISSUE=tissue_ids),
+        eqtl_nominal = expand(config['eqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.{CHROM}.parquet", CHROM=chr_list, TISSUE=tissue_ids),
         ########## pcQTL ANALYSIS OUTPUTS ##########
-        # pcqtl_susie = expand(config['pcqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.pcs.susie.txt", TISSUE=tissue_ids),
-        # pcqtl_permutation = expand(config['pcqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.pcs.cis_qtl.txt.gz", TISSUE=tissue_ids),
-        # pcqtl_nominal = expand(config['pcqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet", 
-        #                       CHROM=chr_list, TISSUE=tissue_ids),
+        pcqtl_susie = expand(config['pcqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.pcs.susie.txt", TISSUE=tissue_ids),
+        pcqtl_permutation = expand(config['pcqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.pcs.cis_qtl.txt.gz", TISSUE=tissue_ids),
+        pcqtl_nominal = expand(config['pcqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.pcs.cis_qtl_pairs.{CHROM}.parquet", CHROM=chr_list, TISSUE=tissue_ids),
         ########## COMBINED QTL ANALYSIS OUTPUTS ##########
-        # combined_qtl = expand(config['pcqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.combined.cis_qtl.txt.gz", TISSUE=tissue_ids),
-        ########## ANNOTATED OUTPUTS ##########
-        # susie_annotated = expand(config['annotations_output_dir'] + "{TISSUE}/{TISSUE}.v8.susie_R_vars.annotated.csv", TISSUE=tissue_ids),
-        # pc_annotated = expand(config['annotations_output_dir'] + "{TISSUE}/{TISSUE}.v8.pcs_annotated.txt", TISSUE=tissue_ids),
+        combined_qtl = expand(config['pcqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.combined.cis_qtl.txt.gz", TISSUE=tissue_ids),
+        ########## ANNOTATED CREDIBLE SET OUTPUTS ##########
+        susie_annotated = expand(config['annotations_output_dir'] + "{TISSUE}/{TISSUE}.v8.susie_vars.annotated.csv", TISSUE=tissue_ids),
+        pc_annotated = expand(config['annotations_output_dir'] + "{TISSUE}/{TISSUE}.v8.pcs_annotated.txt", TISSUE=tissue_ids),
+        eqtl_afc = expand(config['eqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.cluster_genes.afc.txt", TISSUE=tissue_ids),
+        pcqtl_afc = expand(config['pcqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.pcs.afc.txt", TISSUE=tissue_ids)
         ########## CO-LOCALIZATION ANALYSIS ##########
-        # coloc_pairs = expand(config['coloc_output_dir'] + "pairs/{TISSUE}.v8.pairs_coloc.{CHROM}.txt", 
-        #                     CHROM=chr_list, TISSUE=tissue_ids),
-        gwas_colocs = expand(config['coloc_output_dir'] + "gwas_susie_{USE_SUSIE}/{TISSUE}/{TISSUE}.v8.{GWAS}.gwas_coloc.txt", 
-                             TISSUE=tissue_ids, GWAS=gwas_ids, USE_SUSIE=['False']),
+        coloc_pairs = expand(config['coloc_output_dir'] + "pairs/{TISSUE}.v8.pairs_coloc.{CHROM}.txt", CHROM=chr_list, TISSUE=tissue_ids),
+        gwas_colocs = expand(config['coloc_output_dir'] + "gwas_susie_{USE_SUSIE}/{TISSUE}/{TISSUE}.v8.{GWAS}.gwas_coloc.txt", TISSUE=tissue_ids, GWAS=gwas_ids, USE_SUSIE=['False']),
         ########## SIGNAL GROUPS ANALYSIS ##########
-        # qtl_signal_groups = expand(config['coloc_output_dir'] + "qtl_signal_groups/{TISSUE}.qtl_signal_groups.txt", TISSUE=tissue_ids),
+        qtl_signal_groups = expand(config['coloc_output_dir'] + "qtl_signal_groups/{TISSUE}.qtl_signal_groups.txt", TISSUE=tissue_ids),
         gwas_signal_groups = expand(config['coloc_output_dir'] + "gwas_signal_groups_susie_{USE_SUSIE}/{TISSUE}.gwas_signal_groups.txt", 
                                     TISSUE=tissue_ids, USE_SUSIE=['False', 'True']),
-        ########## LOG AFC OUTPUTS ##########
-        # eqtl_afc = expand(config['eqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.cluster_genes.afc.txt", TISSUE=tissue_ids),
-        # pcqtl_afc = expand(config['pcqtl_output_dir'] + "{TISSUE}/{TISSUE}.v8.pcs.afc.txt", TISSUE=tissue_ids)
-
-# Development/testing target - uncomment for quick testing
-# rule test:
-#     """Test target for development - runs on single tissue."""
-#     input:
-#         clusters = f"{config['clusters_dir']}Artery_Tibial.clusters.txt",
-#         annotated_clusters = f"{config['annotations_output_dir']}Artery_Tibial/Artery_Tibial.clusters.annotated.txt" 

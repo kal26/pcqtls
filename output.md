@@ -46,7 +46,7 @@ Parquet file with pcQTL associations:
 - `slope`: ERegression slope (beta)
 - `slope_se`: Standard error of Regression slope
 
-## SuSiE Fine-mapping Results (`{eqtl/pcqtl}_output_dir/{TISSUE}/{TISSUE}.v8.{cluster_genes/pcs}.susie_R.txt`)
+## SuSiE Fine-mapping Results (`{eqtl/pcqtl}_output_dir/{TISSUE}/{TISSUE}.v8.{cluster_genes/pcs}.susie.txt`)
 Tab-separated file with SuSiE fine-mapping results:
 - `phenotype_id`: Gene ID or PC ID
 - `variant_id`: Variant ID (format: `{chr}_{pos}_{ref}_{alt}`)

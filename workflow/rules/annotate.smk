@@ -143,7 +143,7 @@ rule convert_susie_to_vcf:
         pc_susie_results = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.susie.txt'
     
     output:
-        vcf = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.v8.susie_R_vars.vcf'
+        vcf = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.v8.susie_vars.vcf'
     
     params:
         code_dir = config['code_dir']
@@ -169,7 +169,7 @@ rule run_vep:
     regulatory effects, protein consequences, and population frequencies.
     """
     input:
-        vcf = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.v8.susie_R_vars.vcf'
+        vcf = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.v8.susie_vars.vcf'
     
     output:
         vep_results = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.v8.leadvars.vep.vcf'
@@ -203,8 +203,8 @@ rule merge_susie_vep_annotations:
     TAD boundaries.
     """
     input:
-        e_susie_results = config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie_R.txt',
-        pc_susie_results = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.susie_R.txt',
+        e_susie_results = config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie.txt',
+        pc_susie_results = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.susie.txt',
         vep_results = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.v8.leadvars.vep.vcf',
         annotated_pcs = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs_annotated.txt',
         e_nominal = expand(config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.cis_qtl_pairs.chr{chr}.parquet', chr=range(1, 23), allow_missing=True),
@@ -216,7 +216,7 @@ rule merge_susie_vep_annotations:
         tad = config['tad_path']
     
     output:
-        annotated_susie = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.v8.susie_R_vars.annotated.csv'
+        annotated_susie = config['annotations_output_dir'] + '{TISSUE}/{TISSUE}.v8.susie_vars.annotated.csv'
     
     params:
         code_dir = config['code_dir']

@@ -119,8 +119,8 @@ rule group_qtl_signals:
     """
     input:
         pair_coloc = expand(config['coloc_output_dir'] + 'pairs/{TISSUE}.v8.pairs_coloc.{CHROM}.txt', CHROM=chr_list, allow_missing=True),
-        pc_susie = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.susie_R.txt',
-        e_susie = config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie_R.txt'
+        pc_susie = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.susie.txt',
+        e_susie = config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie.txt'
     
     output:
         qtl_signal_groups = config['coloc_output_dir'] + 'qtl_signal_groups/{TISSUE}.qtl_signal_groups.txt'
@@ -193,7 +193,7 @@ rule gather_eqtl_susie:
         coloc_pairs = expand(config['coloc_output_dir'] + 'pairs/{TISSUE}.v8.pairs_coloc.{CHROM}.txt', CHROM=chr_list, allow_missing=True)
     
     output:
-        eqtl_susie_pairs = config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie_R.txt'
+        eqtl_susie_pairs = config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie.txt'
     
     params:
         eqtl_dir_path = config['eqtl_output_dir'] + '{TISSUE}',
@@ -228,7 +228,7 @@ rule gather_pcqtl_susie:
         coloc_pairs = expand(config['coloc_output_dir'] + 'pairs/{TISSUE}.v8.pairs_coloc.{CHROM}.txt', CHROM=chr_list, allow_missing=True)
     
     output:
-        pcqtl_susie_pairs = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.susie_R.txt'
+        pcqtl_susie_pairs = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.susie.txt'
     
     params:
         pcqtl_dir_path = config['pcqtl_output_dir'] + '{TISSUE}',

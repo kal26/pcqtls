@@ -141,9 +141,6 @@ rule run_pcqtl_cis_independent:
         """
 
 
-
-
-
 rule run_pcqtl_susie:
     """
     Run SuSiE fine-mapping for pcQTL credible sets.

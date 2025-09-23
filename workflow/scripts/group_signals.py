@@ -48,7 +48,7 @@ def setup_logging(level: int = logging.INFO) -> None:
 
 
 
-def group_qtl_signals(pair_coloc: pd.DataFrame, pc_susie_r: pd.DataFrame, e_susie_r: pd.DataFrame, 
+def group_qtl_signals(pair_coloc: pd.DataFrame, pc_susie: pd.DataFrame, e_susie: pd.DataFrame, 
                      coloc_cutoff: float = DEFAULT_COLOC_CUTOFF, get_variants: bool = False) -> pd.DataFrame:
     """
     Group QTL signals for a single tissue.
@@ -58,8 +58,8 @@ def group_qtl_signals(pair_coloc: pd.DataFrame, pc_susie_r: pd.DataFrame, e_susi
     
     Args:
         pair_coloc: DataFrame with pairwise co-localization results
-        pc_susie_r: DataFrame with pcQTL SuSiE results
-        e_susie_r: DataFrame with eQTL SuSiE results
+        pc_susie: DataFrame with pcQTL SuSiE results
+        e_susie: DataFrame with eQTL SuSiE results
         coloc_cutoff: PP.H4 threshold for co-localization (default: 0.75)
         get_variants: Whether to include variant sets in output (default: False)
     
@@ -67,7 +67,7 @@ def group_qtl_signals(pair_coloc: pd.DataFrame, pc_susie_r: pd.DataFrame, e_susi
         DataFrame with QTL signal groups
     """
     # Check if we have any data to work with
-    if pair_coloc.empty and pc_susie_r.empty and e_susie_r.empty:
+    if pair_coloc.empty and pc_susie.empty and e_susie.empty:
         # Return empty DataFrame with expected columns
         columns = ['signal_id', 'cluster_id', 'num_e_coloc', 'num_pc_coloc', 'lead_var_set']
         if get_variants:
@@ -87,8 +87,8 @@ def group_qtl_signals(pair_coloc: pd.DataFrame, pc_susie_r: pd.DataFrame, e_susi
         susie_df['qtl_cs_id'] = susie_df['phenotype_id'] + '_cs_' + susie_df['cs_id'].astype(str)
         return susie_df
     
-    pc_susie_r = add_lead_variant_id(pc_susie_r)
-    e_susie_r = add_lead_variant_id(e_susie_r)
+    pc_susie = add_lead_variant_id(pc_susie)
+    e_susie = add_lead_variant_id(e_susie)
     
     # Filter to coloc'd signals (only if not empty)
     if not pair_coloc.empty:
@@ -105,13 +105,13 @@ def group_qtl_signals(pair_coloc: pd.DataFrame, pc_susie_r: pd.DataFrame, e_susi
         pair_coloc['qtl_cs_id_1'] = pair_coloc['qtl1_id'] + '_cs_' + pair_coloc['idx1'].astype(int).astype(str)
         pair_coloc['qtl_cs_id_2'] = pair_coloc['qtl2_id'] + '_cs_' + pair_coloc['idx2'].astype(int).astype(str)
     
-    if not pc_susie_r.empty:
-        pc_susie_r = pc_susie_r.copy()
-        pc_susie_r['qtl_cs_id'] = pc_susie_r['phenotype_id'] + '_cs_' + pc_susie_r['cs_id'].astype(int).astype(str)
+    if not pc_susie.empty:
+        pc_susie = pc_susie.copy()
+        pc_susie['qtl_cs_id'] = pc_susie['phenotype_id'] + '_cs_' + pc_susie['cs_id'].astype(int).astype(str)
     
-    if not e_susie_r.empty:
-        e_susie_r = e_susie_r.copy()
-        e_susie_r['qtl_cs_id'] = e_susie_r['phenotype_id'] + '_cs_' + e_susie_r['cs_id'].astype(int).astype(str)
+    if not e_susie.empty:
+        e_susie = e_susie.copy()
+        e_susie['qtl_cs_id'] = e_susie['phenotype_id'] + '_cs_' + e_susie['cs_id'].astype(int).astype(str)
     
     # Add edges to the graph from the DataFrame (only if not empty)
     if not pair_coloc.empty:
@@ -125,12 +125,12 @@ def group_qtl_signals(pair_coloc: pd.DataFrame, pc_susie_r: pd.DataFrame, e_susi
     underlying_signals = ['-'.join(sorted(str(item) for item in component)) for component in connected_components]
 
     # Add in the unique ones (only if we have SuSiE data)
-    if not pc_susie_r.empty or not e_susie_r.empty:
+    if not pc_susie.empty or not e_susie.empty:
         all_credible_set_ids = set()
-        if not pc_susie_r.empty:
-            all_credible_set_ids.update(pc_susie_r['qtl_cs_id'])
-        if not e_susie_r.empty:
-            all_credible_set_ids.update(e_susie_r['qtl_cs_id'])
+        if not pc_susie.empty:
+            all_credible_set_ids.update(pc_susie['qtl_cs_id'])
+        if not e_susie.empty:
+            all_credible_set_ids.update(e_susie['qtl_cs_id'])
 
         # Add standalone sets (those not in any connected component)
         for credible_set_id in all_credible_set_ids:
@@ -162,17 +162,17 @@ def group_qtl_signals(pair_coloc: pd.DataFrame, pc_susie_r: pd.DataFrame, e_susi
         signal_parts = row['signal_id'].split('-')
         
         for part in signal_parts:
-            # Find matching variants in pc_susie_r using qtl_cs_id (only if not empty)
-            if not pc_susie_r.empty:
-                pc_matches = pc_susie_r[pc_susie_r['qtl_cs_id'] == part]
+            # Find matching variants in pc_susie using qtl_cs_id (only if not empty)
+            if not pc_susie.empty:
+                pc_matches = pc_susie[pc_susie['qtl_cs_id'] == part]
                 if lead:
                     var_ids.extend(pc_matches['lead_variant_id'].dropna().values)
                 else:
                     var_ids.extend(pc_matches['variant_id'].values)
             
-            # Find matching variants in e_susie_r using qtl_cs_id (only if not empty)
-            if not e_susie_r.empty:
-                e_matches = e_susie_r[e_susie_r['qtl_cs_id'] == part]
+            # Find matching variants in e_susie using qtl_cs_id (only if not empty)
+            if not e_susie.empty:
+                e_matches = e_susie[e_susie['qtl_cs_id'] == part]
                 if lead:
                     var_ids.extend(e_matches['lead_variant_id'].dropna().values)
                 else:

@@ -11,6 +11,7 @@ logs_old/*
 *.sh
 .vscode
 workflow/revisions
+workflow/rules/subsample.smk
 run_snakemake_subsampling.sh
 run_snakemake.sh
 config_old/*

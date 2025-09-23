@@ -146,7 +146,7 @@ rule make_eqtl_for_afc_from_susie:
     Produces columns: pid, sid, sid_chr, sid_pos.
     """
     input:
-        susie = config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie_R.txt'
+        susie = config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie.txt'
     output:
         tsv = config['eqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.cluster_genes.susie_for_afc.tsv'
     params:
@@ -169,7 +169,7 @@ rule make_pcqtl_for_afc_from_susie:
     Produces columns: pid, sid, sid_chr, sid_pos.
     """
     input:
-        susie = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.susie_R.txt'
+        susie = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.susie.txt'
     output:
         tsv = config['pcqtl_output_dir'] + '{TISSUE}/{TISSUE}.v8.pcs.susie_for_afc.tsv'
     params:

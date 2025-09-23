@@ -33,9 +33,10 @@ snakemake --configfile config/config_example.yaml
 
 * `workflow/rules`: Snakemake workflow for the pcQTL mapping framework.
 * `workflow/scripts`: Python and R scripts used by the workflow.
-* `workflow/figures`: Jupyter notebooks for data analysis and visualization and figure files.
+* `workflow/main_figures`: Jupyter notebooks for data analysis and visualization for main figure panels.
+* `workflow/supplemental_figures`: Jupyter notebooks for data analysis and visualization for suplemental figure panels.
 * `config`: Example configuration file for the workflow.
-* `references`: Small file-size references.
+* `references`: Small file-size references. Details on how to download other references nedded are in [Required Datasets](#required-datasets). 
 * `Snakefile`: Main Snakemake workflow file that orchestrates the pcQTL analysis pipeline.
 
 ### Environment Setup
