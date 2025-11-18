@@ -2,14 +2,15 @@
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
+import matplotlib as mpl
+import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 import seaborn as sns 
 import networkx as nx
 import os
 from typing import Dict, List, Optional, Union, Callable
 from pandas.errors import EmptyDataError
-from matplotlib.colors import LinearSegmentedColormap
-import seaborn as sns 
-
 
 # colors for plots
 qtl_palette = {'pcQTL only':'#620059', 'eQTL only':'#6FA287', 'Both':'#007C92', 'Neither':'grey'}
@@ -43,18 +44,11 @@ gtex_tissue_abbrev = ['ADPSBQ',
                       'SKINS',
                       'THYROID',
                       'WHLBLD']
-gtex_tissue_pal = sns.color_palette(list(gtex_tissue_dict.values()))
+gtex_tissue_pal = [mcolors.to_rgb(color) for color in gtex_tissue_dict.values()]
 gtex_tissue_pal_df = pd.DataFrame(pd.Series(gtex_tissue_dict), columns=['hex']).reset_index(names=['tissue_id'])
 
 corr_cmap = LinearSegmentedColormap.from_list('corr', [(0, '#69AED1'), (.5, 'white'), (1, '#B83A4B')])
 
-
-
-def load_vep(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
-    """Load VEP annotation results for a tissue."""
-    sample_vep = pd.read_table('{}/{}/{}.v8.leadvars.vep.vcf'.format(config["working_dir"], config['annotations_output_dir'], tissue_id), skiprows=4)
-    overlap_df = load_overlap(config, tissue_id)
-    return pd.merge(sample_vep, overlap_df, left_on='ID', right_on='lead_variant_id', how='outer')
 
 def load_susie_annotated(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
     """Load SuSiE annotated results for a tissue."""
