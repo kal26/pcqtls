@@ -73,7 +73,7 @@ The workflow performs the following analyses:
 | Dataset | Description | Source | Expected Location in Config |
 |---------|-------------|---------|---------------------------|
 | GTEx v8 Expression Data | Normalized gene expression by tissue | [GTEx Portal](https://storage.googleapis.com/adult-gtex/bulk-qtl/v8/single-tissue-cis-qtl/GTEx_Analysis_v8_eQTL_expression_matrices.tar) | `expression_dir` |
-| GTEx v8 Genotypes | Genotype data: .bed, .bim, and .fam | Protected access on dbGaP, access available via request at this [link](https://www.ncbi.nlm.nih.gov/projects/gap/cgi-bin/study.cgi?study_id=phs000424.v10.p2) | `genotype_stem` |
+| GTEx v8 Genotypes | Genotype data: .bed, .bim, and .fam | Protected access on dbGaP accession ID: phs000424.v8, access available via request at this [link](https://www.ncbi.nlm.nih.gov/projects/gap/cgi-bin/study.cgi?study_id=phs000424.v10.p2) | `genotype_stem` |
 | GTEx v8 Covariates | Technical and biological covariates | [GTEx Portal](https://storage.googleapis.com/adult-gtex/bulk-qtl/v8/single-tissue-cis-qtl/GTEx_Analysis_v8_eQTL_covariates.tar.gz) | `covariates_dir` |
 | GTEx v8 Sample Sizes | Sample sizes for each tissue | `references/gtex_sample_sizes.txt` | `gtex_meta` |
 | Tissue IDs | List of tissues to analyze | User generated, see `references/selected_tissue_ids.txt` as an example | `tissue_id_path` |

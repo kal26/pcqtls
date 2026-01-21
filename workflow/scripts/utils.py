@@ -50,10 +50,17 @@ gtex_tissue_pal_df = pd.DataFrame(pd.Series(gtex_tissue_dict), columns=['hex']).
 corr_cmap = LinearSegmentedColormap.from_list('corr', [(0, '#69AED1'), (.5, 'white'), (1, '#B83A4B')])
 
 
+def load_susie(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
+    """Load SuSiE annotated results for a tissue."""
+    susie_path = '{}/{}/{}.susie.txt'.format(config["working_dir"], config['susie_output_dir'], tissue_id)
+    susie = pd.read_table(susie_path)
+    return susie
+
+
 def load_susie_annotated(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
     """Load SuSiE annotated results for a tissue."""
-    qtl_path = '{}/{}{}/{}.v8.susie_vars.annotated.csv'.format(config["working_dir"], config['annotations_output_dir'], tissue_id, tissue_id)
-    susie_annotated = pd.read_table(qtl_path)
+    susie_annotated_path = '{}/{}{}/{}.v8.susie_vars.annotated.csv'.format(config["working_dir"], config['annotations_output_dir'], tissue_id, tissue_id)
+    susie_annotated = pd.read_table(susie_annotated_path)
     susie_annotated['cs_num'] = susie_annotated['cs_id'] 
     susie_annotated['cs_id'] = susie_annotated['phenotype_id'] + '_cs_' + susie_annotated['cs_id'].astype(str)
     susie_annotated = add_lead_var(susie_annotated)
@@ -74,7 +81,7 @@ def load_null_clusters_annotated(config: Dict[str, str], tissue_id: str, num_gen
 
 def load_cluster(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
     """Load cluster data for a tissue."""
-    cluster_df =  pd.read_table('{}/{}/{}.clusters.txt'.format(config["working_dir"], config['clusters_dir'], tissue_id),index_col=0)
+    cluster_df =  pd.read_table('{}/{}/{}.clusters.txt'.format(config["working_dir"], config['clusters_dir'], tissue_id))
     return cluster_df
 
 def load_pc_cis(config: Dict[str, str], tissue_id: str) -> pd.DataFrame:
@@ -443,46 +450,64 @@ def categorize_correlation_type(df):
     df['corr_type'] = np.select(conditions, choices, default='unknown')
     return df
 
-def add_statistical_significance(ax, data, x_col, y_col, palette=None):
+def add_statistical_significance(ax, data, x_col, y_col, pvalue_style="star", vertical_spacing=0.3):
     """
     Add statistical significance indicators using Mann-Whitney U test
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    data : DataFrame
+    x_col, y_col : columns in data
+    pvalue_style : "star" to use asterisks, "pval" to display p = ... or p < ...
+    vertical_spacing : float
+        Controls the vertical spacing between significance bars.
     """
     from scipy.stats import mannwhitneyu
-    
+    import numpy as np
+
     groups = data[x_col].unique()
-    
+
     # Perform pairwise Mann-Whitney U tests between all groups
     for i, group1 in enumerate(groups):
         for j, group2 in enumerate(groups[i+1:], i+1):
             group1_data = data[data[x_col] == group1][y_col].dropna()
             group2_data = data[data[x_col] == group2][y_col].dropna()
-            
+
             if len(group1_data) > 0 and len(group2_data) > 0:
                 stat, pval = mannwhitneyu(group1_data, group2_data, alternative='two-sided')
-                
+
                 # Add significance bar
                 y_max = data[y_col].max()
-                y_pos = y_max * 1.1 + (j-i-1) * (y_max * 0.1)  # Stack bars vertically
-                
-                x1, x2 = i+.02, j-.02
-                ax.plot([x1, x2], [y_pos, y_pos], 'k-', linewidth=1)
-                ax.plot([x1, x1], [y_pos, y_pos*0.95], 'k-', linewidth=1)
-                ax.plot([x2, x2], [y_pos, y_pos*0.95], 'k-', linewidth=1)
-                
-                # Add p-value text
-                if pval < 0.001:
-                    sig_text = '***'
-                elif pval < 0.01:
-                    sig_text = '**'
-                elif pval < 0.05:
-                    sig_text = '*'
-                else:
-                    sig_text = 'ns'
-                
-                ax.text((x1+x2)/2, y_pos*.99, sig_text, ha='center', va='bottom', 
-                       fontweight='bold')
-                print(f'{group1}, {group2} p={pval:.2e}')
+                y_pos = y_max * 1.1 + (j-i-1) * (y_max * vertical_spacing)  # Stack bars vertically
 
+                x1, x2 = i+.02, j-.02
+                ax.plot([x1, x2], [y_pos, y_pos], 'k-', linewidth=.5)
+                ax.plot([x1, x1], [y_pos, y_pos*0.95], 'k-', linewidth=.5)
+                ax.plot([x2, x2], [y_pos, y_pos*0.95], 'k-', linewidth=.5)
+
+                # Add p-value text
+                if pvalue_style == "star":
+                    if pval < 0.001:
+                        sig_text = '***'
+                    elif pval < 0.01:
+                        sig_text = '**'
+                    elif pval < 0.05:
+                        sig_text = '*'
+                    else:
+                        sig_text = 'ns'
+                elif pvalue_style == "pval":
+                    if pval < 1e-10:
+                        sig_text = r"p < $10^{-10}$"
+                    else:
+                        exponent = int(np.floor(np.log10(pval)))
+                        mantissa = pval / 10 ** exponent
+                        sig_text = rf"p=${mantissa:.1f} \times 10^{{{exponent}}}$"
+                else:
+                    sig_text = str(pval)
+
+                ax.text((x1+x2)/2, y_pos*.99, sig_text, ha='center', va='bottom', fontsize=6)
+                print(f'{group1}, {group2} p={pval:.2e}')
 
 def get_gene_name(gene_id, config=None, gencode=None):
     if gencode is None:
