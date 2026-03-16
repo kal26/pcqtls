@@ -117,11 +117,14 @@ For detailed descriptions of the output file formats and their contents, refer t
 
 ### Results Availability
 
-* Clusters of neighboring correlated genes 
-* Summary stats for pcQTL mapping
-* pcQTL-GWAS colocalizations 
+* Correlated gene clusters
+* Processed PC and expression matrices for QTL mapping
+* Summary statistics for eQTL and pcQTL mapping 
+* SuSiE finemapping for eQTLs and pcQTLs
+* QTL-QTL and QTL-GWAS colocalization 
+* Credible set groups
 
-[ZENODO](https://doi.org/10.5281/zenodo.15605351)
+[ZENODO](https://zenodo.org/records/18320563)
 
 
 ## Acknowledgments
