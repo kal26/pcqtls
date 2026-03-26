@@ -9,7 +9,7 @@ This repository contains the code associated with our work developing a multi-ge
     <img src="images/pcqtl_method.png" alt="pcQTL vs eQTL methods" style="max-width: 100%; height: auto;">
 </div>
 
-### Preprint
+### Paper 
 
 Our paper is available [here](https://www.cell.com/ajhg/fulltext/S0002-9297(26)00108-4) 
 
