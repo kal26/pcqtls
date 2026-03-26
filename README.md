@@ -11,7 +11,7 @@ This repository contains the code associated with our work developing a multi-ge
 
 ### Preprint
 
-Our preprint is available [here](https://www.biorxiv.org/content/10.1101/2025.06.06.658175v1)
+Our paper is available [here](https://www.cell.com/ajhg/fulltext/S0002-9297(26)00108-4) 
 
 ## Usage
 
